@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Arcade Archer | Zone 1 · Level 1 — The Jungle</title>
+<link rel="stylesheet" href="style.css?v=2">
+</head>
+<body>
+<main id="game">
+<div id="view"></div>
+<audio id="music" src="art/canopy-loop.wav" loop preload="none"></audio>
+<header id="hud" hidden>
+<div><small>ZONE 1 · LEVEL 1</small><div id="health" role="meter" aria-label="Health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><i></i></div><span id="shield"></span><div id="activeItems"></div></div>
+<div class="right"><small>SCORE</small><strong id="score">0000</strong><small id="coinCount"></small><small id="distance"></small><small id="speed"></small></div>
+</header>
+<div id="reticle" hidden></div>
+<div id="notice" aria-live="polite"></div>
+<section id="menu">
+<div class="menu-main">
+<p class="eyebrow">ZONE 1 · LEVEL 1 — THE JUNGLE · SMOOTH STYLIZED</p>
+<h1>Arcade<br>Archer</h1>
+<p id="message">Run the jungle. Take the shot.</p>
+<button id="start" disabled>Loading…</button>
+<button id="musicToggle" type="button" aria-pressed="true">Music on · M</button>
+</div>
+<ul class="controls" aria-label="Game controls">
+<li><span>Run forward</span><span><kbd>W</kbd> or <kbd>↑</kbd></span></li>
+<li><span>Stop / brake</span><span><kbd>S</kbd> or <kbd>↓</kbd></span></li>
+<li><span>Strafe</span><span><kbd>A</kbd> <kbd>D</kbd> or <kbd>←</kbd> <kbd>→</kbd></span></li>
+<li><span>Roll</span><span>Double-tap <kbd>A</kbd> / <kbd>D</kbd></span></li>
+<li><span>Jump</span><span><kbd>Space</kbd></span></li>
+<li><span>Aim</span><span>Mouse</span></li>
+<li><span>Fire</span><span>Hold left click</span></li>
+<li><span>Power attack</span><span><kbd>E</kbd> / right click</span></li>
+<li><span>Pause</span><span><kbd>Esc</kbd></span></li>
+</ul>
+</section>
+</main>
+<script type="module" src="game.js"></script>
+</body>
+</html>
