@@ -3,24 +3,42 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arcade Archer | Zone 1 · Level 1 — The Jungle</title>
-<link rel="stylesheet" href="style.css?v=2">
+<title>Jungle Soldier | Zone 1 · Level 1 — The Forest</title>
+<link rel="stylesheet" href="style.css?v=6-fixed">
 </head>
 <body>
 <main id="game">
 <div id="view"></div>
+<div id="vignette" aria-hidden="true"></div>
 <audio id="music" src="art/canopy-loop.wav" loop preload="none"></audio>
+<div id="loader"><div class="loadbar"><i></i></div><p>LOADING JUNGLE · PBR TEXTURES · DUSK HDRI</p></div>
 <header id="hud" hidden>
-<div><small>ZONE 1 · LEVEL 1</small><div id="health" role="meter" aria-label="Health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><i></i></div><span id="shield"></span><div id="activeItems"></div></div>
-<div class="right"><small>SCORE</small><strong id="score">0000</strong><small id="coinCount"></small><small id="distance"></small><small id="speed"></small></div>
+<div class="hud-panel left"><small>SCORE</small><strong id="score">0000</strong><div id="health" role="meter" aria-label="Health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><i></i></div><span id="shield"></span><div id="activeItems"></div></div>
+<div class="hud-panel right"><small>TIME</small><strong id="timer">00:00.000</strong><small id="coinCount"></small></div>
 </header>
+<div id="levelbar" hidden><small>LEVEL 1 / 1</small><div class="track"><i id="progress"></i></div><small id="distance"></small></div>
+<div id="speedo" hidden><strong><span id="speedBig">0</span><small> KM/H</small></strong><div class="track"><i id="speedbar"></i></div><small id="speed"></small></div>
 <div id="reticle" hidden></div>
+<div id="killpop" aria-hidden="true"></div>
 <div id="notice" aria-live="polite"></div>
 <section id="menu">
 <div class="menu-main">
-<p class="eyebrow">ZONE 1 · LEVEL 1 — THE JUNGLE · SMOOTH STYLIZED</p>
-<h1>Arcade<br>Archer</h1>
-<p id="message">Run the jungle. Take the shot.</p>
+<p class="eyebrow">ZONE 1 · LEVEL 1 — THE FOREST · SMOOTH STYLIZED · V6</p>
+<h1>Jungle<br>Soldier</h1>
+<p id="message">Hold the line in the forest. Move the mouse to aim. Hold left click to fire.</p>
+<div class="stats" aria-label="Soldier stats">
+<div><small>FIRE RATE</small><strong>8 / s</strong></div>
+<div><small>DAMAGE</small><strong>1 / shot</strong></div>
+<div><small>SPEED</small><strong>6 m/s</strong></div>
+<div><small>HEALTH</small><strong>100</strong></div>
+</div>
+<div class="weapons" aria-label="Weapons">
+<div class="weapon selected"><strong>RIFLE</strong><span>30 m range · mouse aim</span></div>
+<div class="weapon"><strong>GRENADE</strong><span>Power Attack · 3 charges</span></div>
+</div>
+<div class="settings"><label>Graphics <select id="quality"><option value="low">Low</option><option value="medium">Medium</option><option value="high" selected>High</option></select></label><span>High: 4096 shadows · dusk HDRI · neon</span></div>
+</div>
+<div class="menu-actions">
 <button id="start" disabled>Loading…</button>
 <button id="musicToggle" type="button" aria-pressed="true">Music on · M</button>
 </div>
@@ -31,12 +49,12 @@
 <li><span>Roll</span><span>Double-tap <kbd>A</kbd> / <kbd>D</kbd></span></li>
 <li><span>Jump</span><span><kbd>Space</kbd></span></li>
 <li><span>Aim</span><span>Mouse</span></li>
-<li><span>Fire</span><span>Hold left click</span></li>
-<li><span>Power attack</span><span><kbd>E</kbd> / right click</span></li>
+<li><span>Fire rifle</span><span>Hold left click</span></li>
+<li><span>Grenade</span><span><kbd>E</kbd> / right click</span></li>
 <li><span>Pause</span><span><kbd>Esc</kbd></span></li>
 </ul>
 </section>
 </main>
-<script type="module" src="game.js"></script>
+<script type="module" src="game.js?v=6-volume-20"></script>
 </body>
 </html>
