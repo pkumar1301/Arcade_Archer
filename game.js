@@ -23,6 +23,7 @@ import * as T from './vendor/three.module.min.js';
 import { HDRLoader } from './vendor/HDRLoader.js'; // v5: real dusk HDRI (r180 example loader)
 import { initProfiles, recordRun, activeProfile, saveSetting } from './profiles.js'; // V7
 import { loadSoldier } from './soldier.js'; // V10: animated Mixamo soldier
+import { createMusic } from './music.js'; // V11: original chiptune soundtrack
 
 const ui = Object.fromEntries([...document.querySelectorAll('[id]')].map(el => [el.id, el]));
 const scene = new T.Scene();
@@ -142,10 +143,11 @@ const DIFFICULTIES = {
     turretsPass: false,    // walking past a fixed emplacement costs nothing
     waveInterval: 13,      // seconds between recurring waves
     waveMoths: 2,          // drones per recurring wave (beetle always added)
-    waveShooters: 1,       // how many of those drones fire
+    waveShooters: 2,       // how many of those drones fire (V11: was 1, so almost nothing fired on Easy)
     waveDistance: 40,      // spawn ahead of the soldier (rifle range is 30)
     maxNearby: 4,          // no new wave while this many enemies are ahead
-    turretRate: .4, mothRate: .2, boltSpeed: 9,
+    turretRate: .65, mothRate: .45, boltSpeed: 9,
+    encounterShooters: .34, firstShot: .7, // V11: some fixed drones fire too; first shot comes sooner
     regenDelay: 2.5, regenRate: 5, // health/s after this many seconds unhurt
     aimAssist: .12, startCharges: 3, encounterKeep: .5
   },
@@ -153,7 +155,8 @@ const DIFFICULTIES = {
     label: 'Medium', blurb: 'The intended challenge. Steady pressure, slow regeneration.',
     damageScale: .55, passDamage: 3, turretsPass: false,
     waveInterval: 10, waveMoths: 3, waveShooters: 2, waveDistance: 34, maxNearby: 5,
-    turretRate: .55, mothRate: .27, boltSpeed: 10.5,
+    turretRate: .7, mothRate: .38, boltSpeed: 10.5,
+    encounterShooters: .34, firstShot: .4,
     regenDelay: 3.5, regenRate: 2.5,
     aimAssist: .08, startCharges: 2, encounterKeep: .8
   },
@@ -162,6 +165,7 @@ const DIFFICULTIES = {
     damageScale: 1, passDamage: 8, turretsPass: true,
     waveInterval: 6.25, waveMoths: 3, waveShooters: 3, waveDistance: 28, maxNearby: 7,
     turretRate: .7, mothRate: .34, boltSpeed: 12,
+    encounterShooters: 0, firstShot: 0, // Hard stays exactly V6
     regenDelay: Infinity, regenRate: 0,
     aimAssist: .06, startCharges: 1, encounterKeep: 1
   }
@@ -423,11 +427,15 @@ for (let i = 0; i < 16; i++) {
   scene.add(tower);
 }
 // Temple archways over the path every 60 m, with lantern glow.
+const archPillars = [];
 for (let d = 60; d < finish; d += 60) {
-  const w = 13.5, arch = makeSprite('ruin_arch', w, {bottom: true, tint: 0xd0d0c8});
+  const w = 20, arch = makeSprite('ruin_arch', w, {bottom: true, tint: 0xd0d0c8}); // V11: wider so the opening fits the path
   arch.position.set(center(d), -.05, -d);
   scene.add(arch);
-  for (const side of [-1, 1]) addGlow(scene, center(d) + side * w * .31, w / SPRITE_ASPECT.ruin_arch * .54, -d + .1, 0xffb36a, 1.6, .45);
+  for (const side of [-1, 1]) {
+    addGlow(scene, center(d) + side * w * .31, w / SPRITE_ASPECT.ruin_arch * .54, -d + .1, 0xffb36a, 1.6, .45);
+    archPillars.push({d, x: side * (w * .2 + 1.6), hw: 1.6, hd: .6, h: 99}); // V11: pillars are solid
+  }
 }
 // Hanging vine canopies between the arches.
 for (let d = 30; d < finish; d += 60) {
@@ -439,7 +447,7 @@ for (let d = 30; d < finish; d += 60) {
 for (let d = 3; d < finish + 30; d += 3.5) {
   for (const side of [-1, 1]) {
     const r = random();
-    const x = center(d) + side * (5.2 + random() * 2.6);
+    const x = center(d) + side * (6.4 + random() * 2.4); // V11: kept outside the walkable strip
     const PLANTS = ['plant_monstera','plant_paradise','plant_bromeliad','plant_grass','plant_broadleaf','plant_flowerbush','plant_mushroom_blue','plant_mushroom_orange'];
     const sp = r < .45 ? makeSprite('prop_fern', 1.8 + random() * 1.4, {bottom:true, tint:0xb8c2b0})
              : r < .88 ? makeSprite(pick(PLANTS), 1.1 + random() * 1.1, {bottom:true, tint:0xc4c8bc})
@@ -588,6 +596,23 @@ shape(actor,smoothOrb,new T.MeshStandardMaterial({color:0x22d3ee,emissive:0x22d3
 const muzzleGlow = addGlow(rifle, 0, 0, -.68, 0xffffff, .9, 0);
 muzzleGlow.material.map = spriteTexture('vfx_muzzle'); // V9: painted muzzle flash // v5: muzzle flash sprite, opacity spikes on fire
 actor.traverse(part=>{if(part.isMesh) part.castShadow=true;});
+// V11: power-up effects shown on the soldier.
+const powerFx = new T.Group(); actor.add(powerFx);
+const shieldBubble = makeFx('vfx_shield', 2.7); shieldBubble.position.y = 1.0; powerFx.add(shieldBubble);
+const autoDrone = makeSprite('icon_auto', .5, {tint: 0xffffff}); powerFx.add(autoDrone);
+const heavyGlow = addGlow(rifle, 0, 0, -.35, 0xff3a24, 1.1, 0);
+const rapidRing = new T.Mesh(new T.RingGeometry(.55, .72, 40), new T.MeshBasicMaterial({color: 0x6dff8a, transparent: true, opacity: .6, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide}));
+rapidRing.rotation.x = -Math.PI / 2; rapidRing.position.y = .04; powerFx.add(rapidRing);
+function updatePowerFx(t) {
+  const on = mode === 'play' || mode === 'pause';
+  shieldBubble.visible = on && shield > 0;
+  shieldBubble.material.opacity = .45 + Math.sin(t * 4) * .15;
+  autoDrone.visible = on && autoTime > 0;
+  autoDrone.position.set(Math.cos(t * 3) * .75, 2.15 + Math.sin(t * 6) * .08, Math.sin(t * 3) * .75);
+  heavyGlow.material.opacity = on && heavy > 0 ? .55 + Math.sin(t * 10) * .2 : 0;
+  rapidRing.visible = on && rapid > 0;
+  rapidRing.rotation.z = t * 2; rapidRing.scale.setScalar(1 + Math.sin(t * 8) * .06);
+}
 // V10: animated soldier. The procedural soldier above stays as a fallback
 // until the model loads (or if it fails); the procedural rifle is kept and
 // follows the model's right hand, still pointing at the aim point.
@@ -597,7 +622,7 @@ loadSoldier().then(s => {
   soldier = s;
   s.root.scale.setScalar(1.05);
   actor.add(s.root);
-  for (const child of actor.children) if (child !== rifle && child !== s.root) child.visible = false;
+  for (const child of actor.children) if (child !== rifle && child !== s.root && child !== powerFx) child.visible = false; // V11: keep power-up effects
   playSoldier('idle', 0);
 }).catch(err => console.warn('Soldier model failed to load; keeping the procedural soldier.', err));
 function playSoldier(name, fade = .15, timeScale = 1) {
@@ -735,6 +760,8 @@ function makeThorn(x, d) {
   return bush;
 }
 const hazards = [];
+const solids = []; // V11: things you can't walk through {d, x, hw, hd, h}; jump clears them if h is low enough
+const softZones = []; // V11: ferns in the path slow you down
 const shotBlockers=[];
 const combatRange=30;
 const weakMaterial=new T.MeshBasicMaterial({color:0x7affdc});
@@ -758,6 +785,7 @@ for(const [d,kind,x] of hazardCourse) {
   if(kind==='cover'){
     mesh=shape(scene,box,colors.bark,center(d)+x,.68,-d,2.5,1.36,1.3);
     shotBlockers.push(mesh);
+    solids.push({d, x, hw:1.25, hd:.65, h:1.36}); // V11: cover is solid
     mesh.material=ghostMaterial; // V8: fallen-log art over the same cover box
     const art=makeSprite(pick(['cover_stump','cover_boulder','cover_stone']),2.7,{bottom:true,height:1.75,tint:0xd0d0c8});
     art.position.set(center(d)+x,0,-d+.2);
@@ -773,6 +801,7 @@ for(const [d,kind,x] of hazardCourse) {
     mesh = shape(scene, pole, colors.wood, center(d), 0.4, -d, .48, 12, .48);
     mesh.rotation.z = Math.PI / 2;
     shotBlockers.push(mesh);
+    solids.push({d, x:0, hw:7, hd:.45, h:.7}); // V11: logs block you until you jump them
     mesh.material = ghostMaterial; // V9: log art over the same blocker
     const art = makeSprite('log_cross', 12.8, {bottom: true, height: 1.85, tint: 0xd2d2ca});
     art.position.set(center(d), -.12, -d + .3);
@@ -791,6 +820,28 @@ for(const [d,kind,x] of hazardCourse) {
   hazards.push({kind, d, x, mesh, hit:false});
 }
 
+// V11: rock piles (solid, jumpable) and fern clumps (slow you) in the path.
+{
+  const lanes = [-3.8, -1.4, 1.4, 3.8];
+  const clear = (d, x) => !hazards.some(h => Math.abs(h.d - d) < 6 && Math.abs(h.x - x) < 3.2)
+    && Math.abs(((d + 30) % 60) - 30) > 4 && d > 20 && d < finish - 15;
+  for (let d = 18, i = 0; d < finish; d += 21, i++) {
+    const x = lanes[(i * 3 + (i >> 1)) % 4];
+    if (!clear(d, x)) continue;
+    if (i % 2 === 0) {
+      const art = makeSprite('prop_rocks', 2.0, {bottom: true, tint: 0xb4b4b0});
+      art.position.set(center(d) + x, -.04, -d); scene.add(art);
+      shotBlockers.push(shape(scene, box, ghostMaterial, center(d) + x, .35, -d, 1.6, .7, 1.1));
+      solids.push({d, x, hw: .8, hd: .55, h: .7});
+      hazards.push({kind: 'rock', d, x, mesh: art, hit: true});
+    } else {
+      const art = makeSprite('prop_fern', 2.2, {bottom: true, tint: 0xb8c2b0});
+      art.position.set(center(d) + x, -.04, -d); scene.add(art);
+      softZones.push({d, x, hw: 1.0, hd: .8});
+      hazards.push({kind: 'fern', d, x, mesh: art, hit: true});
+    }
+  }
+}
 // v5: neon path edges, from the Meridian screenshots — warm red/orange on
 // the LEFT, cool cyan on the RIGHT, so left/right read at a glance and the
 // dark path gets its contrast from the edges, not from daylight.
@@ -938,6 +989,10 @@ let shield = 0, recovery = 0, notice = 0, cooldown = 0, firing = false, elapsed 
 let resumed = false, audio;
 let wallet, level, dual, rapid, heavy, autoTime, autoCooldown, charges, pressShot, powerShot;
 const lastTap = {};
+const DROP_CYCLE = ['shield','heavy','reload','auto','charge']; // V11
+let dropCycle = 0;
+const DROP_HELP = {shield:'Shield · blocks the next hit', heavy:'Power bolts · next 8 shots do double damage',
+  reload:'Quick reload · next 12 shots fire faster', auto:'Auto attack · fires at targets for 15 s', charge:'Grenade +1 · press E or right click'};
 const dropNames = {shield:'Shield',auto:'Auto attack',heavy:'Power bolts',
   reload:'Quick reload',charge:'Power attack charge'};
 const dropColors = Object.fromEntries(Object.entries({
@@ -951,20 +1006,23 @@ function collectDrop(key) {
     case 'reload': rapid=12; break;
     case 'charge': charges=Math.min(3,charges+1); break;
   }
-  message(dropNames[key]+' collected');
+  message(DROP_HELP[key] || dropNames[key]+' collected', 3.5);
   spawnFx(key==='shield' ? 'vfx_shield' : 'vfx_heal', actor.position.clone().add(vector(0,1,0)), 2.2, .5); // V9
   ui.notice.prepend(itemIcon(key));
   tone(880,.22);
 }
 
 let musicEnabled=true;
+// V11: playlist. Menu theme, level tracks rotating each run (per level once the
+// level system lands), boss theme reserved for boss fights, win/lose jingles.
+const music = createMusic();
+const LEVEL_TRACKS = ['jungle', 'canopy', 'night'];
+let runCount = 0, levelTrack = 'jungle';
 function syncMusic(){
-  if(musicEnabled && mode==='play'){
-    ui.music.volume=.27;
-    ui.music.play()?.catch(()=>{});
-  } else {
-    ui.music.pause();
-  }
+  if (audio) music.init(audio);
+  if (!musicEnabled || mode === 'pause') music.stop();
+  else if (mode === 'play') music.play(levelTrack);
+  else if (mode === 'menu') music.play('menu');
   ui.musicToggle.textContent=musicEnabled?'Music on · M':'Music off · M';
   ui.musicToggle.setAttribute('aria-pressed',musicEnabled);
 }
@@ -1097,14 +1155,15 @@ function spawn(config) {
   mesh.add(art);
   motion.length = 0;
   scene.add(mesh);
-  return {...config,mesh,body,halo,targetRing,shell,motion,weakPoint,art,hp:config.type==='moth'?2:6,shot:-(config.shotDelay ?? 0),range:0,flash:0};
+  return {...config,mesh,body,halo,targetRing,shell,motion,weakPoint,art,hp:config.type==='moth'?2:6,shot:-(config.shotDelay ?? 0)+(config.firstShot ?? 0),range:0,flash:0};
 }
 function reset() {
   for (const list of [targets, bolts, grenades, pickups, coins, effects]) {
     list.forEach(remove);
     list.length = 0;
   }
-  targets.push(...encountersFor(DIFF.encounterKeep).map(spawn));
+  targets.push(...encountersFor(DIFF.encounterKeep).map((e,i)=>spawn({...e, shooter: e.type==='moth' && ((i*0.618)%1) < DIFF.encounterShooters, firstShot: DIFF.firstShot})));
+  dropCycle=0;
   for (const line of coinLines) {
     for (let i=0;i<4;i++) {
       const d=line.d-2.4+i*1.6, lane=line.lane;
@@ -1158,7 +1217,23 @@ function formatTime(t) {
   const m = Math.floor(t / 60), sec = t - m * 60;
   return String(m).padStart(2,'0') + ':' + sec.toFixed(3).padStart(6,'0');
 }
+function powerHud() { // V11: what is active, and for how long
+  const chips = [];
+  if (shield > 0) chips.push(['icon_shield', 'SHIELD', 'next hit']);
+  if (heavy > 0) chips.push(['icon_power2', 'POWER BOLTS', heavy + ' shots']);
+  if (rapid > 0) chips.push(['icon_reload', 'QUICK RELOAD', rapid + ' shots']);
+  if (autoTime > 0) chips.push(['icon_auto', 'AUTO ATTACK', Math.ceil(autoTime) + ' s']);
+  const sig = chips.map(c => c.join(':')).join('|');
+  if (sig === powerHud.sig) return;
+  powerHud.sig = sig;
+  ui.powerbar.replaceChildren(...chips.map(([icon, name, left]) => {
+    const el = document.createElement('div'); el.className = 'power-chip';
+    el.innerHTML = '<span style="background-image:url(art/sprites/' + icon + '.png)"></span><b>' + name + '</b><small>' + left + '</small>';
+    return el;
+  }));
+}
 function hud() {
+  powerHud();
   ui.score.textContent = String(score).padStart(4, '0');
   ui.health.firstElementChild.style.width = health + '%';
   ui.health.setAttribute('aria-valuenow', Math.round(health));
@@ -1195,6 +1270,7 @@ function showKillPop(text) {
 function end(won) {
   setMode('end');
   const best = recordRun({won, score, coins: coinCount, distance: Math.floor(distance), time: elapsed, difficulty: difficultyKey});
+  if (musicEnabled && audio) music.play(won ? 'win' : 'lose', () => { if (mode === 'end' && musicEnabled) music.play('menu'); });
   ui.message.textContent = (won ? 'Jungle cleared' : 'Run ended') + ' · ' + DIFF.label + ' · Score ' + score + ' · ' + Math.floor(distance) + ' m' + (best ? ' · New best!' : '');
   ui.start.textContent = 'Run again';
   tone(won ? 660 : 150, .35);
@@ -1267,8 +1343,8 @@ function updateTargets(dt) {
       const beetleSlot=i===count-1;
       const d=distance+DIFF.waveDistance+i*1.6;
       targets.push(spawn({d,type:beetleSlot?'beetle':'moth',x:side*(i%3+1.5),
-        entrySide:side,shooter:!beetleSlot && i<DIFF.waveShooters,shotDelay:i*.22,
-        drop:beetleSlot?(wave%2?'shield':'heavy'):undefined}));
+        entrySide:side,shooter:!beetleSlot && i<DIFF.waveShooters,shotDelay:i*.22,firstShot:DIFF.firstShot,
+        drop:beetleSlot?DROP_CYCLE[dropCycle++%DROP_CYCLE.length]:undefined})); // V11: cycle through every power-up
     }
   }
   for (const enemy of targets) {
@@ -1310,7 +1386,7 @@ function updateTargets(dt) {
       damage(35, 'Creature collision');
     }
     // Only turrets shoot in Phase 1.
-    if ((!turret && !(enemy.type==='moth' && enemy.entrySide && enemy.shooter)) || enemy.range > 28 || enemy.range < 7) continue;
+    if ((!turret && !(enemy.type==='moth' && enemy.shooter)) || enemy.range > 28 || enemy.range < 7) continue;
     enemy.shot += dt * (turret?DIFF.turretRate:DIFF.mothRate);
     enemy.halo.visible = enemy.shot > .42;
     enemy.halo.scale.setScalar(.2+Math.max(0,enemy.shot-.42)*.35);
@@ -1334,8 +1410,8 @@ function updateTargets(dt) {
   }
 }
 
-function tracer(from, to) {
-  const mesh = beam(scene,from,to,.024,colors.gold);
+function tracer(from, to, mat = colors.gold) {
+  const mesh = beam(scene,from,to,heavy > 0 ? .04 : .024,mat);
   effects.push({mesh, life:.075});
 }
 function burst(at, material, count) {
@@ -1386,7 +1462,7 @@ function fireBullet(direction,muzzle,damage,assist=true){
   const bulletRay=new T.Raycaster(muzzle,shotDirection,0,combatRange);
   const hit=bulletRay.intersectObjects([...hitMeshes,...shotBlockers],false)[0];
   const hitPoint=hit?.point ?? muzzle.clone().addScaledVector(shotDirection,combatRange);
-  tracer(muzzle,hitPoint);
+  tracer(muzzle,hitPoint,heavy>0?colors.danger:colors.gold); // V11: power bolts fire red tracers
   burst(muzzle,colors.gold,2);
   muzzleLight.position.copy(muzzle);
   muzzleLight.intensity=26;
@@ -1473,6 +1549,24 @@ function startRoll(dir) {
   rollInvuln = ROLL_INVULN;
   message(dir < 0 ? 'Roll left' : 'Roll right', .6);
 }
+// V11: push the soldier out of solid obstacles (cover, logs, rock piles, arch pillars).
+let bumpNotice = 0;
+function resolveSolids() {
+  const R = .35;
+  for (const list of [solids, archPillars]) for (const o of list) {
+    if (Math.abs(o.d - distance) > o.hd + R + .5 || jumpY >= o.h - .1) continue;
+    const dx = lateral - o.x, dd = distance - o.d;
+    const px = o.hw + R - Math.abs(dx), pd = o.hd + R - Math.abs(dd);
+    if (px <= 0 || pd <= 0) continue;
+    if (pd < px) {
+      distance = o.d + (dd < 0 ? -1 : 1) * (o.hd + R);
+      if (dd < 0) {
+        currentSpeed = Math.min(currentSpeed, .4);
+        if (elapsed > bumpNotice) { message(o.h < 1 ? 'Blocked · jump over it' : o.h < 2 ? 'Blocked · go around or jump' : 'Blocked · go through the arch', 1.2); bumpNotice = elapsed + 1.5; tone(140, .06, .05); }
+      }
+    } else lateral = o.x + (dx < 0 ? -1 : 1) * (o.hw + R);
+  }
+}
 function update(dt) {
   elapsed += dt;
   // --- Ground movement: W runs, S brakes, release slows to a stop.
@@ -1482,6 +1576,7 @@ function update(dt) {
   let targetSpeed = forward ? RUN_SPEED : 0;
   if (brake) targetSpeed = 0;
   if (slowTimer > 0) { targetSpeed *= 0.5; slowTimer -= dt; }
+  if (jumpY < .4 && softZones.some(z => Math.abs(z.d - distance) < z.hd && Math.abs(z.x - lateral) < z.hw)) targetSpeed *= .8; // V11: ferns
   const rate = targetSpeed > currentSpeed ? 5 : 8;
   currentSpeed = T.MathUtils.lerp(currentSpeed,targetSpeed,1-Math.exp(-dt*rate));
   const right = held.has('KeyD') || held.has('ArrowRight');
@@ -1503,6 +1598,7 @@ function update(dt) {
     distance=trappedPit.d;
   } else {
     distance+=dt*currentSpeed;
+    resolveSolids();
   }
   // --- Jump physics ---
   if (!grounded) {
@@ -1525,12 +1621,12 @@ function update(dt) {
   for (const h of hazards) {
     if (h.hit || previousDistance >= h.d || distance < h.d) continue;
     h.hit = true;
-    if (h.kind === 'log' && jumpY < 0.6) {
+    if (false && h.kind === 'log') { // V11: logs are solid now (resolveSolids)
       // v3: logs no longer damage — hitting one is a stumble (brief slow only).
       slowTimer = 1.2;
       message('Stumbled over a log · no damage', 1.2);
       tone(180,.12,.06);
-    } else if(h.kind==='cover' && Math.abs(lateral-h.x)<1.6 && jumpY<1.2){
+    } else if(false && h.kind==='cover'){ // V11: cover is solid now (resolveSolids)
       damage(15,'Trunk collision');
       slowTimer=1;
     } else if (h.kind === 'thorn' && Math.abs(lateral - h.x) < 1.2 && jumpY < 1.0) {
@@ -1672,11 +1768,20 @@ ui.start.onclick = event => {
   if (!audio && window.AudioContext) audio = new AudioContext();
   audio?.resume().catch(() => {});
   if (!resumed) setDifficulty(ui.difficulty.value);
+  if (!resumed) levelTrack = LEVEL_TRACKS[runCount++ % LEVEL_TRACKS.length]; // V11
   setMode('play');
   if (!resumed) reset();
   // Start and resume keep the last aim instead of aiming at the menu button.
 };
 addEventListener('pointermove', aim);
+// V11: browsers only allow sound after a click or key press; start the menu theme then.
+const wakeAudio = () => {
+  if (!audio && window.AudioContext) audio = new AudioContext();
+  audio?.resume().catch(() => {});
+  syncMusic();
+  removeEventListener('pointerdown', wakeAudio); removeEventListener('keydown', wakeAudio);
+};
+addEventListener('pointerdown', wakeAudio); addEventListener('keydown', wakeAudio);
 renderer.domElement.addEventListener('pointerdown', e => {
   if (mode !== 'play') return;
   aim(e);
@@ -1774,6 +1879,7 @@ renderer.setAnimationLoop(now => {
     shake=0;
   }
   if (mode !== 'pause') animateSoldier(dt); // V10
+  updatePowerFx(now / 1000); // V11
   muzzleLight.intensity *= .82;
   muzzleGlow.material.opacity *= .8;
   pollen.position.y=Math.sin(now*.0004)*.25; // v2: gentle drift

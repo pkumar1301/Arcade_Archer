@@ -2,7 +2,7 @@
 
 [Play the game](https://pkumar1301.github.io/Arcade_Archer/)
 
-The current build is V10, with an animated, rigged soldier and ten animation clips, difficulty selection, local player profiles, and a 1,620 m jungle level, free mouse aiming, a 30 m rifle range, armored weak points, recurring enemy waves, and pits that require a directional jump to escape.
+The current build is V11, with an animated soldier, difficulty settings, local player profiles, solid obstacles, visible power-up effects, an original synthesized soundtrack, and a 1,620 m jungle level, free mouse aiming, a 30 m rifle range, armored weak points, recurring enemy waves, and pits that require a directional jump to escape.
 
 ## Controls
 
@@ -13,7 +13,7 @@ The current build is V10, with an animated, rigged soldier and ten animation cli
 - E or right click throws a grenade.
 - Esc pauses. M toggles music.
 
-Surviving enemies cost 8 health when they pass the player. Enemy volume includes the latest two reductions. See CHANGES_V10.md for animation integration details and known visual limitations.
+Surviving enemies cost 8 health when they pass the player. Enemy volume includes the latest two reductions. See CHANGES_V11.md for the latest changes and CHANGES_V10.md for animation limitations.
 
 ## Local play
 

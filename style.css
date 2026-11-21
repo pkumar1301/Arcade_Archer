@@ -125,3 +125,9 @@ button:disabled{opacity:.45;cursor:default}
 @media(max-height:980px){#menu .stats,#menu .weapons{display:none}#menu h1{font-size:clamp(44px,min(9vw,11vh),96px)}}
 
 .weapon img{height:34px;float:right;margin:-4px -4px 0 10px;filter:drop-shadow(0 2px 4px #000c)}
+
+/* V11: active power-ups */
+#powerbar{position:absolute;bottom:calc(9% + 34px);left:0;right:0;display:flex;justify-content:center;gap:10px;pointer-events:none;z-index:5}
+.power-chip{display:flex;align-items:center;gap:8px;padding:5px 12px 5px 6px;border-radius:999px;background:#05150dcc;border:1px solid #ffffff33;color:#fff;font:700 11px system-ui,sans-serif;letter-spacing:.08em;box-shadow:0 0 14px #22d3ee33}
+.power-chip span{width:26px;height:26px;background-size:contain;background-repeat:no-repeat;background-position:center}
+.power-chip small{color:#ffd76a;font-size:11px;letter-spacing:.04em}
