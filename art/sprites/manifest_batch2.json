@@ -1,0 +1,161 @@
+{
+ "tree_kapok": {
+  "file": "tree_kapok.png",
+  "w": 749,
+  "h": 717
+ },
+ "tree_fig": {
+  "file": "tree_fig.png",
+  "w": 632,
+  "h": 777
+ },
+ "tree_palm": {
+  "file": "tree_palm.png",
+  "w": 482,
+  "h": 761
+ },
+ "tree_hardwood": {
+  "file": "tree_hardwood.png",
+  "w": 713,
+  "h": 758
+ },
+ "canopy_vines": {
+  "file": "canopy_vines.png",
+  "w": 1024,
+  "h": 506
+ },
+ "log_cross": {
+  "file": "log_cross.png",
+  "w": 1024,
+  "h": 257
+ },
+ "cover_stump": {
+  "file": "cover_stump.png",
+  "w": 349,
+  "h": 344
+ },
+ "cover_boulder": {
+  "file": "cover_boulder.png",
+  "w": 493,
+  "h": 453
+ },
+ "cover_stone": {
+  "file": "cover_stone.png",
+  "w": 445,
+  "h": 408
+ },
+ "plant_monstera": {
+  "file": "plant_monstera.png",
+  "w": 349,
+  "h": 311
+ },
+ "plant_paradise": {
+  "file": "plant_paradise.png",
+  "w": 343,
+  "h": 314
+ },
+ "plant_bromeliad": {
+  "file": "plant_bromeliad.png",
+  "w": 348,
+  "h": 269
+ },
+ "plant_grass": {
+  "file": "plant_grass.png",
+  "w": 310,
+  "h": 307
+ },
+ "plant_mushroom_blue": {
+  "file": "plant_mushroom_blue.png",
+  "w": 280,
+  "h": 282
+ },
+ "plant_mushroom_orange": {
+  "file": "plant_mushroom_orange.png",
+  "w": 298,
+  "h": 269
+ },
+ "plant_broadleaf": {
+  "file": "plant_broadleaf.png",
+  "w": 345,
+  "h": 279
+ },
+ "plant_flowerbush": {
+  "file": "plant_flowerbush.png",
+  "w": 333,
+  "h": 298
+ },
+ "ruin_arch": {
+  "file": "ruin_arch.png",
+  "w": 1024,
+  "h": 799
+ },
+ "ruin_tower": {
+  "file": "ruin_tower.png",
+  "w": 654,
+  "h": 1024
+ },
+ "pit_rim": {
+  "file": "pit_rim.png",
+  "w": 923,
+  "h": 919,
+  "inner": 0.5
+ },
+ "ground_path": {
+  "file": "ground_path.jpg",
+  "w": 1024,
+  "h": 1024
+ },
+ "ground_forest": {
+  "file": "ground_forest.jpg",
+  "w": 1024,
+  "h": 1024
+ },
+ "vfx_muzzle": {
+  "file": "vfx_muzzle.png",
+  "w": 256,
+  "h": 256,
+  "blend": "additive"
+ },
+ "vfx_spark": {
+  "file": "vfx_spark.png",
+  "w": 243,
+  "h": 243,
+  "blend": "additive"
+ },
+ "vfx_explosion_small": {
+  "file": "vfx_explosion_small.png",
+  "w": 256,
+  "h": 256,
+  "blend": "additive"
+ },
+ "vfx_explosion_big": {
+  "file": "vfx_explosion_big.png",
+  "w": 256,
+  "h": 256,
+  "blend": "additive"
+ },
+ "vfx_bolt": {
+  "file": "vfx_bolt.png",
+  "w": 256,
+  "h": 256,
+  "blend": "additive"
+ },
+ "vfx_heal": {
+  "file": "vfx_heal.png",
+  "w": 256,
+  "h": 256,
+  "blend": "additive"
+ },
+ "vfx_coin": {
+  "file": "vfx_coin.png",
+  "w": 256,
+  "h": 256,
+  "blend": "additive"
+ },
+ "vfx_shield": {
+  "file": "vfx_shield.png",
+  "w": 256,
+  "h": 256,
+  "blend": "additive"
+ }
+}

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Jungle Soldier | Zone 1 · Level 1 — The Forest</title>
-<link rel="stylesheet" href="style.css?v=6-fixed">
+<link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
 <main id="game">
@@ -23,7 +23,7 @@
 <div id="notice" aria-live="polite"></div>
 <section id="menu">
 <div class="menu-main">
-<p class="eyebrow">ZONE 1 · LEVEL 1 — THE FOREST · SMOOTH STYLIZED · V6</p>
+<p class="eyebrow">ZONE 1 · LEVEL 1 — THE FOREST · ANIMATED SOLDIER · V10</p>
 <h1>Jungle<br>Soldier</h1>
 <p id="message">Hold the line in the forest. Move the mouse to aim. Hold left click to fire.</p>
 <div class="stats" aria-label="Soldier stats">
@@ -33,9 +33,16 @@
 <div><small>HEALTH</small><strong>100</strong></div>
 </div>
 <div class="weapons" aria-label="Weapons">
-<div class="weapon selected"><strong>RIFLE</strong><span>30 m range · mouse aim</span></div>
-<div class="weapon"><strong>GRENADE</strong><span>Power Attack · 3 charges</span></div>
+<div class="weapon selected"><img src="art/sprites/weapon_rifle.png" alt=""><strong>RIFLE</strong><span>30 m range · mouse aim</span></div>
+<div class="weapon"><img src="art/sprites/icon_grenade.png" alt=""><strong>GRENADE</strong><span>Power Attack · 3 charges</span></div>
 </div>
+<div class="profile" aria-label="Player profile">
+<div class="profile-row"><label>Profile <select id="profileSelect"></select></label><button type="button" id="profileDelete" class="ghost" hidden>Delete</button><button type="button" id="profileExport" class="ghost">Copy save code</button></div>
+<form id="profileForm" class="profile-row"><input id="profileName" maxlength="18" placeholder="New call sign" autocomplete="off" aria-label="New profile name"><button type="submit" class="ghost">Create profile</button></form>
+<p id="profileStats"></p><p id="profileNote" aria-live="polite"></p>
+<details id="profileTransfer"><summary>Move a profile between devices</summary><textarea id="profileCode" rows="2" placeholder="Paste a save code here"></textarea><button type="button" id="profileImport" class="ghost">Load save code</button></details>
+</div>
+<div class="settings"><label>Difficulty <select id="difficulty"><option value="easy">Easy</option><option value="medium" selected>Medium</option><option value="hard">Hard</option></select></label><span id="difficultyBlurb"></span></div>
 <div class="settings"><label>Graphics <select id="quality"><option value="low">Low</option><option value="medium">Medium</option><option value="high" selected>High</option></select></label><span>High: 4096 shadows · dusk HDRI · neon</span></div>
 </div>
 <div class="menu-actions">
@@ -55,6 +62,6 @@
 </ul>
 </section>
 </main>
-<script type="module" src="game.js?v=6-volume-20"></script>
+<script type="module" src="game.js?v=10"></script>
 </body>
 </html>

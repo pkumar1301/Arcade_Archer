@@ -21,6 +21,8 @@
 // E / right click throws a grenade (Power Attack).
 import * as T from './vendor/three.module.min.js';
 import { HDRLoader } from './vendor/HDRLoader.js'; // v5: real dusk HDRI (r180 example loader)
+import { initProfiles, recordRun, activeProfile, saveSetting } from './profiles.js'; // V7
+import { loadSoldier } from './soldier.js'; // V10: animated Mixamo soldier
 
 const ui = Object.fromEntries([...document.querySelectorAll('[id]')].map(el => [el.id, el]));
 const scene = new T.Scene();
@@ -28,7 +30,7 @@ const scene = new T.Scene();
 // warm gold vs cool cyan as opposing hues; value separation: dark ground,
 // mid-tone foliage, bright hero/tracers/pickups. Fog haze fades the distance.
 scene.background = new T.Color(0x0a1420);
-scene.fog = new T.FogExp2(0x0d1f2e, 0.011);
+scene.fog = new T.FogExp2(0x55604c, 0.012); // V8: warm green haze to meet the sunrise sky
 const camera = new T.PerspectiveCamera(56, 1, 0.1, 240);
 let renderer;
 try {
@@ -64,7 +66,7 @@ new HDRLoader().load('art/qwantani_dusk_1_1k.hdr', tex => {
   scene.environmentIntensity = .55;
   tex.dispose(); pmrem.dispose();
 }, undefined, () => proceduralEnv());
-scene.add(new T.HemisphereLight(0x2a4a66, 0x0e2418, 0.9)); // cool dusk sky, dark ground
+scene.add(new T.HemisphereLight(0x8fa3b0, 0x1e2a16, 1.0)); // V8: brighter morning sky fill // cool dusk sky, dark ground
 const sun = new T.DirectionalLight(0xffb36a, 2.2); // low warm dusk sun
 sun.position.set(-20, 27, -8);
 sun.castShadow=true;
@@ -130,6 +132,43 @@ const center = d => Math.sin(d * .036) * 3.4 + Math.sin(d * .078) * .7;
 const RUN_SPEED = 6, STRAFE_SPEED = 4, CORRIDOR_HALF = 5.5;
 const GRAVITY = 20, JUMP_VELOCITY = 7.5; // apex ~1.4 m, air time ~0.75 s
 const ROLL_COOLDOWN = 1.2, ROLL_TIME = 0.4, ROLL_SPEED = 7.5, ROLL_INVULN = 0.4;
+// V7: difficulty modes. Hard is exactly the V6 tuning. Every number the
+// difficulty touches lives here so Codex/balance passes only edit this table.
+const DIFFICULTIES = {
+  easy: {
+    label: 'Easy', blurb: 'Learn the jungle. Fewer, slower shots and health regenerates.',
+    damageScale: .35,      // projectile, collision and hazard damage
+    passDamage: 2,         // enemy slips past you
+    turretsPass: false,    // walking past a fixed emplacement costs nothing
+    waveInterval: 13,      // seconds between recurring waves
+    waveMoths: 2,          // drones per recurring wave (beetle always added)
+    waveShooters: 1,       // how many of those drones fire
+    waveDistance: 40,      // spawn ahead of the soldier (rifle range is 30)
+    maxNearby: 4,          // no new wave while this many enemies are ahead
+    turretRate: .4, mothRate: .2, boltSpeed: 9,
+    regenDelay: 2.5, regenRate: 5, // health/s after this many seconds unhurt
+    aimAssist: .12, startCharges: 3, encounterKeep: .5
+  },
+  medium: {
+    label: 'Medium', blurb: 'The intended challenge. Steady pressure, slow regeneration.',
+    damageScale: .55, passDamage: 3, turretsPass: false,
+    waveInterval: 10, waveMoths: 3, waveShooters: 2, waveDistance: 34, maxNearby: 5,
+    turretRate: .55, mothRate: .27, boltSpeed: 10.5,
+    regenDelay: 3.5, regenRate: 2.5,
+    aimAssist: .08, startCharges: 2, encounterKeep: .8
+  },
+  hard: {
+    label: 'Hard', blurb: 'The original V6 tuning. No regeneration.',
+    damageScale: 1, passDamage: 8, turretsPass: true,
+    waveInterval: 6.25, waveMoths: 3, waveShooters: 3, waveDistance: 28, maxNearby: 7,
+    turretRate: .7, mothRate: .34, boltSpeed: 12,
+    regenDelay: Infinity, regenRate: 0,
+    aimAssist: .06, startCharges: 1, encounterKeep: 1
+  }
+};
+let difficultyKey = 'medium';
+let DIFF = DIFFICULTIES[difficultyKey];
+let sinceHurt = 0;
 let seed = 711;
 function random() {
   seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
@@ -259,6 +298,49 @@ function addGlow(parent, x, y, z, color, scale, opacity=.8) {
   const sp = new T.Sprite(new T.SpriteMaterial({map:glowTex, color, transparent:true, opacity, blending:T.AdditiveBlending, depthWrite:false}));
   sp.position.set(x, y, z); sp.scale.setScalar(scale); parent.add(sp); return sp;
 }
+// V8: concept-art sprites (art/sprites/, cut from the Codex PNGs). Each is a
+// camera-facing billboard. Gameplay hitboxes stay as invisible meshes, so
+// aiming, cover and balance are unchanged from V7.
+const spriteLoader = new T.TextureLoader();
+const spriteTextures = {};
+function spriteTexture(name) {
+  if (!spriteTextures[name]) {
+    const t = spriteLoader.load('art/sprites/' + name + '.png');
+    t.colorSpace = T.SRGBColorSpace; t.anisotropy = 4;
+    spriteTextures[name] = t;
+  }
+  return spriteTextures[name];
+}
+const SPRITE_ASPECT = {"drone_rotor":1.6203,"crawler_armored":1.9296,"turret_flower":0.9935,"enemy_hive_bee":1.6769,"enemy_lantern_drone":1.1212,"enemy_leaf_buggy":1.4741,"enemy_vine_serpent":1.5515,"enemy_mech_raptor":1.4328,"enemy_manta":2.5859,"enemy_stone_tortoise":1.0226,"enemy_eye_wisp":0.8542,"boss_beetle_tank":1.2152,"drone_front":1.701,"crawler_front":1.5315,"turret_front":0.907,"drone_angle":1.557,"crawler_angle":1.561,"turret_angle":1.0236,"prop_log":2.5983,"prop_thorn":1.835,"prop_fern":1.8624,"prop_rocks":2.527,"prop_pit":2.5296,"soldier_front":0.4427,"soldier_back":0.4245,"soldier_side":0.2357,"icon_multishot":1.024,"icon_fire_rain":0.9961,"icon_orb_blaster":1.0119,"icon_light_cannon":1.0802,"icon_prism":0.9258,"icon_heart":1.1584,"icon_gem_shield":0.9688,"icon_gem_shield_plus":1.9394,"weapon_rifle":1.4798,"weapon_dual":1.1963,"weapon_launcher":1.2075,"weapon_triple":1.2249,"weapon_lance":1.9248,"weapon_orb":1.1963,"icon_grenade":0.8828,"icon_charge_cell":0.8086,"icon_dual":1.1636,"icon_auto":0.9727,"icon_click":0.9883,"icon_reload":0.8984,"icon_shield":1.0,"icon_charge":1.0039,"icon_power1":1.0039,"icon_power2":0.7305,"icon_power3":0.7969,"icon_coin":0.9609,"icon_magnet":1.148,"icon_health":0.9258,"tree_kapok":1.0446,"tree_fig":0.8134,"tree_palm":0.6334,"tree_hardwood":0.9406,"canopy_vines":2.0237,"log_cross":3.9844,"cover_stump":1.0145,"cover_boulder":1.0883,"cover_stone":1.0907,"plant_monstera":1.1222,"plant_paradise":1.0924,"plant_bromeliad":1.2937,"plant_grass":1.0098,"plant_mushroom_blue":0.9929,"plant_mushroom_orange":1.1078,"plant_broadleaf":1.2366,"plant_flowerbush":1.1174,"ruin_arch":1.2816,"ruin_tower":0.6387,"pit_rim":1.0044,"vfx_muzzle":1.0,"vfx_spark":1.0,"vfx_explosion_small":1.0,"vfx_explosion_big":1.0,"vfx_bolt":1.0,"vfx_heal":1.0,"vfx_coin":1.0,"vfx_shield":1.0};
+// Unlit sprites read too bright against the dusk scene, so tint them down.
+function makeSprite(name, width, {tint=0xc9c9c9, own=false, bottom=null, height=null}={}) {
+  const material = new T.SpriteMaterial({map: spriteTexture(name), color: tint, transparent: true, alphaTest: .12, depthWrite: true});
+  const sp = new T.Sprite(material);
+  const aspect = SPRITE_ASPECT[name] || 1;
+  sp.scale.set(width, height ?? width / aspect, 1);
+  if (bottom !== null) sp.center.set(.5, 0); // anchor the sprite's bottom edge
+  sp.userData.own = own;
+  return sp;
+}
+// V9: additive effect sprites (black background art from vfx.png).
+function makeFx(name, size) {
+  const sp = new T.Sprite(new T.SpriteMaterial({map: spriteTexture(name), transparent: true, depthWrite: false, blending: T.AdditiveBlending}));
+  sp.scale.setScalar(size);
+  return sp;
+}
+function spawnFx(name, at, size, life) {
+  const mesh = makeFx(name, size);
+  mesh.position.copy(at);
+  scene.add(mesh);
+  effects.push({mesh, life, max: life, size, fx: true});
+  return mesh;
+}
+const pick = list => list[Math.floor(random() * list.length)];
+// Invisible but still raycastable: keeps the original hit/cover volumes.
+const ghostMaterial = new T.MeshBasicMaterial({colorWrite: false, depthWrite: false});
+function ghostify(object, keep = []) {
+  object.traverse(o => { if (o.isMesh && !keep.includes(o)) { o.material = ghostMaterial; o.castShadow = false; } });
+}
 // v5: skyline windows — one canvas texture on tall dark boxes reads as a
 // living skyline/canopy layer at a glance, cheaply.
 function skylineTexture() {
@@ -312,110 +394,93 @@ function plant(x,y,z,scale,count) {
     leaf.rotation.set(.18+random()*.43,phase+i*2.4,0);
   }
 }
-// Two rows of trees forming the corridor sides, at lateral ±7.2 from the
-// corridor centre. Ground is y = 0; there are no branch landings.
-for (let d = -10; d <= finish + 40; d += 10) {
+// V9: concept-art scenery. Everything here is a billboard sprite.
+// Near tree line, just outside the corridor.
+const TREES = ['tree_kapok','tree_fig','tree_hardwood','tree_palm'];
+for (let d = -10, i = 0; d <= finish + 40; d += 9, i++) {
   for (const side of [-1, 1]) {
-    const x = center(d) + side * 7.2;
-    const h = 6.5 + ((d / 10) % 3) * 1.1; // v2: varied tree heights
-    beam(scenery, vector(x, 0, -d), vector(x, h, -d), .62 + ((d / 10) % 2) * .14, colors.bark);
-    shape(scenery, crownGeometry, foliageMaterials[Math.abs(d / 10) % 4],
-      x, h + 1.2, -d, 3 + ((d / 10) % 2), 1.5, 3);
-    shape(scenery, crownGeometry, colors.lightLeaves, x + side, h + 2.4, -d, 2, 1, 2);
-    shape(scenery, crownGeometry, foliageMaterials[(Math.abs(d / 10) + 1) % 4], x - side * .8, h + .4, -d + 1.2, 1.8, 1, 1.8); // v2: second crown
-    if (d % 20 === 0) beam(scenery, vector(x + side * 1.4, h - .5, -d), vector(x + side * 1.2, h - 4.5, -d), .07, mossMat); // v2: hanging moss/vine
+    const name = TREES[(i * 2 + (side > 0 ? 1 : 0) + Math.floor(random() * 2)) % 4];
+    const h = 10 + random() * 4;
+    const tree = makeSprite(name, h * SPRITE_ASPECT[name], {bottom: true, tint: 0xbfc4b8});
+    tree.position.set(center(d) + side * (9.6 + random() * 1.6), -.1, -d + random() * 3);
+    scene.add(tree);
   }
 }
-// Distant jungle, kept from the original for depth.
-for (let d = -8; d < finish + 60; d += 5) {
+// Second, darker row for depth.
+for (let d = -6; d <= finish + 60; d += 12) {
   for (const side of [-1, 1]) {
-    const x = center(d) + side * (17 + random() * 24), z = -d + random() * 4;
-    const radius = .65 + random() * 1.15, crown = 3 + random() * 10;
-    beam(scenery, vector(x + side * 2, -24, z), vector(x, crown, z), radius, colors.bark);
-    beam(scenery, vector(x, -4, z), vector(x + side * 4, crown - 3, z - 4), radius * .43, colors.wood);
-    for (let i = 0; i < 3; i++) {
-      const foliage = shape(scenery, crownGeometry, i === 1 ? colors.lightLeaves : colors.leaves,
-        x + side * (i - 1) * 2.6, crown + random() * 2, z + i * 2, 3 + random() * 3, 1.5 + random() * 2, 3.2 + random() * 2);
-      foliage.rotation.y = random() * Math.PI;
-    }
-    if (d % 3 === 0) beam(scenery, vector(x - side * 2, crown, z), vector(x - side * 2.2, crown - 9, z + .4), .1, colors.vine);
+    const name = pick(TREES), h = 13 + random() * 6;
+    const tree = makeSprite(name, h * SPRITE_ASPECT[name], {bottom: true, tint: 0x8f9a8c});
+    tree.position.set(center(d) + side * (16 + random() * 9), -.1, -d + random() * 5);
+    scene.add(tree);
   }
 }
-// v5: dense environment — skyline silhouettes (canopy-city layers), stone
-// ruin arches over the path every 60 m, and overhead vine arches. The
-// corridor now runs through somewhere, not an empty green tunnel.
-for (let i = 0; i < 22; i++) {
-  const d = 10 + i * 18, side = i % 2 ? 1 : -1;
-  const h = 14 + ((i * 7) % 26);
-  const tower = new T.Mesh(new T.BoxGeometry(6 + (i % 3) * 2, h, 6), skylineMat);
-  tower.position.set(center(d) + side * (26 + (i % 4) * 6), h / 2 - 2, -d);
-  tower.rotation.y = (i % 5) * .12;
+// Distant temple towers replace the old skyline boxes.
+for (let i = 0; i < 16; i++) {
+  const d = 40 + i * 100 + random() * 40, side = i % 2 ? 1 : -1, h = 18 + random() * 12;
+  const tower = makeSprite('ruin_tower', h * SPRITE_ASPECT.ruin_tower, {bottom: true, tint: 0x8a9488});
+  tower.position.set(center(d) + side * (32 + random() * 14), -.5, -d);
   scene.add(tower);
 }
-const ruinMat = new T.MeshStandardMaterial({color:0x2a3138, roughness:.85, metalness:.15});
-const ruinGlow = new T.MeshStandardMaterial({color:0xffb36a, emissive:0xff8a2a, emissiveIntensity:1.6});
+// Temple archways over the path every 60 m, with lantern glow.
 for (let d = 60; d < finish; d += 60) {
-  const x = center(d);
+  const w = 13.5, arch = makeSprite('ruin_arch', w, {bottom: true, tint: 0xd0d0c8});
+  arch.position.set(center(d), -.05, -d);
+  scene.add(arch);
+  for (const side of [-1, 1]) addGlow(scene, center(d) + side * w * .31, w / SPRITE_ASPECT.ruin_arch * .54, -d + .1, 0xffb36a, 1.6, .45);
+}
+// Hanging vine canopies between the arches.
+for (let d = 30; d < finish; d += 60) {
+  const canopy = makeSprite('canopy_vines', 15, {tint: 0xbcc6b4});
+  canopy.position.set(center(d), 9.2, -d);
+  scene.add(canopy);
+}
+// V8: concept-art ferns and rock piles along the corridor edges.
+for (let d = 3; d < finish + 30; d += 3.5) {
   for (const side of [-1, 1]) {
-    const pillar = new T.Mesh(new T.BoxGeometry(.9, 7, .9), ruinMat);
-    pillar.position.set(x + side * 6.4, 3.5, -d); pillar.castShadow = true; scene.add(pillar);
-    const lamp = new T.Mesh(new T.SphereGeometry(.22, 12, 8), ruinGlow);
-    lamp.position.set(x + side * 6.4, 5.6, -d); scene.add(lamp);
-    addGlow(scene, x + side * 6.4, 5.6, -d, 0xffb36a, 2.2, .5);
-  }
-  const beamTop = new T.Mesh(new T.BoxGeometry(14, .8, .8), ruinMat);
-  beamTop.position.set(x, 7.2, -d); beamTop.castShadow = true; scene.add(beamTop);
-}
-// v5: overhead vine arches — foliage bridges across the corridor.
-for (let d = 25; d < finish; d += 30) {
-  const x = center(d);
-  beam(scenery, vector(x - 6.5, 6.5, -d), vector(x, 8.6, -d), .3, colors.bark);
-  beam(scenery, vector(x, 8.6, -d), vector(x + 6.5, 6.5, -d), .3, colors.bark);
-  shape(scenery, crownGeometry, foliageMaterials[(d/30)%4|0], x, 8.8, -d, 3, 1.2, 2);
-}
-// Low ground plants along the corridor edges.
-for(let d=2;d<finish+36;d+=4){
-  for(const side of [-1,1]){
-    const x=center(d)+side*(4+random()*5);
-    plant(x,0.1,-d,.85+random()*1.2,6);
-    if(d%3===0) shape(scenery,crownGeometry,colors.bark,x,0.2,-d+1,1.2,.65,.88);
-    // v2: bushes, ferns, flowers, mushrooms, rocks — instanced, no new draw-call types
-    if(d%8===0) shape(scenery,smoothOrb,bushMat,x+side*.7,.35,-d+2,.9,.6,.9);
-    if(d%12===0){ shape(scenery,pole,mushroomStem,x-side*.6,.18,-d+1.5,.14,.36,.14);
-      shape(scenery,smoothOrb,mushroomCap,x-side*.6,.42,-d+1.5,.3,.18,.3); }
-    if(d%16===0) shape(scenery,smoothOrb,rockMat,x+side*1.1,.22,-d-.8,.55,.4,.5);
-    if(d%20===0){ beam(scenery,vector(x-side*.4,0,-d+2.5),vector(x-side*.4,.5,-d+2.5),.03,bushMat);
-      shape(scenery,smoothOrb,flowerMats[(d/20)%4|0],x-side*.4,.58,-d+2.5,.16,.12,.16); }
+    const r = random();
+    const x = center(d) + side * (5.2 + random() * 2.6);
+    const PLANTS = ['plant_monstera','plant_paradise','plant_bromeliad','plant_grass','plant_broadleaf','plant_flowerbush','plant_mushroom_blue','plant_mushroom_orange'];
+    const sp = r < .45 ? makeSprite('prop_fern', 1.8 + random() * 1.4, {bottom:true, tint:0xb8c2b0})
+             : r < .88 ? makeSprite(pick(PLANTS), 1.1 + random() * 1.1, {bottom:true, tint:0xc4c8bc})
+                       : makeSprite('prop_rocks', 1.6 + random() * 1.2, {bottom:true, tint:0xb0b0b0});
+    sp.position.set(x, -.05, -d + random() * 1.5);
+    scene.add(sp);
   }
 }
 // Jungle floor at y = 0 (was y = -9 in the canopy build).
 // v5: real PBR ground — Poly Haven CC0 "Forest Floor" (1k): diffuse +
 // roughness + normal maps. The procedural canvas is the base; the real maps
 // swap in on load so a failed download never leaves a blank floor.
-const floorMat = new T.MeshStandardMaterial({map:groundTexture(),roughness:.9,metalness:.3,envMapIntensity:1.1});
+// V9: ground blends the dirt path (corridor) into forest floor (sides), in world space.
+const groundTex = name => { const t = spriteLoader.load('art/sprites/' + name + '.jpg'); t.colorSpace = T.SRGBColorSpace; t.wrapS = t.wrapT = T.RepeatWrapping; t.anisotropy = 8; return t; };
+const floorMat = new T.MeshStandardMaterial({roughness:.95,metalness:0,envMapIntensity:.6});
+floorMat.onBeforeCompile = shader => {
+  shader.uniforms.pathMap = {value: groundTex('ground_path')};
+  shader.uniforms.forestMap = {value: groundTex('ground_forest')};
+  shader.vertexShader = 'varying vec3 vWorldPos;\n' + shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+  shader.fragmentShader = 'uniform sampler2D pathMap; uniform sampler2D forestMap; varying vec3 vWorldPos;\n' + shader.fragmentShader.replace('#include <map_fragment>', `
+    float cx = sin(-vWorldPos.z * 0.036) * 3.4 + sin(-vWorldPos.z * 0.078) * 0.7;
+    vec2 uvw = vWorldPos.xz / 6.0;
+    float wobble = (texture2D(forestMap, uvw * 0.11).g - 0.4) * 2.2;
+    float k = smoothstep(4.0, 6.6, abs(vWorldPos.x - cx) + wobble);
+    diffuseColor *= mix(texture2D(pathMap, uvw), texture2D(forestMap, uvw * 0.85), k);`);
+};
+floorMat.customProgramCacheKey = () => 'jungle-floor-v9';
 const floorLoader = new T.TextureLoader();
-floorLoader.load('art/forest_floor_diff_1k.jpg', t => {
+if(false) floorLoader.load('art/forest_floor_diff_1k.jpg', t => {
   t.colorSpace = T.SRGBColorSpace; t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(24,32); t.anisotropy = 8;
   floorMat.map = t; floorMat.needsUpdate = true;
 });
-floorLoader.load('art/forest_floor_rough_1k.jpg', t => {
+if(false) floorLoader.load('art/forest_floor_rough_1k.jpg', t => {
   t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(24,32);
   floorMat.roughnessMap = t; floorMat.needsUpdate = true;
 });
-floorLoader.load('art/forest_floor_nor_gl_1k.jpg', t => {
+if(false) floorLoader.load('art/forest_floor_nor_gl_1k.jpg', t => {
   t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(24,32);
   floorMat.normalMap = t; floorMat.normalScale.set(.6,.6); floorMat.needsUpdate = true;
 });
 const forestFloor = new T.Mesh(new T.PlaneGeometry(600,finish+440), floorMat);
-// v5: puddles — glossy dark discs that catch the red/cyan neon.
-const puddleMat = new T.MeshStandardMaterial({color:0x0a2a33, metalness:.9, roughness:.12, envMapIntensity:1.6});
-for (let d = 30; d < finish; d += 34) {
-  const pud = new T.Mesh(new T.CircleGeometry(1 + ((d/34)%3)*.5, 24), puddleMat);
-  pud.rotation.x = -Math.PI/2;
-  pud.position.set(center(d) + (d%68<34 ? -2.5 : 2.5), .02, -d);
-  pud.scale.set(1.6, 1, 1);
-  scene.add(pud);
-}
 forestFloor.rotation.x=-Math.PI/2;
 forestFloor.position.set(0,0,-finish/2);
 forestFloor.receiveShadow=true;
@@ -520,8 +585,66 @@ for(let i=0;i<3;i++) shape(rifle,box,darkMetal,0,-.05,-.2+i*.09,.06,.02,.03); //
 shape(rifle,smoothOrb,brass,0,-.06,.14,.03,.03,.03); // trigger guard pin
 // v5: cyan rim strip on the helmet — the hero's edge against the dark.
 shape(actor,smoothOrb,new T.MeshStandardMaterial({color:0x22d3ee,emissive:0x22d3ee,emissiveIntensity:1.4}),0,1.9,-.14,.2,.03,.03);
-const muzzleGlow = addGlow(rifle, 0, 0, -.68, 0xffc46a, .9, 0); // v5: muzzle flash sprite, opacity spikes on fire
+const muzzleGlow = addGlow(rifle, 0, 0, -.68, 0xffffff, .9, 0);
+muzzleGlow.material.map = spriteTexture('vfx_muzzle'); // V9: painted muzzle flash // v5: muzzle flash sprite, opacity spikes on fire
 actor.traverse(part=>{if(part.isMesh) part.castShadow=true;});
+// V10: animated soldier. The procedural soldier above stays as a fallback
+// until the model loads (or if it fails); the procedural rifle is kept and
+// follows the model's right hand, still pointing at the aim point.
+let soldier = null, soldierState = '', soldierShot = null;
+const handPos = new T.Vector3();
+loadSoldier().then(s => {
+  soldier = s;
+  s.root.scale.setScalar(1.05);
+  actor.add(s.root);
+  for (const child of actor.children) if (child !== rifle && child !== s.root) child.visible = false;
+  playSoldier('idle', 0);
+}).catch(err => console.warn('Soldier model failed to load; keeping the procedural soldier.', err));
+function playSoldier(name, fade = .15, timeScale = 1) {
+  if (!soldier) return;
+  const next = soldier.actions[name], prev = soldier.actions[soldierState];
+  next.reset(); next.setEffectiveTimeScale(timeScale); next.setEffectiveWeight(1); next.play();
+  if (prev && prev !== next) { if (fade > 0) prev.crossFadeTo(next, fade, false); else prev.stop(); }
+  soldierState = name;
+}
+function soldierAction(name, timeScale = 1) { // one-shot: hit, grenade
+  if (!soldier) return;
+  soldierShot = {name, t: soldier.clips[name].duration / timeScale};
+  soldierState = '';
+  playSoldier(name, .1, timeScale);
+}
+function resetSoldier() {
+  if (!soldier) return;
+  soldier.mixer.stopAllAction(); soldierState = ''; soldierShot = null;
+  rifle.visible = true;
+  playSoldier('idle', 0);
+}
+function animateSoldier(dt) {
+  if (!soldier) return;
+  let want = 'idle', ts = 1;
+  const strafing = held.has('KeyA') || held.has('KeyD') || held.has('ArrowLeft') || held.has('ArrowRight');
+  if (mode === 'end' && health <= 0) want = 'death';
+  else if (mode === 'play') {
+    if (soldierShot && soldierShot.t > 0 && rollTime <= 0 && grounded) { soldierShot.t -= dt; want = soldierShot.name; }
+    else if (rollTime > 0) { soldierShot = null; want = 'roll'; ts = soldier.clips.roll.duration / ROLL_TIME; }
+    else if (!grounded && !trappedPit) { soldierShot = null; want = 'jump'; ts = .85; }
+    else if (currentSpeed > 1.2) { soldierShot = null; want = 'run'; ts = T.MathUtils.clamp(currentSpeed / 4, .7, 1.5); }
+    else if (strafing) want = (held.has('KeyD') || held.has('ArrowRight')) ? 'strafeRight' : 'strafeLeft';
+    else if (firing) want = 'fire';
+  }
+  if (want !== soldierState && !(soldierShot && want === soldierShot.name)) playSoldier(want, want === 'death' ? .1 : .15, ts);
+  else if (want === 'run') soldier.actions.run.setEffectiveTimeScale(ts);
+  soldier.mixer.update(dt);
+  if (mode === 'play') {
+    const spine = soldier.bone('Spine2'); // lean the chest with the aim pitch
+    if (spine) spine.rotateX(-aimPitch * .45);
+  }
+  rifle.visible = want !== 'death';
+  // Rifle grip follows the right hand; place() keeps it pointed at the aim point.
+  soldier.bone('RightHand').getWorldPosition(handPos);
+  actor.worldToLocal(handPos);
+  rifle.position.set(handPos.x - .02, handPos.y - .03, handPos.z - .1 + recoilTimer * .9);
+}
 // v5: showcase turntable — Meridian-style. The soldier stands on a dark
 // glossy disc with a cyan neon ring, lit by a warm spotlight, so he pops
 // against the dark menu background.
@@ -545,7 +668,7 @@ const showRim = new T.SpotLight(0x22d3ee, 50, 30, .7, .5, 1.2);
 showRim.position.set(-4, 4, -5);
 showRim.target = actor;
 scene.add(showRim);
-let pressureTimer=6.25;
+let pressureTimer=DIFF.waveInterval;
 let trappedPit=null;
 let menuAngle = 0, shake = 0; // v5: showcase orbit + camera shake
 // v5: speed lines — thin streaks parented to the camera, fading in with speed.
@@ -584,7 +707,10 @@ for (const meshes of batches.values()) {
 // A log spans the corridor: jump over it (jumpY >= 0.6 when crossing).
 // A pothole is at one lateral position: strafe around it, or jump over it
 // (jumpY >= 0.5 when crossing and |lateral - x| < 1.1 while grounded).
-const pitMat = new T.MeshStandardMaterial({color:0x14261a, roughness:1});
+const pitMat = new T.MeshStandardMaterial({color:0x140d08, roughness:1});
+const pitRimGeometry = new T.PlaneGeometry(6.6, 6.6); // inner opening = 1.65 m radius, matches the trap radius
+const pitRimTexture = spriteTexture('pit_rim'); pitRimTexture.anisotropy = 16;
+const pitRimMaterial = new T.MeshStandardMaterial({map: pitRimTexture, transparent: true, alphaTest: .35, roughness: .9, polygonOffset: true, polygonOffsetFactor: -2});
 // v3: thorny bush — dark green spiky ball with red thorns, clearly readable
 // as a damage hazard (unlike a plain log). Cones are deliberately pointed.
 const thornMat = new T.MeshStandardMaterial({color:0x2a4a22, roughness:.8});
@@ -601,6 +727,10 @@ function makeThorn(x, d) {
     cone.rotation.set(Math.sin(a)*.9, 0, -Math.cos(a)*.9);
     if (up) cone.rotation.x = -.5;
   }
+  ghostify(bush);
+  const art = makeSprite('prop_thorn', 2.6, {bottom:true});
+  art.position.y = -.55;
+  bush.add(art);
   scene.add(bush);
   return bush;
 }
@@ -628,6 +758,10 @@ for(const [d,kind,x] of hazardCourse) {
   if(kind==='cover'){
     mesh=shape(scene,box,colors.bark,center(d)+x,.68,-d,2.5,1.36,1.3);
     shotBlockers.push(mesh);
+    mesh.material=ghostMaterial; // V8: fallen-log art over the same cover box
+    const art=makeSprite(pick(['cover_stump','cover_boulder','cover_stone']),2.7,{bottom:true,height:1.75,tint:0xd0d0c8});
+    art.position.set(center(d)+x,0,-d+.2);
+    scene.add(art);
   } else if (kind === 'thorn') {
     // v3: thorn bush beside the log — jump the log at the centre, steer
     // around the thorns. Same d as the log, offset ±3 m to the side.
@@ -639,14 +773,19 @@ for(const [d,kind,x] of hazardCourse) {
     mesh = shape(scene, pole, colors.wood, center(d), 0.4, -d, .48, 12, .48);
     mesh.rotation.z = Math.PI / 2;
     shotBlockers.push(mesh);
+    mesh.material = ghostMaterial; // V9: log art over the same blocker
+    const art = makeSprite('log_cross', 12.8, {bottom: true, height: 1.85, tint: 0xd2d2ca});
+    art.position.set(center(d), -.12, -d + .3);
+    scene.add(art);
   } else {
     mesh = shape(scene, orb, pitMat, center(d) + x, 0.055, -d, 1.75, 0.08, 1.8);
   }
   if(kind==='pothole'){
-    const rim=new T.Mesh(new T.TorusGeometry(1.75,.075,6,30),colors.wood);
-    rim.rotation.x=Math.PI/2;
-    rim.scale.y=1.03;
-    rim.position.set(center(d)+x,.08,-d);
+    // V9: painted pit rim lying flat; its centre is transparent so the real pit shows.
+    const rim=new T.Mesh(pitRimGeometry,pitRimMaterial);
+    rim.rotation.x=-Math.PI/2;
+    rim.rotation.z=random()*Math.PI*2;
+    rim.position.set(center(d)+x,.035,-d);
     scene.add(rim);
   }
   hazards.push({kind, d, x, mesh, hit:false});
@@ -655,8 +794,9 @@ for(const [d,kind,x] of hazardCourse) {
 // v5: neon path edges, from the Meridian screenshots — warm red/orange on
 // the LEFT, cool cyan on the RIGHT, so left/right read at a glance and the
 // dark path gets its contrast from the edges, not from daylight.
-const neonRed = new T.MeshStandardMaterial({color:0xff2a1e, emissive:0xff2a1e, emissiveIntensity:2.4, roughness:.4});
-const neonCyan = new T.MeshStandardMaterial({color:0x22d3ee, emissive:0x22d3ee, emissiveIntensity:2.4, roughness:.4});
+// V9: toned down so the edges still read without glowing like neon on the dirt path.
+const neonRed = new T.MeshStandardMaterial({color:0xb4553a, emissive:0xff5a2e, emissiveIntensity:.55, roughness:.6});
+const neonCyan = new T.MeshStandardMaterial({color:0x4c9aa6, emissive:0x22d3ee, emissiveIntensity:.55, roughness:.6});
 const neonGeo = new T.BoxGeometry(.14, .07, 9.6);
 for (let d = 5; d < finish; d += 10) {
   for (const [side, mat] of [[-1, neonRed], [1, neonCyan]]) {
@@ -694,7 +834,7 @@ for(const h of hazards.filter(h=>h.kind==='pothole')){
   floorOutline.holes.push(hole);
   scene.remove(h.mesh);
   const wall=new T.Mesh(new T.CylinderGeometry(1.75,1.6,1.8,24,1,true),
-    new T.MeshStandardMaterial({color:0x493c2d,side:T.DoubleSide,roughness:1}));
+    new T.MeshStandardMaterial({color:0x3a2616,side:T.DoubleSide,roughness:1}));
   wall.position.set(x,-.9,-h.d);
   scene.add(wall);
   const bottom=new T.Mesh(new T.CircleGeometry(1.6,24),pitMat);
@@ -736,7 +876,12 @@ const encounterPlan=[
   [360,'turret',-3,'charge'],
   [372,'beetle',0]
 ];
-const encounters=extendCourse(encounterPlan).filter((_,index)=>index%2===0).filter((_,index)=>index%5!==4).map(([d,type,x,drop])=>({d,type,x,drop}));
+const allEncounters=extendCourse(encounterPlan).filter((_,index)=>index%2===0).filter((_,index)=>index%5!==4).map(([d,type,x,drop])=>({d,type,x,drop}));
+// V7: easier modes keep an evenly spread fraction of the fixed encounters.
+function encountersFor(keep){
+  if(keep>=1) return allEncounters;
+  let acc=0; return allEncounters.filter(()=>{acc+=keep; if(acc>=1){acc-=1; return true;} return false;});
+}
 const enemyMaterials={
   // v4 reskins (types/HP/behaviour unchanged): moth = small flying drone,
   // beetle = armoured crawler, turret = gun emplacement.
@@ -745,10 +890,13 @@ const enemyMaterials={
   turret:satin(0x3a4048), petals:satin(0x5a6b3a)
 };
 const iconPositions={dual:'0',level:'1',heavy:'1',auto:'2',charge:'4',reload:'5',shield:'6',shieldOffer:'6'};
+const ICON_ART={dual:'icon_dual',level:'icon_power2',heavy:'icon_power2',auto:'icon_auto',
+  charge:'icon_grenade',reload:'icon_reload',shield:'icon_shield',shieldOffer:'icon_shield'};
 function itemIcon(key) {
   const icon=document.createElement('span');
   icon.className='item-icon';
   icon.dataset.tile=iconPositions[key];
+  if(ICON_ART[key]) icon.style.backgroundImage='url(art/sprites/'+ICON_ART[key]+'.png)'; // V8
   icon.setAttribute('aria-hidden','true');
   return icon;
 }
@@ -771,7 +919,7 @@ const pointer = new T.Vector2(0, 0);
 const held = new Set();
 const projectileSpeed = 12;
 const FIRE_COOLDOWN = .12; // v4: rifle auto-fire, ~8 rounds/second
-const AIM_ASSIST_ANGLE = .06; // v4: snap the centre ray to an enemy within ~3.4 deg
+let AIM_ASSIST_ANGLE = .06; // v4: snap the centre ray to an enemy within ~3.4 deg
 const GRENADE_SPEED = 16, GRENADE_GRAVITY = 12, GRENADE_RADIUS = 3.5; // v4
 let aimYaw = 0, aimPitch = 0, hitMarkerTimer = 0, killMarkerTimer = 0; // v4
 const movementKeys = new Set([
@@ -804,6 +952,7 @@ function collectDrop(key) {
     case 'charge': charges=Math.min(3,charges+1); break;
   }
   message(dropNames[key]+' collected');
+  spawnFx(key==='shield' ? 'vfx_shield' : 'vfx_heal', actor.position.clone().add(vector(0,1,0)), 2.2, .5); // V9
   ui.notice.prepend(itemIcon(key));
   tone(880,.22);
 }
@@ -938,21 +1087,29 @@ function spawn(config) {
   mesh.add(targetRing);
   const weakPoint=shape(mesh,smoothOrb,weakMaterial,0,config.type==='beetle'?.18:.4,.64,.19,.19,.13);
   weakPoint.visible=false;
+  // V8: concept art replaces the procedural model. Sizes match the old silhouettes.
+  ghostify(mesh, [halo, targetRing, weakPoint]);
+  const art = config.type==='moth' ? makeSprite('drone_front', 2.2, {own:true})
+    : config.type==='beetle' ? makeSprite('crawler_front', 2.1, {own:true})
+    : makeSprite('turret_front', 2.3, {own:true});
+  if (config.type==='beetle') art.position.y = 2.1/SPRITE_ASPECT.crawler_front/2 - .55;
+  if (config.type==='turret') art.position.y = 2.3/SPRITE_ASPECT.turret_front/2 - 1.0;
+  mesh.add(art);
+  motion.length = 0;
   scene.add(mesh);
-  return {...config,mesh,body,halo,targetRing,shell,motion,weakPoint,hp:config.type==='moth'?2:6,shot:-(config.shotDelay ?? 0),range:0,flash:0};
+  return {...config,mesh,body,halo,targetRing,shell,motion,weakPoint,art,hp:config.type==='moth'?2:6,shot:-(config.shotDelay ?? 0),range:0,flash:0};
 }
 function reset() {
   for (const list of [targets, bolts, grenades, pickups, coins, effects]) {
     list.forEach(remove);
     list.length = 0;
   }
-  targets.push(...encounters.map(spawn));
+  targets.push(...encountersFor(DIFF.encounterKeep).map(spawn));
   for (const line of coinLines) {
     for (let i=0;i<4;i++) {
       const d=line.d-2.4+i*1.6, lane=line.lane;
-      const mesh=shape(scene,coinGeometry,glowGold,
-        center(d)+lane,0.73,-d,1,1,1);
-      mesh.rotation.x=Math.PI/2;
+      const mesh=makeSprite('icon_coin',.5,{tint:0xffffff}); // V8: coin art
+      mesh.position.set(center(d)+lane,0.73,-d); scene.add(mesh);
       mesh.visible=false;
       coins.push({mesh,d,lane,collected:false});
     }
@@ -960,7 +1117,7 @@ function reset() {
   for (const h of hazards) h.hit=false;
   distance = lateral = jumpY = jumpVel = 0;
   recoilTimer = 0; aimSmooth.x = aimSmooth.y = 0;
-  pressureTimer=6.25;
+  pressureTimer=DIFF.waveInterval;
   trappedPit=null;
   pointer.set(0,0);
   ui.reticle.style.left=ui.reticle.style.top="50%";
@@ -970,12 +1127,15 @@ function reset() {
   score = coinCount = shield = recovery = cooldown = elapsed = 0;
   health = 100;
   wallet=rapid=heavy=autoTime=autoCooldown=0;
-  charges=1; // Phase 1: start with one Power Attack charge so it is testable.
+  charges=DIFF.startCharges; // V7: per difficulty
+  sinceHurt=0;
+  AIM_ASSIST_ANGLE=DIFF.aimAssist;
   level=1;
   dual=false;
   message('W to run · S to stop · Space to jump · Hold left click to fire.', 4);
   place(1);
   updateTargets(0);
+  resetSoldier(); // V10
   hud();
 }
 function setMode(next) {
@@ -1001,7 +1161,7 @@ function formatTime(t) {
 function hud() {
   ui.score.textContent = String(score).padStart(4, '0');
   ui.health.firstElementChild.style.width = health + '%';
-  ui.health.setAttribute('aria-valuenow', health);
+  ui.health.setAttribute('aria-valuenow', Math.round(health));
   ui.coinCount.textContent = 'COINS ' + wallet;
   ui.speed.textContent = currentSpeed.toFixed(1) + ' m/s';
   ui.distance.textContent = Math.floor(distance) + ' / ' + finish + ' m';
@@ -1034,11 +1194,12 @@ function showKillPop(text) {
 }
 function end(won) {
   setMode('end');
-  ui.message.textContent = (won ? 'Jungle cleared' : 'Run ended') + ' · Score ' + score + ' · Coins ' + coinCount;
+  const best = recordRun({won, score, coins: coinCount, distance: Math.floor(distance), time: elapsed, difficulty: difficultyKey});
+  ui.message.textContent = (won ? 'Jungle cleared' : 'Run ended') + ' · ' + DIFF.label + ' · Score ' + score + ' · ' + Math.floor(distance) + ' m' + (best ? ' · New best!' : '');
   ui.start.textContent = 'Run again';
   tone(won ? 660 : 150, .35);
 }
-function damage(amount, cause, bypassRecovery=false) {
+function damage(amount, cause, bypassRecovery=false, flat=false) {
   // Rolling gives brief invulnerability; the post-hit recovery window
   // (0.75 s) still applies as in the original.
   if ((!bypassRecovery && recovery > 0) || rollInvuln > 0 || mode !== 'play') return;
@@ -1049,9 +1210,12 @@ function damage(amount, cause, bypassRecovery=false) {
     tone(480);
     return;
   }
+  if (!flat) amount = Math.max(1, Math.round(amount * DIFF.damageScale));
+  sinceHurt = 0;
   health = Math.max(0, health - amount);
   shake = Math.max(shake, .22); // v5: damage shake
   message(cause + ' · −' + amount + ' health');
+  if (health > 0 && grounded && rollTime <= 0 && currentSpeed < 1.2) soldierAction('hit', 1.4); // V10
   tone(115,.2,.12);
   if (!health) end(false);
 }
@@ -1067,7 +1231,7 @@ function place(smoothing) {
   actor.rotation.y = -Math.atan((center(distance+1)-center(distance-1))/2) + aimYaw;
   rifle.rotation.x = -aimPitch * .5;
   rifle.position.z = -.3 + recoilTimer * .9; // v4: recoil kick
-  actor.rotation.z = rollTime > 0 ? -rollDir * 0.5 : 0;
+  actor.rotation.z = rollTime > 0 && !soldier ? -rollDir * 0.5 : 0; // V10: the roll animation replaces the tilt
   if (!grounded || rollTime > 0) {
     legs[0].rotation.x = -.64;
     legs[1].rotation.x = -.64;
@@ -1094,14 +1258,17 @@ function place(smoothing) {
 function updateTargets(dt) {
   pressureTimer-=dt;
   const nearby=targets.filter(e=>e.hp>0 && e.d-distance>-3 && e.d-distance<70).length;
-  if(pressureTimer<=0 && nearby<=7){
-    pressureTimer=6.25;
+  if(pressureTimer<=0 && nearby<=DIFF.maxNearby){
+    pressureTimer=DIFF.waveInterval;
     const wave=Math.floor(elapsed/5);
-    for(let i=0;i<4;i++){
+    const count=DIFF.waveMoths+1; // last one is the beetle
+    for(let i=0;i<count;i++){
       const side=i%2?1:-1;
-      const d=distance+28+i*1.6;
-      targets.push(spawn({d,type:i===3?'beetle':'moth',x:side*(i%3+1.5),
-        entrySide:side,shotDelay:i*.22,drop:i===3?(wave%2?'shield':'heavy'):undefined}));
+      const beetleSlot=i===count-1;
+      const d=distance+DIFF.waveDistance+i*1.6;
+      targets.push(spawn({d,type:beetleSlot?'beetle':'moth',x:side*(i%3+1.5),
+        entrySide:side,shooter:!beetleSlot && i<DIFF.waveShooters,shotDelay:i*.22,
+        drop:beetleSlot?(wave%2?'shield':'heavy'):undefined}));
     }
   }
   for (const enemy of targets) {
@@ -1111,7 +1278,7 @@ function updateTargets(dt) {
     enemy.range = enemy.d - distance;
     if(enemy.hp>0 && !enemy.passed && previousRange>0 && enemy.range<=0){
       enemy.passed=true;
-      damage(8,'Enemy got past you',true);
+      if(enemy.type!=='turret' || DIFF.turretsPass) damage(DIFF.passDamage,'Enemy got past you',true,true);
     }
     const beat=elapsed*2.7+enemy.d;
     const beetle=enemy.type==='beetle', turret=enemy.type==='turret';
@@ -1127,6 +1294,9 @@ function updateTargets(dt) {
     enemy.mesh.visible = enemy.hp > 0 && enemy.range > -3 && enemy.range < 85;
     if (enemy.flash > 0) { enemy.flash = Math.max(0, enemy.flash - dt * 4); enemy.mesh.scale.setScalar(1 + enemy.flash * .18); }
     else enemy.mesh.scale.setScalar(1);
+    // V8: hit flash tints the art warm; drones bank as they weave.
+    enemy.art.material.color.setRGB(.79 + enemy.flash * .21, .79 - enemy.flash * .35, .79 - enemy.flash * .45);
+    if (enemy.type==='moth') enemy.art.material.rotation = Math.cos(beat) * .14;
     const active=enemy.range>0 && enemy.range<=combatRange;
     enemy.weakPoint.visible=enemy.type!=='moth' && active && Math.sin(elapsed*1.5+enemy.d*.2)>.2;
     enemy.vulnerable=enemy.weakPoint.visible;
@@ -1140,8 +1310,8 @@ function updateTargets(dt) {
       damage(35, 'Creature collision');
     }
     // Only turrets shoot in Phase 1.
-    if ((!turret && !(enemy.type==='moth' && enemy.entrySide)) || enemy.range > 28 || enemy.range < 7) continue;
-    enemy.shot += dt * (turret?.7:.34);
+    if ((!turret && !(enemy.type==='moth' && enemy.entrySide && enemy.shooter)) || enemy.range > 28 || enemy.range < 7) continue;
+    enemy.shot += dt * (turret?DIFF.turretRate:DIFF.mothRate);
     enemy.halo.visible = enemy.shot > .42;
     enemy.halo.scale.setScalar(.2+Math.max(0,enemy.shot-.42)*.35);
     if (enemy.shot < 1.5) continue;
@@ -1149,16 +1319,17 @@ function updateTargets(dt) {
     enemy.halo.visible = false;
     const start = enemy.mesh.position.clone();
     // Predict where the runner will meet the bolt if they keep going.
-    let flight = enemy.range / (Math.max(currentSpeed, 0.1) + projectileSpeed);
+    let flight = enemy.range / (Math.max(currentSpeed, 0.1) + DIFF.boltSpeed);
     const intercept = vector(0,0,0);
     for (let i = 0; i < 4; i++) {
       const future = distance + flight * currentSpeed;
       intercept.set(center(future)+lateral,jumpY+.85,-future);
-      flight = intercept.distanceTo(start) / projectileSpeed;
+      flight = intercept.distanceTo(start) / DIFF.boltSpeed;
     }
-    const mesh = shape(scene,orb,colors.danger,...start,.22,.22,.22);
+    const mesh = makeFx('vfx_bolt', 1.3); // V9: painted energy bolt
+    mesh.position.copy(start); scene.add(mesh);
     burst(start,colors.danger,6);
-    bolts.push({mesh, velocity:intercept.sub(start).normalize().multiplyScalar(projectileSpeed)});
+    bolts.push({mesh, velocity:intercept.sub(start).normalize().multiplyScalar(DIFF.boltSpeed)});
     tone(185,.16);
   }
 }
@@ -1182,11 +1353,11 @@ function strike(enemy, amount) {
   enemy.flash = 1; // v5: hit flash (scale pulse, see updateTargets)
   burst(enemy.mesh.position,enemy.hp>0?colors.gold:enemy.halo.material,enemy.hp>0?7:15);
   if (enemy.hp>0) {
-    enemy.shell.forEach(shell=>{shell.material=armorMaterial;});
     message(enemy.type==='moth'?'Hit':enemy.vulnerable?'Core exposed':'Armored · aim for the glowing core',.75);
     return;
   }
   enemy.mesh.visible=false;
+  spawnFx('vfx_explosion_small', enemy.mesh.position, enemy.type==='moth' ? 2.2 : 3, .4); // V9
   score+=enemy.type==='moth' ? 100 : 180;
   showKillPop(enemy.type==='moth' ? '+100' : '+180'); // v5: kill popup
   tone(720);
@@ -1194,7 +1365,8 @@ function strike(enemy, amount) {
   // Drops land on the ground ahead, on the enemy's lateral line.
   const d=enemy.d+13, lane=enemy.x;
   if (d>=finish) return;
-  const mesh=shape(scene,orb,dropColors[enemy.drop],center(d)+lane,0.7,-d,.46,.46,.46);
+  const mesh=makeSprite(ICON_ART[enemy.drop]||'icon_power2',.95,{tint:0xffffff}); // V8: icon art
+  mesh.position.set(center(d)+lane,0.7,-d); scene.add(mesh);
   pickups.push({mesh,d,lane,y:0,key:enemy.drop});
   message(dropNames[enemy.drop]+' ahead · '+(lane<0?'left':lane>0?'right':'center'));
 }
@@ -1223,6 +1395,7 @@ function fireBullet(direction,muzzle,damage,assist=true){
   tone(420,.05);
   if(!hit) return;
   burst(hitPoint,colors.gold,5);
+  spawnFx('vfx_spark', hitPoint, .9, .12); // V9
   const enemy=candidates.find(e=>e.body===hit.object || e.weakPoint===hit.object);
   if(!enemy) return;
   const core=enemy.vulnerable && hitPoint.distanceTo(enemy.weakPoint.getWorldPosition(vector(0,0,0)))<.32;
@@ -1247,7 +1420,7 @@ function throwGrenade(origin, direction) {
 function explodeGrenade(g) {
   burst(g.mesh.position, colors.danger, 22);
   burst(g.mesh.position, colors.gold, 12);
-  addGlow(scene, g.mesh.position.x, g.mesh.position.y, g.mesh.position.z, 0xff8a2a, 4, .9); // v5: explosion glow
+  spawnFx('vfx_explosion_big', g.mesh.position, GRENADE_RADIUS * 2, .65); // V9: replaces a glow that was never removed
   shake = Math.max(shake, .18); // v5: explosion shake
   tone(90, .4, .15);
   for (const e of targets) {
@@ -1270,6 +1443,7 @@ function shoot(dt) {
   if (powerShot && charges > 0) {
     charges--;
     throwGrenade(origin, direction);
+    if (grounded && rollTime <= 0 && currentSpeed < 1.2) soldierAction('grenade', 1.7); // V10
   }
   powerShot = false;
   if ((pressShot || firing) && cooldown <= 0) {
@@ -1386,6 +1560,8 @@ function update(dt) {
       message('In a pit · Space + A / D to climb out',4);
     }
   }
+  sinceHurt += dt;
+  if (sinceHurt > DIFF.regenDelay && health > 0 && health < 100) health = Math.min(100, health + DIFF.regenRate * dt);
   recovery -= dt;
   recoilTimer = Math.max(0, recoilTimer - dt); // v3
   autoTime-=dt;
@@ -1418,6 +1594,10 @@ function update(dt) {
   for (let i=bolts.length-1;i>=0;i--) {
     const bolt = bolts[i];
     bolt.mesh.position.addScaledVector(bolt.velocity,dt);
+    { // V9: point the streak along its on-screen direction
+      const a = bolt.mesh.position.clone().project(camera), b = bolt.mesh.position.clone().addScaledVector(bolt.velocity, .05).project(camera);
+      bolt.mesh.material.rotation = Math.atan2(b.y - a.y, (b.x - a.x) * camera.aspect);
+    }
     const hit = bolt.mesh.position.distanceTo(vector(actor.position.x,actor.position.y+.85,-distance)) < .67;
     if (hit) {burst(bolt.mesh.position,colors.danger,7);damage(30,'Projectile hit');}
     if (hit || bolt.mesh.position.z > actor.position.z + 8) {
@@ -1440,6 +1620,11 @@ function update(dt) {
   }
   for (let i=effects.length-1;i>=0;i--) {
     const effect=effects[i];
+    if(effect.fx){ // V9: effect sprites grow and fade
+      const t = 1 - Math.max(0, effect.life) / effect.max;
+      effect.mesh.material.opacity = 1 - t * t;
+      effect.mesh.scale.setScalar(effect.size * (.65 + t * .55));
+    }
     if(effect.velocity){
       effect.velocity.y-=8*dt;
       effect.mesh.position.addScaledVector(effect.velocity,dt);
@@ -1459,6 +1644,7 @@ function update(dt) {
       coin.collected=true;
       coin.mesh.visible=false;
       coinCount++;
+      spawnFx('vfx_coin', coin.mesh.position, .9, .3); // V9
       wallet++;
       score+=25;
       tone(1040,.07,.025);
@@ -1485,6 +1671,7 @@ ui.start.onclick = event => {
   resumed = mode === 'pause';
   if (!audio && window.AudioContext) audio = new AudioContext();
   audio?.resume().catch(() => {});
+  if (!resumed) setDifficulty(ui.difficulty.value);
   setMode('play');
   if (!resumed) reset();
   // Start and resume keep the last aim instead of aiming at the menu button.
@@ -1532,7 +1719,7 @@ addEventListener('keydown', e => {
 addEventListener('keyup', e => held.delete(e.code));
 addEventListener('blur', pause);
 document.addEventListener('visibilitychange', () => {if (document.hidden) pause();});
-const panorama = new T.TextureLoader().load('art/distant-canopy.jpg', texture => {
+const panorama = new T.TextureLoader().load('art/sprites/sky_jungle_sunrise.jpg', texture => {
   texture.colorSpace=T.SRGBColorSpace;
   scene.background=texture;
   resizePanorama();
@@ -1556,6 +1743,15 @@ resize();
 ui.reticle.style.left = ui.reticle.style.top = '50%';
 place(1);
 applyQuality(ui.quality.value); // v5: High by default (4096 shadows)
+function setDifficulty(key) {
+  difficultyKey = DIFFICULTIES[key] ? key : 'medium';
+  DIFF = DIFFICULTIES[difficultyKey];
+  ui.difficulty.value = difficultyKey;
+  ui.difficultyBlurb.textContent = DIFF.blurb;
+  saveSetting('difficulty', difficultyKey);
+}
+ui.difficulty.addEventListener('change', e => setDifficulty(e.target.value));
+initProfiles(ui, profile => setDifficulty(profile?.settings?.difficulty || 'medium'));
 ui.start.disabled = false;
 ui.start.textContent = 'LAUNCH MISSION'; // v5: Meridian-style launch button
 if (ui.loader) ui.loader.classList.add('done'); // v5: loading screen lifts after the first frame
@@ -1577,6 +1773,7 @@ renderer.setAnimationLoop(now => {
     speedLineMat.opacity=0;
     shake=0;
   }
+  if (mode !== 'pause') animateSoldier(dt); // V10
   muzzleLight.intensity *= .82;
   muzzleGlow.material.opacity *= .8;
   pollen.position.y=Math.sin(now*.0004)*.25; // v2: gentle drift

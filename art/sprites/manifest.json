@@ -1,0 +1,280 @@
+{
+ "drone_rotor": {
+  "file": "drone_rotor.png",
+  "w": 768,
+  "h": 474
+ },
+ "crawler_armored": {
+  "file": "crawler_armored.png",
+  "w": 768,
+  "h": 398
+ },
+ "turret_flower": {
+  "file": "turret_flower.png",
+  "w": 763,
+  "h": 768
+ },
+ "enemy_hive_bee": {
+  "file": "enemy_hive_bee.png",
+  "w": 768,
+  "h": 458
+ },
+ "enemy_lantern_drone": {
+  "file": "enemy_lantern_drone.png",
+  "w": 768,
+  "h": 685
+ },
+ "enemy_leaf_buggy": {
+  "file": "enemy_leaf_buggy.png",
+  "w": 768,
+  "h": 521
+ },
+ "enemy_vine_serpent": {
+  "file": "enemy_vine_serpent.png",
+  "w": 768,
+  "h": 495
+ },
+ "enemy_mech_raptor": {
+  "file": "enemy_mech_raptor.png",
+  "w": 768,
+  "h": 536
+ },
+ "enemy_manta": {
+  "file": "enemy_manta.png",
+  "w": 768,
+  "h": 297
+ },
+ "enemy_stone_tortoise": {
+  "file": "enemy_stone_tortoise.png",
+  "w": 768,
+  "h": 751
+ },
+ "enemy_eye_wisp": {
+  "file": "enemy_eye_wisp.png",
+  "w": 656,
+  "h": 768
+ },
+ "boss_beetle_tank": {
+  "file": "boss_beetle_tank.png",
+  "w": 768,
+  "h": 632
+ },
+ "drone_front": {
+  "file": "drone_front.png",
+  "w": 512,
+  "h": 301
+ },
+ "crawler_front": {
+  "file": "crawler_front.png",
+  "w": 510,
+  "h": 333
+ },
+ "turret_front": {
+  "file": "turret_front.png",
+  "w": 400,
+  "h": 441
+ },
+ "drone_angle": {
+  "file": "drone_angle.png",
+  "w": 478,
+  "h": 307
+ },
+ "crawler_angle": {
+  "file": "crawler_angle.png",
+  "w": 512,
+  "h": 328
+ },
+ "turret_angle": {
+  "file": "turret_angle.png",
+  "w": 433,
+  "h": 423
+ },
+ "prop_log": {
+  "file": "prop_log.png",
+  "w": 621,
+  "h": 239
+ },
+ "prop_thorn": {
+  "file": "prop_thorn.png",
+  "w": 378,
+  "h": 206
+ },
+ "prop_fern": {
+  "file": "prop_fern.png",
+  "w": 406,
+  "h": 218
+ },
+ "prop_rocks": {
+  "file": "prop_rocks.png",
+  "w": 609,
+  "h": 241
+ },
+ "prop_pit": {
+  "file": "prop_pit.png",
+  "w": 640,
+  "h": 253
+ },
+ "scene_path_reference": {
+  "file": "scene_path_reference.jpg"
+ },
+ "soldier_front": {
+  "file": "soldier_front.png",
+  "w": 340,
+  "h": 768
+ },
+ "soldier_back": {
+  "file": "soldier_back.png",
+  "w": 326,
+  "h": 768
+ },
+ "soldier_side": {
+  "file": "soldier_side.png",
+  "w": 181,
+  "h": 768
+ },
+ "icon_multishot": {
+  "file": "icon_multishot.png",
+  "w": 256,
+  "h": 250
+ },
+ "icon_fire_rain": {
+  "file": "icon_fire_rain.png",
+  "w": 255,
+  "h": 256
+ },
+ "icon_orb_blaster": {
+  "file": "icon_orb_blaster.png",
+  "w": 256,
+  "h": 253
+ },
+ "icon_light_cannon": {
+  "file": "icon_light_cannon.png",
+  "w": 256,
+  "h": 237
+ },
+ "icon_prism": {
+  "file": "icon_prism.png",
+  "w": 237,
+  "h": 256
+ },
+ "icon_heart": {
+  "file": "icon_heart.png",
+  "w": 256,
+  "h": 221
+ },
+ "icon_gem_shield": {
+  "file": "icon_gem_shield.png",
+  "w": 248,
+  "h": 256
+ },
+ "icon_gem_shield_plus": {
+  "file": "icon_gem_shield_plus.png",
+  "w": 256,
+  "h": 132
+ },
+ "weapon_rifle": {
+  "file": "weapon_rifle.png",
+  "w": 256,
+  "h": 173
+ },
+ "weapon_dual": {
+  "file": "weapon_dual.png",
+  "w": 256,
+  "h": 214
+ },
+ "weapon_launcher": {
+  "file": "weapon_launcher.png",
+  "w": 256,
+  "h": 212
+ },
+ "weapon_triple": {
+  "file": "weapon_triple.png",
+  "w": 256,
+  "h": 209
+ },
+ "weapon_lance": {
+  "file": "weapon_lance.png",
+  "w": 256,
+  "h": 133
+ },
+ "weapon_orb": {
+  "file": "weapon_orb.png",
+  "w": 256,
+  "h": 214
+ },
+ "icon_grenade": {
+  "file": "icon_grenade.png",
+  "w": 226,
+  "h": 256
+ },
+ "icon_charge_cell": {
+  "file": "icon_charge_cell.png",
+  "w": 207,
+  "h": 256
+ },
+ "icon_dual": {
+  "file": "icon_dual.png",
+  "w": 256,
+  "h": 220
+ },
+ "icon_auto": {
+  "file": "icon_auto.png",
+  "w": 249,
+  "h": 256
+ },
+ "icon_click": {
+  "file": "icon_click.png",
+  "w": 253,
+  "h": 256
+ },
+ "icon_reload": {
+  "file": "icon_reload.png",
+  "w": 230,
+  "h": 256
+ },
+ "icon_shield": {
+  "file": "icon_shield.png",
+  "w": 256,
+  "h": 256
+ },
+ "icon_charge": {
+  "file": "icon_charge.png",
+  "w": 256,
+  "h": 255
+ },
+ "icon_power1": {
+  "file": "icon_power1.png",
+  "w": 256,
+  "h": 255
+ },
+ "icon_power2": {
+  "file": "icon_power2.png",
+  "w": 187,
+  "h": 256
+ },
+ "icon_power3": {
+  "file": "icon_power3.png",
+  "w": 204,
+  "h": 256
+ },
+ "icon_coin": {
+  "file": "icon_coin.png",
+  "w": 246,
+  "h": 256
+ },
+ "icon_magnet": {
+  "file": "icon_magnet.png",
+  "w": 256,
+  "h": 223
+ },
+ "icon_health": {
+  "file": "icon_health.png",
+  "w": 237,
+  "h": 256
+ },
+ "sky_jungle_sunrise": {
+  "file": "sky_jungle_sunrise.jpg",
+  "w": 1774,
+  "h": 887
+ }
+}
