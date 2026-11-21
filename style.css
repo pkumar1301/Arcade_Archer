@@ -131,3 +131,23 @@ button:disabled{opacity:.45;cursor:default}
 .power-chip{display:flex;align-items:center;gap:8px;padding:5px 12px 5px 6px;border-radius:999px;background:#05150dcc;border:1px solid #ffffff33;color:#fff;font:700 11px system-ui,sans-serif;letter-spacing:.08em;box-shadow:0 0 14px #22d3ee33}
 .power-chip span{width:26px;height:26px;background-size:contain;background-repeat:no-repeat;background-position:center}
 .power-chip small{color:#ffd76a;font-size:11px;letter-spacing:.04em}
+
+/* V12: scrollable menu has explicit action clearance and a bottom affordance. */
+.menu-main{padding-bottom:calc(var(--actions-height,78px) + 24px);scroll-padding-bottom:calc(var(--actions-height,78px) + 24px)}
+.menu-more{display:none;position:absolute;left:0;right:0;pointer-events:none;text-align:center;padding:24px 0 7px;background:linear-gradient(transparent,#050d16ee);color:#a8efff;font:700 12px system-ui;z-index:8}
+#menu.has-more .menu-more{display:block}
+.hud-panel.left{position:relative}
+.health-feedback{position:absolute;left:16px;top:65px;font:800 20px system-ui;white-space:nowrap;pointer-events:none;animation:health-float 1.3s ease-out forwards;text-shadow:0 2px 5px #000;z-index:12}
+.health-feedback.heal{color:#6dffa4}.health-feedback.leak{color:#ff6584}
+@keyframes health-float{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-45px)}}
+#game.leak-flash:after{content:'';position:absolute;inset:0;pointer-events:none;z-index:7;animation:leak-edge .55s ease-out forwards}
+@keyframes leak-edge{from{box-shadow:inset 0 0 70px 12px #ff284caa}to{box-shadow:inset 0 0 0 0 transparent}}
+/* Orange is exclusively the enemy weak-point cue during gameplay. */
+#health i{background:linear-gradient(90deg,#49c97a,#b0f3c1)}
+#reticle{border-color:#e4faff;box-shadow:0 0 10px #7fe8ff88}
+#reticle.target{border-color:#70e9ff;background:#70e9ff33}
+#reticle.kill{border-color:#a1ffe0;background:#65ffba55;box-shadow:0 0 18px #65ffba}
+#reticle.hit{border-color:#ff6584;background:#ff658433}
+#killpop{color:#9ffff0;text-shadow:0 0 14px #23c6e5}
+
+#shotWarnings{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:6}

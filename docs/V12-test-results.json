@@ -1,0 +1,197 @@
+{
+  "bot": {
+    "easy": {
+      "mode": "end",
+      "health": 10,
+      "distance": 950.0972235073865,
+      "elapsed": 196.13333333332477,
+      "ratio": 1.000102340534091
+    },
+    "medium": {
+      "mode": "end",
+      "health": 0,
+      "distance": 130,
+      "elapsed": 27.46666666666719,
+      "ratio": 0.1368421052631579
+    },
+    "hard": {
+      "mode": "end",
+      "health": 0,
+      "distance": 87.09722351180768,
+      "elapsed": 20.066666666666823,
+      "ratio": 0.09168128790716598
+    }
+  },
+  "checks": {
+    "easy": {
+      "noRegen": 83,
+      "capped": 100,
+      "fullHealthWaste": 100,
+      "sources": {
+        "shot": 4,
+        "collision": 6,
+        "twoLeaks": 6
+      },
+      "cappedEarned": 4,
+      "expired": 0,
+      "noWarmupWave": true,
+      "warmupWave": true,
+      "log": {
+        "speed": 0,
+        "shake": 0.15,
+        "flinch": "hit"
+      }
+    },
+    "medium": {
+      "noRegen": 83,
+      "capped": 100,
+      "fullHealthWaste": 100,
+      "sources": {
+        "shot": 7,
+        "collision": 12,
+        "twoLeaks": 12
+      },
+      "cappedEarned": 3,
+      "expired": 0,
+      "noWarmupWave": true,
+      "warmupWave": true,
+      "log": {
+        "speed": 0,
+        "shake": 0.15,
+        "flinch": "hit"
+      }
+    },
+    "hard": {
+      "noRegen": 83,
+      "capped": 100,
+      "fullHealthWaste": 100,
+      "sources": {
+        "shot": 10,
+        "collision": 20,
+        "twoLeaks": 20
+      },
+      "cappedEarned": 3,
+      "expired": 0,
+      "noWarmupWave": true,
+      "warmupWave": true,
+      "log": {
+        "speed": 0,
+        "shake": 0.15,
+        "flinch": "hit"
+      }
+    }
+  },
+  "warning": [
+    {
+      "difficulty": "easy",
+      "remaining": 1.0,
+      "ring": true,
+      "line": true,
+      "color": "ff2a3a",
+      "size": 0.41666666666666663,
+      "core": false
+    },
+    {
+      "difficulty": "easy",
+      "remaining": 0.4,
+      "ring": true,
+      "line": true,
+      "color": "ff2a3a",
+      "size": 0.16666666666666663,
+      "core": false
+    },
+    {
+      "difficulty": "easy",
+      "remaining": 0.1,
+      "ring": true,
+      "line": true,
+      "color": "ffffff",
+      "size": 0.04166666666666663,
+      "core": true
+    },
+    {
+      "difficulty": "medium",
+      "remaining": 1.0,
+      "ring": true,
+      "line": false,
+      "color": "ff2a3a",
+      "size": 0.6481481481481481,
+      "core": false
+    },
+    {
+      "difficulty": "medium",
+      "remaining": 0.4,
+      "ring": true,
+      "line": true,
+      "color": "ff2a3a",
+      "size": 0.2592592592592593,
+      "core": false
+    },
+    {
+      "difficulty": "medium",
+      "remaining": 0.1,
+      "ring": true,
+      "line": true,
+      "color": "ffffff",
+      "size": 0.06481481481481488,
+      "core": true
+    },
+    {
+      "difficulty": "hard",
+      "remaining": 1.0,
+      "ring": true,
+      "line": false,
+      "color": "ff2a3a",
+      "size": 0.6481481481481481,
+      "core": false
+    },
+    {
+      "difficulty": "hard",
+      "remaining": 0.4,
+      "ring": true,
+      "line": false,
+      "color": "ff2a3a",
+      "size": 0.2592592592592593,
+      "core": false
+    },
+    {
+      "difficulty": "hard",
+      "remaining": 0.1,
+      "ring": true,
+      "line": false,
+      "color": "ffffff",
+      "size": 0.06481481481481488,
+      "core": true
+    }
+  ],
+  "menu": [
+    {
+      "width": 1280,
+      "height": 720,
+      "qualityBottom": 388.828125,
+      "actionTop": 504.46875,
+      "hint": false
+    },
+    {
+      "width": 1366,
+      "height": 768,
+      "qualityBottom": 431.53125,
+      "actionTop": 546.90625,
+      "hint": false
+    },
+    {
+      "width": 1100,
+      "height": 700,
+      "qualityBottom": 376.640625,
+      "actionTop": 491.84375,
+      "hint": false
+    }
+  ],
+  "edgePointerRedPixels": 1692,
+  "chargeSound": {
+    "running": true,
+    "stopped": true,
+    "audioState": "running"
+  },
+  "humanMediumTimingVerified": false
+}

@@ -117,7 +117,7 @@ function beam(parent, a, b, radius, mat) {
   object.quaternion.setFromUnitVectors(vector(0, 1, 0), b.clone().sub(a).normalize());
   return object;
 }
-const finish = 1620;
+const finish = 950;
 function extendCourse(pattern) {
   const result=[];
   for(let section=0;section<finish;section+=380){
@@ -137,42 +137,45 @@ const ROLL_COOLDOWN = 1.2, ROLL_TIME = 0.4, ROLL_SPEED = 7.5, ROLL_INVULN = 0.4;
 // difficulty touches lives here so Codex/balance passes only edit this table.
 const DIFFICULTIES = {
   easy: {
-    label: 'Easy', blurb: 'Learn the jungle. Fewer, slower shots and health regenerates.',
-    damageScale: .35,      // projectile, collision and hazard damage
-    passDamage: 2,         // enemy slips past you
+    label: 'Easy', blurb: 'Learn the jungle. Health returns only through green drops.',
+    hazardScale: .35, shotDamage: 4, leakDamage: 3, collisionDamage: 6,
+    warmupDistance: 55, tutorialDistance: 25, logPromptDistance: 4, healRevealDistance: 25, breatherDistance: 35,
+    healAmount: 20, freeDrops: 3, freeDropFractions: [.25,.5,.75], healCollectRadius: 1.6, earnedDropsMax: 4, earnedDropFade: 12, jumpPrompts: Infinity, aimLineLead: Infinity, warningRing: true, warningSound: true, edgePointers: true,      // projectile, collision and hazard damage
+             // enemy slips past you
     turretsPass: false,    // walking past a fixed emplacement costs nothing
-    waveInterval: 13,      // seconds between recurring waves
-    waveMoths: 2,          // drones per recurring wave (beetle always added)
-    waveShooters: 2,       // how many of those drones fire (V11: was 1, so almost nothing fired on Easy)
+    waveInterval: 40, initialWaveDelay: 18,      // seconds between recurring waves
+    waveMoths: 1,          // drones per recurring wave (beetle always added)
+    waveShooters: 1,       // how many of those drones fire (V11: was 1, so almost nothing fired on Easy)
     waveDistance: 40,      // spawn ahead of the soldier (rifle range is 30)
     maxNearby: 4,          // no new wave while this many enemies are ahead
-    turretRate: .65, mothRate: .45, boltSpeed: 9,
+    turretRate: .45, mothRate: .25, boltSpeed: 9,
     encounterShooters: .34, firstShot: .7, // V11: some fixed drones fire too; first shot comes sooner
-    regenDelay: 2.5, regenRate: 5, // health/s after this many seconds unhurt
-    aimAssist: .12, startCharges: 3, encounterKeep: .5
+    aimAssist: .12, startCharges: 3, encounterKeep: .15
   },
   medium: {
-    label: 'Medium', blurb: 'The intended challenge. Steady pressure, slow regeneration.',
-    damageScale: .55, passDamage: 3, turretsPass: false,
-    waveInterval: 10, waveMoths: 3, waveShooters: 2, waveDistance: 34, maxNearby: 5,
+    label: 'Medium', blurb: 'Aim carefully. Health returns only through green drops.',
+    hazardScale: .55, shotDamage: 7, leakDamage: 6, collisionDamage: 12,
+    warmupDistance: 55, tutorialDistance: 25, logPromptDistance: 4, healRevealDistance: 25, breatherDistance: 35,
+    healAmount: 20, freeDrops: 2, freeDropFractions: [.4,.75], healCollectRadius: 1.6, earnedDropsMax: 3, earnedDropFade: 8, jumpPrompts: 3, aimLineLead: .6, warningRing: true, warningSound: true, edgePointers: true, turretsPass: false,
+    waveInterval: 10, initialWaveDelay: 0, waveMoths: 3, waveShooters: 2, waveDistance: 34, maxNearby: 5,
     turretRate: .7, mothRate: .38, boltSpeed: 10.5,
     encounterShooters: .34, firstShot: .4,
-    regenDelay: 3.5, regenRate: 2.5,
     aimAssist: .08, startCharges: 2, encounterKeep: .8
   },
   hard: {
-    label: 'Hard', blurb: 'The original V6 tuning. No regeneration.',
-    damageScale: 1, passDamage: 8, turretsPass: true,
-    waveInterval: 6.25, waveMoths: 3, waveShooters: 3, waveDistance: 28, maxNearby: 7,
+    label: 'Hard', blurb: 'Relentless pressure. Aim, dodge, and protect your health.',
+    hazardScale: 1, shotDamage: 10, leakDamage: 10, collisionDamage: 20,
+    warmupDistance: 55, tutorialDistance: 25, logPromptDistance: 4, healRevealDistance: 25, breatherDistance: 35,
+    healAmount: 20, freeDrops: 1, freeDropFractions: [.55], healCollectRadius: 1.6, earnedDropsMax: 3, earnedDropFade: 6, jumpPrompts: 0, aimLineLead: 0, warningRing: true, warningSound: true, edgePointers: true, turretsPass: true,
+    waveInterval: 6.25, initialWaveDelay: 0, waveMoths: 3, waveShooters: 3, waveDistance: 28, maxNearby: 7,
     turretRate: .7, mothRate: .34, boltSpeed: 12,
     encounterShooters: 0, firstShot: 0, // Hard stays exactly V6
-    regenDelay: Infinity, regenRate: 0,
     aimAssist: .06, startCharges: 1, encounterKeep: 1
   }
 };
 let difficultyKey = 'medium';
 let DIFF = DIFFICULTIES[difficultyKey];
-let sinceHurt = 0;
+
 let seed = 711;
 function random() {
   seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
@@ -764,7 +767,16 @@ const solids = []; // V11: things you can't walk through {d, x, hw, hd, h}; jump
 const softZones = []; // V11: ferns in the path slow you down
 const shotBlockers=[];
 const combatRange=30;
-const weakMaterial=new T.MeshBasicMaterial({color:0x7affdc});
+function radialTexture(glow=false) {
+  const c=document.createElement('canvas'); c.width=c.height=128; const x=c.getContext('2d');
+  const g=x.createRadialGradient(64,64,0,64,64,64);
+  if(glow){g.addColorStop(0,'#65efffcc');g.addColorStop(.35,'#20cfff88');g.addColorStop(1,'#12cfff00');}
+  else {g.addColorStop(0,'#ffffff');g.addColorStop(.25,'#d5ffff');g.addColorStop(.7,'#36e7ff');g.addColorStop(.9,'#078dab');g.addColorStop(1,'#024354');}
+  x.fillStyle=g;x.beginPath();x.arc(64,64,63,0,Math.PI*2);x.fill();
+  if(!glow){x.fillStyle='#fff';x.beginPath();x.arc(45,43,7,0,Math.PI*2);x.fill();}
+  return new T.CanvasTexture(c);
+}
+const weakTexture=radialTexture(), weakGlowTexture=radialTexture(true);
 const armorMaterial=new T.MeshStandardMaterial({color:0x3d5263,metalness:.65,roughness:.42});
 const hazardPattern = [
   ['log',45,0],['thorn',45,3],['pothole',65,-2],
@@ -777,7 +789,7 @@ const hazardPattern = [
 const hazardCourse=extendCourse(hazardPattern.map(([kind,d,x])=>[d,kind,x]));
 for(let d=32,index=0;d<finish-15;d+=38,index++){
   const side=index%2?1:-1;
-  hazardCourse.push([d,'pothole',side*2.6],[d,'thorn',-side*3.4]);
+  hazardCourse.push([d,'thorn',-side*3.4]); // V12: retain the authored pits, remove redundant extra pit pairs.
   if(index%2===0) hazardCourse.push([d+14,'cover',side*1.6]);
 }
 for(const [d,kind,x] of hazardCourse) {
@@ -927,7 +939,7 @@ const encounterPlan=[
   [360,'turret',-3,'charge'],
   [372,'beetle',0]
 ];
-const allEncounters=extendCourse(encounterPlan).filter((_,index)=>index%2===0).filter((_,index)=>index%5!==4).map(([d,type,x,drop])=>({d,type,x,drop}));
+const allEncounters=extendCourse(encounterPlan).filter((_,index)=>index%2===0).filter((_,index)=>index%5!==4).map(([d,type,x,drop])=>({d,type,x,drop})).filter(e=>e.d>=85 && e.d<finish-35);
 // V7: easier modes keep an evenly spread fraction of the fixed encounters.
 function encountersFor(keep){
   if(keep>=1) return allEncounters;
@@ -991,15 +1003,16 @@ let wallet, level, dual, rapid, heavy, autoTime, autoCooldown, charges, pressSho
 const lastTap = {};
 const DROP_CYCLE = ['shield','heavy','reload','auto','charge']; // V11
 let dropCycle = 0;
-const DROP_HELP = {shield:'Shield · blocks the next hit', heavy:'Power bolts · next 8 shots do double damage',
-  reload:'Quick reload · next 12 shots fire faster', auto:'Auto attack · fires at targets for 15 s', charge:'Grenade +1 · press E or right click'};
-const dropNames = {shield:'Shield',auto:'Auto attack',heavy:'Power bolts',
-  reload:'Quick reload',charge:'Power attack charge'};
+const DROP_HELP = {health:'Health +20 · unused health is lost',shield:'Shield · blocks the next hit', heavy:'Power bolts · next 8 shots do double damage',
+  reload:'Rapid fire · next 12 shots fire faster', auto:'Auto attack · fires at targets for 15 s', charge:'Grenade +1 · press E or right click'};
+const dropNames = {health:'Health',shield:'Shield',auto:'Auto attack',heavy:'Power bolts',
+  reload:'Rapid fire',charge:'Power attack charge'};
 const dropColors = Object.fromEntries(Object.entries({
   shield:0x68dfef,auto:0xbb9dff,heavy:0xff665f,reload:0x82e584,charge:0xffffff
 }).map(([key,color])=>[key,new T.MeshStandardMaterial({color,emissive:color,emissiveIntensity:.55,roughness:.3})]));
 function collectDrop(key) {
   switch (key) {
+    case 'health': { const gain=Math.min(DIFF.healAmount,100-health); health+=gain; healthFeedback('+'+gain,'heal'); break; }
     case 'shield': shield=1; break;
     case 'auto': autoTime=15; break;
     case 'heavy': heavy=8; break;
@@ -1057,7 +1070,7 @@ function message(text, seconds = 2.2) {
   notice = seconds;
 }
 function remove(entry) {
-  scene.remove(entry.mesh);
+  scene.remove(entry.mesh);if(entry.aimLine)scene.remove(entry.aimLine);stopChargeSound(entry);
 }
 function membrane(points, camber) {
   const contour=new T.Shape(points.map(([x,z])=>new T.Vector2(x,z)));
@@ -1134,19 +1147,26 @@ function spawn(config) {
       }
       break;
   }
-  const halo=shape(mesh,orb,colors.danger,0,config.type==='turret'?.81:.22,.25,.24,.24,.24);
+  const halo=new T.Mesh(new T.TorusGeometry(.75,.025,8,48), new T.MeshBasicMaterial({color:0xff2a3a,transparent:true,opacity:1,depthTest:false,depthWrite:false}));
+  const haloGlow=new T.Mesh(new T.TorusGeometry(.75,.065,8,48),new T.MeshBasicMaterial({color:0xff2a3a,transparent:true,opacity:.3,blending:T.AdditiveBlending,depthTest:false,depthWrite:false}));haloGlow.renderOrder=99;halo.add(haloGlow);
+  halo.position.set(0,config.type==='turret'?.81:.22,.25);halo.renderOrder=100;mesh.add(halo);
+  const fireCore=shape(mesh,smoothOrb,new T.MeshBasicMaterial({color:0xffffff,depthTest:false,depthWrite:false}),0,halo.position.y,.25,.15,.15,.15);fireCore.renderOrder=101;fireCore.visible=false;
+  const aimLine=new T.Line(new T.BufferGeometry().setFromPoints([vector(0,0,0),vector(0,0,0)]),new T.LineBasicMaterial({color:0xff2a3a,transparent:true,opacity:0,depthTest:false,depthWrite:false}));aimLine.renderOrder=99;scene.add(aimLine);
   halo.visible=false;
   // v4: gold ring shown around the enemy under the centre reticle.
   const targetRing=new T.Mesh(new T.TorusGeometry(.85,.05,8,32),
-    new T.MeshBasicMaterial({color:0xffcc63,transparent:true,opacity:.9}));
+    new T.MeshBasicMaterial({color:0x66dfff,transparent:true,opacity:.9}));
   targetRing.position.y=config.type==='turret'?1.7:.6;
   targetRing.rotation.x=Math.PI/2;
   targetRing.visible=false;
   mesh.add(targetRing);
-  const weakPoint=shape(mesh,smoothOrb,weakMaterial,0,config.type==='beetle'?.18:.4,.64,.19,.19,.13);
+  const weakPoint=new T.Sprite(new T.SpriteMaterial({map:weakTexture,depthWrite:false}));
+  weakPoint.position.set(0,config.type==='beetle'?.18:.4,.7); weakPoint.scale.set(.44,.44,1); mesh.add(weakPoint);
+  const weakGlow=new T.Sprite(new T.SpriteMaterial({map:weakGlowTexture,blending:T.AdditiveBlending,depthWrite:false,transparent:true}));
+  weakGlow.position.copy(weakPoint.position); weakGlow.scale.set(.95,.95,1); mesh.add(weakGlow);
   weakPoint.visible=false;
   // V8: concept art replaces the procedural model. Sizes match the old silhouettes.
-  ghostify(mesh, [halo, targetRing, weakPoint]);
+  ghostify(mesh, [halo, haloGlow, fireCore, targetRing, weakPoint, weakGlow]);
   const art = config.type==='moth' ? makeSprite('drone_front', 2.2, {own:true})
     : config.type==='beetle' ? makeSprite('crawler_front', 2.1, {own:true})
     : makeSprite('turret_front', 2.3, {own:true});
@@ -1155,15 +1175,88 @@ function spawn(config) {
   mesh.add(art);
   motion.length = 0;
   scene.add(mesh);
-  return {...config,mesh,body,halo,targetRing,shell,motion,weakPoint,art,hp:config.type==='moth'?2:6,shot:-(config.shotDelay ?? 0)+(config.firstShot ?? 0),range:0,flash:0};
+  return {...config,mesh,body,halo,fireCore,aimLine,targetRing,shell,motion,weakPoint,weakGlow,art,hp:config.type==='moth'?2:6,shot:-(config.shotDelay ?? 0)+(config.firstShot ?? 0),range:0,flash:0};
+}
+// V12: red means incoming fire; cyan means an exposed weak point.
+const warningCanvas=document.createElement('canvas');warningCanvas.id='shotWarnings';ui.game.append(warningCanvas);
+const warningContext=warningCanvas.getContext('2d'),hitDirections=[];
+function predictedImpact(enemy){
+  const start=enemy.mesh.position;let flight=enemy.range/(Math.max(currentSpeed,.1)+DIFF.boltSpeed);const at=vector(0,0,0);
+  for(let i=0;i<4;i++){const future=distance+flight*currentSpeed;at.set(center(future)+lateral,jumpY+.85,-future);flight=at.distanceTo(start)/DIFF.boltSpeed;}
+  return at;
+}
+function stopChargeSound(enemy){
+  if(!enemy.chargeTone)return;try{enemy.chargeTone.gain.gain.setTargetAtTime(0,audio.currentTime,.015);enemy.chargeTone.osc.stop(audio.currentTime+.06);}catch{}enemy.chargeTone=null;
+}
+function updateChargeWarning(enemy,rate){
+  const charging=enemy.shot>.42,progress=T.MathUtils.clamp((enemy.shot-.42)/1.08,0,1),remaining=(1.5-enemy.shot)/rate;
+  enemy.charging=charging;enemy.chargeProgress=progress;
+  enemy.halo.visible=charging && DIFF.warningRing;
+  enemy.halo.quaternion.copy(camera.quaternion);enemy.halo.scale.setScalar(Math.max(.04,1-progress));
+  enemy.halo.material.color.set(remaining<=.2?0xffffff:0xff2a3a);
+  enemy.fireCore.visible=charging && remaining<=.2 || elapsed<(enemy.fireFlashUntil||0);
+  enemy.aimLine.visible=charging && DIFF.aimLineLead>0 && remaining<=DIFF.aimLineLead;
+  if(enemy.aimLine.visible){const a=enemy.mesh.position,b=predictedImpact(enemy),v=enemy.aimLine.geometry.attributes.position;v.setXYZ(0,a.x,a.y,a.z);v.setXYZ(1,b.x,b.y,b.z);v.needsUpdate=true;enemy.aimLine.geometry.computeBoundingSphere();enemy.aimLine.material.opacity=.25+progress*.75;}
+  if(charging && DIFF.warningSound && audio?.state==='running' && !enemy.chargeTone){
+    const osc=audio.createOscillator(),gain=audio.createGain();osc.type='sine';osc.frequency.setValueAtTime(280+progress*300,audio.currentTime);osc.frequency.linearRampToValueAtTime(950,audio.currentTime+Math.max(.02,remaining));gain.gain.value=Math.max(.008,.045*(1-enemy.range/40));osc.connect(gain).connect(audio.destination);osc.start();enemy.chargeTone={osc,gain};
+  }
+  if(!charging)stopChargeSound(enemy);
+}
+function drawWarningEdges(){
+  if(warningCanvas.width!==innerWidth || warningCanvas.height!==innerHeight){warningCanvas.width=innerWidth;warningCanvas.height=innerHeight;}
+  const x=warningContext,w=warningCanvas.width,h=warningCanvas.height;x.clearRect(0,0,w,h);
+  for(const enemy of targets){if(!DIFF.edgePointers || !enemy.mesh.visible || !enemy.charging || enemy.hp<=0 || enemy.range<7 || enemy.range>28)continue;
+    const p=enemy.mesh.position.clone().project(camera);if(Math.abs(p.x)<.82 && Math.abs(p.y)<.82 && p.z<1)continue;
+    let dx=p.x,dy=-p.y;if(p.z>1){dx=-dx;dy=-dy;}const k=Math.min((w/2-24)/Math.max(.001,Math.abs(dx)*w/2),(h/2-24)/Math.max(.001,Math.abs(dy)*h/2));
+    const sx=w/2+dx*w/2*k,sy=h/2+dy*h/2*k;x.save();x.translate(sx,sy);x.rotate(Math.atan2(dy*h,dx*w));x.globalAlpha=.6+.4*Math.sin(elapsed*12)**2;x.strokeStyle='#ff2a3a';x.shadowColor='#ff2a3a';x.shadowBlur=12;x.lineWidth=4;x.beginPath();x.moveTo(-10,-10);x.lineTo(0,0);x.lineTo(-10,10);x.stroke();x.restore();
+  }
+  for(let i=hitDirections.length-1;i>=0;i--){const hit=hitDirections[i];if(elapsed>=hit.until){hitDirections.splice(i,1);continue;}const p=hit.source.clone().project(camera);const a=Math.atan2(-p.y,p.x)+(p.z>1?Math.PI:0);x.save();x.translate(w/2,h/2);x.scale(w/2-18,h/2-18);x.strokeStyle='#ff2a3a';x.globalAlpha=(hit.until-elapsed)*2;x.lineWidth=.025;x.beginPath();x.arc(0,0,1,a-.2,a+.2);x.stroke();x.restore();}
+}
+// V12: finite health economy. All placement and combat values come from DIFFICULTIES.
+let earnedDrops=0, exposedDrops=[], leakWarned=false;
+const damageEvents=[];
+const healthGroups=new Map(), logPrompts=new Set();
+function healthFeedback(text,kind) {
+  const el=document.createElement('span');el.className='health-feedback '+kind;el.textContent=text;
+  ui.health.parentElement.append(el);setTimeout(()=>el.remove(),1300);
+}
+function leakEnemy(enemy) {
+  const lost=damage(DIFF.leakDamage,'Enemy got past you',true,true);
+  ui.game.classList.remove('leak-flash');void ui.game.offsetWidth;ui.game.classList.add('leak-flash');
+  if(lost) healthFeedback('−'+lost+' LEAK','leak');
+  if(!leakWarned){leakWarned=true;saveSetting('leakWarningSeen',true);message('Enemies that get past you cost health.',4);}
+}
+function addHealthDrop(d,lane,earned) {
+  if(earned && earnedDrops>=DIFF.earnedDropsMax) return false;
+  if(earned) earnedDrops++;
+  const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');
+  x.shadowColor='#63ff9b';x.shadowBlur=14;x.fillStyle='#fff';
+  x.fillRect(43,9,42,110);x.fillRect(9,43,110,42);x.shadowBlur=0;x.fillStyle='#20d36c';
+  x.fillRect(51,17,26,94);x.fillRect(17,51,94,26);
+  const mesh=new T.Sprite(new T.SpriteMaterial({map:new T.CanvasTexture(c),transparent:true,depthWrite:false}));
+  mesh.scale.set(1.35,1.35,1);mesh.position.set(center(d)+lane,.9,-d);scene.add(mesh);
+  pickups.push({mesh,d,lane,y:.2,key:'health',expiresAt:earned?elapsed+DIFF.earnedDropFade:undefined});return true;
+}
+function registerHealthGroup(e){if(!healthGroups.has(e.groupId))healthGroups.set(e.groupId,{members:[],failed:false,rewarded:false});healthGroups.get(e.groupId).members.push(e);}
+function completeHealthGroup(enemy){
+  const g=healthGroups.get(enemy.groupId);
+  if(g && !g.failed && !g.rewarded && g.members.length>=2 && g.members.every(e=>e.hp<=0)) {
+    g.rewarded=true;addHealthDrop(Math.max(distance+1.5,enemy.d),enemy.x,true);
+  }
 }
 function reset() {
   for (const list of [targets, bolts, grenades, pickups, coins, effects]) {
     list.forEach(remove);
     list.length = 0;
   }
+  targets.push(spawn({d:DIFF.tutorialDistance,type:'moth',x:0,training:true,shooter:false}));
   targets.push(...encountersFor(DIFF.encounterKeep).map((e,i)=>spawn({...e, shooter: e.type==='moth' && ((i*0.618)%1) < DIFF.encounterShooters, firstShot: DIFF.firstShot})));
-  dropCycle=0;
+  for(const d of (difficultyKey==='easy'?[520]:[180,520,840])) for(let i=0;i<3;i++) targets.push(spawn({d:d+i*2,type:'beetle',x:(i-1)*1.5,groupId:'pack-'+d}));
+  dropCycle=0; earnedDrops=0; healthGroups.clear(); logPrompts.clear(); bumpNotice=0;
+  leakWarned=Boolean(activeProfile()?.settings?.leakWarningSeen);
+  for(let i=0;i<DIFF.freeDrops;i++) { let d=finish*DIFF.freeDropFractions[i]; while(hazards.some(h=>Math.abs(h.d-d)<4 && Math.abs(h.x)<2) || solids.some(o=>Math.abs(o.d-d)<4 && Math.abs(o.x)<2)) d+=1; addHealthDrop(d,0,false); }
+  exposedDrops=hazards.filter(h=>h.kind==='thorn' && h.d>finish*.25 && h.d<finish*.8).filter((h,i)=>i%8===0).slice(0,DIFF.earnedDropsMax).map(h=>({d:h.d+3,lane:h.x,spawned:false}));
+  for (const e of targets.filter(e=>e.type==='beetle')) { e.groupId ||= 'fixed-'+Math.floor(e.d/80); registerHealthGroup(e); }
   for (const line of coinLines) {
     for (let i=0;i<4;i++) {
       const d=line.d-2.4+i*1.6, lane=line.lane;
@@ -1175,8 +1268,8 @@ function reset() {
   }
   for (const h of hazards) h.hit=false;
   distance = lateral = jumpY = jumpVel = 0;
-  recoilTimer = 0; aimSmooth.x = aimSmooth.y = 0;
-  pressureTimer=DIFF.waveInterval;
+  recoilTimer = 0; shake=0; aimSmooth.x = aimSmooth.y = 0;
+  pressureTimer=DIFF.initialWaveDelay;
   trappedPit=null;
   pointer.set(0,0);
   ui.reticle.style.left=ui.reticle.style.top="50%";
@@ -1184,10 +1277,10 @@ function reset() {
   rollTime = rollDir = rollCooldown = rollInvuln = slowTimer = 0;
   currentSpeed = 0;
   score = coinCount = shield = recovery = cooldown = elapsed = 0;
-  health = 100;
+  health = 100;damageEvents.length=0;hitDirections.length=0;
   wallet=rapid=heavy=autoTime=autoCooldown=0;
   charges=DIFF.startCharges; // V7: per difficulty
-  sinceHurt=0;
+
   AIM_ASSIST_ANGLE=DIFF.aimAssist;
   level=1;
   dual=false;
@@ -1200,10 +1293,12 @@ function reset() {
 function setMode(next) {
   mode = next;
   firing = pressShot = powerShot = false;
+  if(next!=='play')for(const enemy of targets)stopChargeSound(enemy);
   held.clear();
   ui.game.classList.toggle('active', mode === 'play');
   syncMusic();
   ui.menu.hidden = mode === 'play';
+  warningCanvas.hidden=mode!=='play';
   ui.reticle.hidden = mode !== 'play';
   ui.hud.hidden = mode === 'menu';
   ui.levelbar.hidden = mode !== 'play';
@@ -1221,7 +1316,7 @@ function powerHud() { // V11: what is active, and for how long
   const chips = [];
   if (shield > 0) chips.push(['icon_shield', 'SHIELD', 'next hit']);
   if (heavy > 0) chips.push(['icon_power2', 'POWER BOLTS', heavy + ' shots']);
-  if (rapid > 0) chips.push(['icon_reload', 'QUICK RELOAD', rapid + ' shots']);
+  if (rapid > 0) chips.push(['icon_reload', 'RAPID FIRE', rapid + ' shots']);
   if (autoTime > 0) chips.push(['icon_auto', 'AUTO ATTACK', Math.ceil(autoTime) + ' s']);
   const sig = chips.map(c => c.join(':')).join('|');
   if (sig === powerHud.sig) return;
@@ -1255,8 +1350,8 @@ function hud() {
     displayedItems=signature;
   }
   ui.shield.textContent = [
-    'BOLT LV '+level, cooldown>0 ? 'RELOADING' : 'READY',
-    dual && 'DUAL', shield>0 && 'SHIELD', rapid>0 && 'QUICK '+rapid,
+
+    dual && 'DUAL', shield>0 && 'SHIELD', rapid>0 && 'RAPID '+rapid,
     heavy>0 && 'POWER BOLTS '+heavy, autoTime>0 && 'AUTO '+Math.ceil(autoTime)+'s',
     'CHARGES '+charges
   ].filter(Boolean).join(' · ');
@@ -1278,22 +1373,24 @@ function end(won) {
 function damage(amount, cause, bypassRecovery=false, flat=false) {
   // Rolling gives brief invulnerability; the post-hit recovery window
   // (0.75 s) still applies as in the original.
-  if ((!bypassRecovery && recovery > 0) || rollInvuln > 0 || mode !== 'play') return;
+  if ((!bypassRecovery && recovery > 0) || rollInvuln > 0 || mode !== 'play') return 0;
   recovery = .75;
   if (shield > 0) {
     shield = 0;
     message('Shield absorbed the hit');
     tone(480);
-    return;
+    return 0;
   }
-  if (!flat) amount = Math.max(1, Math.round(amount * DIFF.damageScale));
-  sinceHurt = 0;
+  if (!flat) amount = Math.max(1, Math.round(amount * DIFF.hazardScale));
+
+  if(new URLSearchParams(location.search).has('test')) damageEvents.push({amount,cause,distance});
   health = Math.max(0, health - amount);
   shake = Math.max(shake, .22); // v5: damage shake
   message(cause + ' · −' + amount + ' health');
   if (health > 0 && grounded && rollTime <= 0 && currentSpeed < 1.2) soldierAction('hit', 1.4); // V10
   tone(115,.2,.12);
   if (!health) end(false);
+  return amount;
 }
 function place(smoothing) {
   actor.position.set(center(distance) + lateral, jumpY, -distance);
@@ -1332,9 +1429,9 @@ function place(smoothing) {
   rifle.quaternion.setFromUnitVectors(vector(0,0,-1),aimLocal);
 }
 function updateTargets(dt) {
-  pressureTimer-=dt;
+  if(distance>=DIFF.warmupDistance && distance<finish-DIFF.breatherDistance) pressureTimer-=dt;
   const nearby=targets.filter(e=>e.hp>0 && e.d-distance>-3 && e.d-distance<70).length;
-  if(pressureTimer<=0 && nearby<=DIFF.maxNearby){
+  if(distance>=DIFF.warmupDistance && distance<finish-DIFF.breatherDistance && pressureTimer<=0 && nearby<=DIFF.maxNearby){
     pressureTimer=DIFF.waveInterval;
     const wave=Math.floor(elapsed/5);
     const count=DIFF.waveMoths+1; // last one is the beetle
@@ -1344,17 +1441,20 @@ function updateTargets(dt) {
       const d=distance+DIFF.waveDistance+i*1.6;
       targets.push(spawn({d,type:beetleSlot?'beetle':'moth',x:side*(i%3+1.5),
         entrySide:side,shooter:!beetleSlot && i<DIFF.waveShooters,shotDelay:i*.22,firstShot:DIFF.firstShot,
-        drop:beetleSlot?DROP_CYCLE[dropCycle++%DROP_CYCLE.length]:undefined})); // V11: cycle through every power-up
+        groupId:'wave-'+wave+'-'+Math.floor(distance),drop:beetleSlot?DROP_CYCLE[dropCycle++%DROP_CYCLE.length]:undefined})); // V11: cycle through every power-up
     }
+    for(const e of targets.filter(e=>e.groupId && !healthGroups.get(e.groupId)?.members.includes(e))) registerHealthGroup(e);
   }
   for (const enemy of targets) {
+    if(distance<DIFF.warmupDistance && !enemy.training) {enemy.mesh.visible=false;stopChargeSound(enemy);continue;}
     // Zipper moths fly toward the runner, so they close fast.
-    if (enemy.type === 'moth' && enemy.hp > 0 && enemy.d-distance<70 && enemy.d-distance>-3) enemy.d -= dt * 3.5;
+    if (enemy.type === 'moth' && !enemy.training && enemy.hp > 0 && enemy.d-distance<70 && enemy.d-distance>-3) enemy.d -= dt * 3.5;
     const previousRange=enemy.range;
     enemy.range = enemy.d - distance;
     if(enemy.hp>0 && !enemy.passed && previousRange>0 && enemy.range<=0){
       enemy.passed=true;
-      if(enemy.type!=='turret' || DIFF.turretsPass) damage(DIFF.passDamage,'Enemy got past you',true,true);
+      if(enemy.groupId) healthGroups.get(enemy.groupId).failed=true;
+      if(enemy.type!=='turret' || DIFF.turretsPass) leakEnemy(enemy);
     }
     const beat=elapsed*2.7+enemy.d;
     const beetle=enemy.type==='beetle', turret=enemy.type==='turret';
@@ -1362,7 +1462,7 @@ function updateTargets(dt) {
     if (beetle && enemy.hp > 0 && enemy.range < 20 && enemy.range > 0) {
       enemy.x += T.MathUtils.clamp(lateral - enemy.x, -dt * 1.5, dt * 1.5);
     }
-    const offset=beetle ? enemy.x
+    const offset=enemy.training ? 0 : beetle ? enemy.x
       : enemy.x+(turret?0:Math.sin(beat)*1.6)+(enemy.entrySide ? enemy.entrySide*Math.max(0,enemy.range-15)*.17 : 0);
     const y=beetle ? .53 : turret ? 1.0 : 3.0+Math.sin(beat)*.42;
     enemy.mesh.position.set(center(enemy.d)+offset,y,-enemy.d);
@@ -1375,37 +1475,35 @@ function updateTargets(dt) {
     if (enemy.type==='moth') enemy.art.material.rotation = Math.cos(beat) * .14;
     const active=enemy.range>0 && enemy.range<=combatRange;
     enemy.weakPoint.visible=enemy.type!=='moth' && active && Math.sin(elapsed*1.5+enemy.d*.2)>.2;
+    if(enemy.weakPoint.visible && !enemy.vulnerable) enemy.coreFlare=.18;
+    enemy.coreFlare=Math.max(0,(enemy.coreFlare||0)-dt);
+    const pulse=1+.1*Math.sin(elapsed*Math.PI*4)+(enemy.coreFlare||0);
+    enemy.weakPoint.scale.set(.44*pulse,.44*pulse,1);
+    enemy.weakGlow.visible=enemy.weakPoint.visible; enemy.weakGlow.scale.set(.95*pulse,.95*pulse,1);
     enemy.vulnerable=enemy.weakPoint.visible;
-    enemy.halo.visible=active && enemy.range<28 && enemy.shot>.3;
-    if (!enemy.mesh.visible || !dt) continue;
+    enemy.halo.visible=false;enemy.aimLine.visible=false;enemy.fireCore.visible=elapsed<(enemy.fireFlashUntil||0);
+    if (!enemy.mesh.visible || !dt) {stopChargeSound(enemy);continue;}
     // Beetle collision: horizontal proximity while low. Jumping high over
     // a beetle clears it.
     if (beetle && Math.abs(enemy.range) < 1.0 && Math.abs(lateral-enemy.x) < 0.85 && jumpY < 0.9) {
+      if(enemy.groupId) healthGroups.get(enemy.groupId).failed=true;
       enemy.hp = 0;
       enemy.mesh.visible = false;
-      damage(35, 'Creature collision');
+      damage(DIFF.collisionDamage, 'Creature collision', false, true);
     }
     // Only turrets shoot in Phase 1.
-    if ((!turret && !(enemy.type==='moth' && enemy.shooter)) || enemy.range > 28 || enemy.range < 7) continue;
+    if ((!turret && !(enemy.type==='moth' && enemy.shooter)) || enemy.range > 28 || enemy.range < 7) {stopChargeSound(enemy);continue;}
     enemy.shot += dt * (turret?DIFF.turretRate:DIFF.mothRate);
-    enemy.halo.visible = enemy.shot > .42;
-    enemy.halo.scale.setScalar(.2+Math.max(0,enemy.shot-.42)*.35);
+    updateChargeWarning(enemy,turret?DIFF.turretRate:DIFF.mothRate);
     if (enemy.shot < 1.5) continue;
-    enemy.shot = -.65;
-    enemy.halo.visible = false;
-    const start = enemy.mesh.position.clone();
-    // Predict where the runner will meet the bolt if they keep going.
-    let flight = enemy.range / (Math.max(currentSpeed, 0.1) + DIFF.boltSpeed);
-    const intercept = vector(0,0,0);
-    for (let i = 0; i < 4; i++) {
-      const future = distance + flight * currentSpeed;
-      intercept.set(center(future)+lateral,jumpY+.85,-future);
-      flight = intercept.distanceTo(start) / DIFF.boltSpeed;
-    }
+    enemy.shot = -.65; enemy.fireFlashUntil=elapsed+.12;
+    enemy.halo.visible = false;enemy.aimLine.visible=false;stopChargeSound(enemy);
+    enemy.fireCore.visible=true;
+    const start=enemy.mesh.position.clone(), intercept=predictedImpact(enemy);
     const mesh = makeFx('vfx_bolt', 1.3); // V9: painted energy bolt
     mesh.position.copy(start); scene.add(mesh);
     burst(start,colors.danger,6);
-    bolts.push({mesh, velocity:intercept.sub(start).normalize().multiplyScalar(DIFF.boltSpeed)});
+    bolts.push({mesh, source:start.clone(), velocity:intercept.sub(start).normalize().multiplyScalar(DIFF.boltSpeed)});
     tone(185,.16);
   }
 }
@@ -1432,11 +1530,12 @@ function strike(enemy, amount) {
     message(enemy.type==='moth'?'Hit':enemy.vulnerable?'Core exposed':'Armored · aim for the glowing core',.75);
     return;
   }
-  enemy.mesh.visible=false;
+  enemy.mesh.visible=false;enemy.aimLine.visible=false;enemy.halo.visible=false;stopChargeSound(enemy);
   spawnFx('vfx_explosion_small', enemy.mesh.position, enemy.type==='moth' ? 2.2 : 3, .4); // V9
   score+=enemy.type==='moth' ? 100 : 180;
   showKillPop(enemy.type==='moth' ? '+100' : '+180'); // v5: kill popup
   tone(720);
+  completeHealthGroup(enemy);
   if (!enemy.drop) return;
   // Drops land on the ground ahead, on the enemy's lateral line.
   const d=enemy.d+13, lane=enemy.x;
@@ -1456,10 +1555,12 @@ function fireBullet(direction,muzzle,damage,assist=true){
   const cameraRay=new T.Raycaster(camera.position,dir,0,combatRange);
   const candidates=targets.filter(e=>e.hp>0 && e.mesh.visible && e.range>0 && e.range<=combatRange);
   const hitMeshes=candidates.flatMap(e=>e.weakPoint.visible?[e.body,e.weakPoint]:[e.body]);
+  cameraRay.camera=camera;
   const sight=cameraRay.intersectObjects([...hitMeshes,...shotBlockers],false)[0];
   const aimPoint=sight?.point ?? camera.position.clone().addScaledVector(dir,combatRange);
   const shotDirection=aimPoint.clone().sub(muzzle).normalize();
   const bulletRay=new T.Raycaster(muzzle,shotDirection,0,combatRange);
+  bulletRay.camera=camera;
   const hit=bulletRay.intersectObjects([...hitMeshes,...shotBlockers],false)[0];
   const hitPoint=hit?.point ?? muzzle.clone().addScaledVector(shotDirection,combatRange);
   tracer(muzzle,hitPoint,heavy>0?colors.danger:colors.gold); // V11: power bolts fire red tracers
@@ -1561,8 +1662,8 @@ function resolveSolids() {
     if (pd < px) {
       distance = o.d + (dd < 0 ? -1 : 1) * (o.hd + R);
       if (dd < 0) {
-        currentSpeed = Math.min(currentSpeed, .4);
-        if (elapsed > bumpNotice) { message(o.h < 1 ? 'Blocked · jump over it' : o.h < 2 ? 'Blocked · go around or jump' : 'Blocked · go through the arch', 1.2); bumpNotice = elapsed + 1.5; tone(140, .06, .05); }
+        currentSpeed = 0;
+        if (elapsed > bumpNotice) { message(o.h < 1 ? 'Blocked · jump over it' : o.h < 2 ? 'Blocked · go around or jump' : 'Blocked · go through the arch', 1.2); bumpNotice = elapsed + 1.5; tone(140, .06, .05); shake=Math.max(shake,.15); soldierAction('hit',1.4); }
       }
     } else lateral = o.x + (dx < 0 ? -1 : 1) * (o.hw + R);
   }
@@ -1656,8 +1757,6 @@ function update(dt) {
       message('In a pit · Space + A / D to climb out',4);
     }
   }
-  sinceHurt += dt;
-  if (sinceHurt > DIFF.regenDelay && health > 0 && health < 100) health = Math.min(100, health + DIFF.regenRate * dt);
   recovery -= dt;
   recoilTimer = Math.max(0, recoilTimer - dt); // v3
   autoTime-=dt;
@@ -1665,6 +1764,7 @@ function update(dt) {
   if (notice <= 0) ui.notice.textContent = '';
   place(1 - Math.exp(-dt*9));
   updateTargets(dt);
+  drawWarningEdges();
   if (mode !== 'play') {hud();return;}
   shoot(dt);
   // v4: fly the grenades — lobbed arc, explode on impact or landing.
@@ -1695,21 +1795,24 @@ function update(dt) {
       bolt.mesh.material.rotation = Math.atan2(b.y - a.y, (b.x - a.x) * camera.aspect);
     }
     const hit = bolt.mesh.position.distanceTo(vector(actor.position.x,actor.position.y+.85,-distance)) < .67;
-    if (hit) {burst(bolt.mesh.position,colors.danger,7);damage(30,'Projectile hit');}
+    if (hit) {burst(bolt.mesh.position,colors.danger,7);const lost=damage(DIFF.shotDamage,'Projectile hit',false,true);if(lost) hitDirections.push({source:bolt.source.clone(),until:elapsed+.5});}
     if (hit || bolt.mesh.position.z > actor.position.z + 8) {
       remove(bolt);
       bolts.splice(i,1);
     }
   }
+  for(const item of exposedDrops) if(!item.spawned && item.d-distance<=DIFF.healRevealDistance && item.d>distance) { item.spawned=true; addHealthDrop(item.d,item.lane,true); }
+  for(const [i,h] of hazards.filter(h=>h.kind==='log').entries()) if(i<DIFF.jumpPrompts && h.d-distance>0 && h.d-distance<=DIFF.logPromptDistance && !logPrompts.has(h)) {logPrompts.add(h); message('JUMP · log ahead',1.1);}
   for (let i=pickups.length-1;i>=0;i--) {
     const item = pickups[i];
-    item.mesh.rotation.y += dt*3;
+    if(item.key==='health') item.mesh.material.rotation=Math.sin(elapsed*1.6)*.12; else item.mesh.rotation.y += dt*3;
     item.mesh.position.y = item.y+.7+Math.sin(elapsed*6)*.15;
-    const collected = Math.abs(distance-item.d)<1.1 && Math.abs(lateral-item.lane)<.85 && jumpY>=0 && jumpY<.8;
+    const expired=item.expiresAt!==undefined && elapsed>=item.expiresAt;
+    const collected = !expired && Math.abs(distance-item.d)<1.1 && Math.abs(lateral-item.lane)<(item.key==='health'?DIFF.healCollectRadius:.85) && jumpY>=0 && jumpY<.8;
     if (collected) {
       collectDrop(item.key);
     }
-    if (collected || distance>item.d+3) {
+    if (collected || distance>item.d+3 || expired) {
       remove(item);
       pickups.splice(i,1);
     }
@@ -1876,7 +1979,7 @@ renderer.setAnimationLoop(now => {
     camera.fov=56;
     camera.updateProjectionMatrix();
     speedLineMat.opacity=0;
-    shake=0;
+    if(shake>0) { camera.position.x+=Math.sin(now*.08)*shake*.1; camera.position.y+=Math.cos(now*.07)*shake*.07; shake=Math.max(0,shake-dt); }
   }
   if (mode !== 'pause') animateSoldier(dt); // V10
   updatePowerFx(now / 1000); // V11
@@ -1886,3 +1989,37 @@ renderer.setAnimationLoop(now => {
   shaftMat.opacity=.045+Math.sin(now*.0006)*.015;
   renderer.render(scene,camera);
 });
+
+if(new URLSearchParams(location.search).has('test')) window.gameTest={
+  start(key){setDifficulty(key);reset();setMode('play');renderer.setAnimationLoop(null);},
+  step(dt){if(mode==='play')update(dt);},
+  bot(key){this.start(key);let jumpAt=0;for(let t=0;t<700 && mode==='play';t+=1/30){held.clear();held.add('KeyW');const desired=Math.sin(t*1.2)*2.5;if(Math.abs(desired-lateral)>.12)held.add(desired>lateral?'KeyD':'KeyA');firing=true;pointer.set(0,0);if(t>=jumpAt){if(grounded){grounded=false;jumpVel=trappedPit?10.5:JUMP_VELOCITY;}jumpAt=t+1.1;}update(1/30);}return this.state();},
+  state(){return {mode,health,distance,elapsed,finish,difficultyKey,earnedDrops,damageEvents,pickups:pickups.map(p=>({key:p.key,d:p.d,lane:p.lane,expiresAt:p.expiresAt})),targets:targets.map(e=>({d:e.d,type:e.type,hp:e.hp,training:e.training})),diff:DIFF};},
+  damage(n,source){recovery=rollInvuln=shield=0;damage(n,source,false,true);},
+  collectHealth(){collectDrop('health');},
+  groupTest(leaked){const a={groupId:'test',hp:0,d:100,x:0},b={...a};registerHealthGroup(a);registerHealthGroup(b);healthGroups.get('test').failed=leaked;completeHealthGroup(b);return earnedDrops;},
+  render(){place(1);scene.updateMatrixWorld(true);renderer.render(scene,camera);},
+  menu(){setMode('menu');},
+  advance(d){distance=d;updateTargets(0);},
+  healthDrop(d,lane,earned){return addHealthDrop(d,lane,earned);},
+  rules(key){this.start(key);damage(17,'test',false,true);for(let i=0;i<300;i++)update(1/30);const noRegen=health;collectDrop('health');const capped=health;collectDrop('health');const fullHealthWaste=health;
+    const sources={};for(const [name,n] of [['shot',DIFF.shotDamage],['collision',DIFF.collisionDamage]]){health=100;recovery=rollInvuln=shield=0;damage(n,name,false,true);sources[name]=100-health;}
+    health=100;recovery=rollInvuln=shield=0;leakEnemy({});leakEnemy({});sources.twoLeaks=100-health;
+    this.start(key);for(let i=0;i<DIFF.earnedDropsMax+2;i++)addHealthDrop(100,4,true);const cappedEarned=earnedDrops;update(DIFF.earnedDropFade+.01);const expired=pickups.filter(p=>p.expiresAt!==undefined).length;
+    this.start(key);distance=54.9;pressureTimer=-1;const before=targets.length;updateTargets(.1);const noWarmupWave=before===targets.length;distance=55;updateTargets(.1);const warmupWave=targets.length>before;
+    this.start(key);elapsed=1;distance=44.3;lateral=0;jumpY=0;currentSpeed=6;resolveSolids();const log={speed:currentSpeed,shake,flinch:soldierShot?.name};
+    return {noRegen,capped,fullHealthWaste,sources,cappedEarned,expired,noWarmupWave,warmupWave,log};},
+  async sound(){audio ||= new AudioContext();await audio.resume();const enemy=targets.find(e=>e.type==='turret');enemy.shot=.8;enemy.range=20;updateChargeWarning(enemy,DIFF.turretRate);const running=Boolean(enemy.chargeTone);stopChargeSound(enemy);return {running,stopped:enemy.chargeTone===null,state:audio.state};},
+  warning(key,remaining=0.4,side=0){this.start(key);distance=100;const enemy=spawn({d:120,type:'turret',x:side});targets.push(enemy);enemy.range=20;enemy.mesh.position.set(center(120)+side,1,-120);place(1);enemy.shot=1.5-remaining*DIFF.turretRate;updateChargeWarning(enemy,DIFF.turretRate);drawWarningEdges();scene.updateMatrixWorld(true);renderer.render(scene,camera);return {ring:enemy.halo.visible,line:enemy.aimLine.visible,color:enemy.halo.material.color.getHexString(),size:enemy.halo.scale.x,core:enemy.fireCore.visible};}
+
+};
+
+const menuContent=document.querySelector('.menu-main'),menuActions=document.querySelector('.menu-actions');
+const moreHint=document.createElement('div');moreHint.className='menu-more';moreHint.textContent='▼ more';ui.menu.append(moreHint);
+function updateMenuOverflow(){
+  menuContent.style.setProperty('--actions-height',menuActions.getBoundingClientRect().height+'px');
+  const more=menuContent.scrollHeight-menuContent.clientHeight-menuContent.scrollTop>2;
+  ui.menu.classList.toggle('has-more',more);
+  moreHint.style.bottom=(document.querySelector('.controls').getBoundingClientRect().height+menuActions.getBoundingClientRect().height+4)+'px';
+}
+menuContent.addEventListener('scroll',updateMenuOverflow);new ResizeObserver(updateMenuOverflow).observe(menuContent);new ResizeObserver(updateMenuOverflow).observe(menuActions);updateMenuOverflow();

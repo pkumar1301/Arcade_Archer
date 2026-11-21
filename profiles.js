@@ -83,7 +83,7 @@ function importCode(code) {
   const data = JSON.parse(decodeURIComponent(escape(atob(m[1]))));
   const p = blankProfile(cleanName(data.name) || 'Soldier');
   p.created = data.created || p.created;
-  p.settings = { difficulty: DIFFS.includes(data.settings?.difficulty) ? data.settings.difficulty : 'medium' };
+  p.settings = { difficulty: DIFFS.includes(data.settings?.difficulty) ? data.settings.difficulty : 'medium', leakWarningSeen: data.settings?.leakWarningSeen === true };
   const st = data.stats || {};
   p.stats = {
     runs: +st.runs || 0, wins: +st.wins || 0, totalCoins: +st.totalCoins || 0,
