@@ -24,6 +24,8 @@ import { HDRLoader } from './vendor/HDRLoader.js'; // v5: real dusk HDRI (r180 e
 import { initProfiles, recordRun, activeProfile, saveSetting } from './profiles.js'; // V7
 import { loadSoldier } from './soldier.js'; // V10: animated Mixamo soldier
 import { createMusic } from './music.js'; // V11: original chiptune soundtrack
+import { LEVELS, NEW_DAMAGE, BUGGY, BEE, MINI, MUSHROOM, BOSS, WEAPONS } from './levels.js'; // V14: Forest campaign data
+import { progressFor, recordLevel } from './profiles.js'; // V14
 
 const ui = Object.fromEntries([...document.querySelectorAll('[id]')].map(el => [el.id, el]));
 const scene = new T.Scene();
@@ -67,7 +69,7 @@ new HDRLoader().load('art/qwantani_dusk_1_1k.hdr', tex => {
   scene.environmentIntensity = .55;
   tex.dispose(); pmrem.dispose();
 }, undefined, () => proceduralEnv());
-scene.add(new T.HemisphereLight(0x8fa3b0, 0x1e2a16, 1.0)); // V8: brighter morning sky fill // cool dusk sky, dark ground
+const hemi = new T.HemisphereLight(0x8fa3b0, 0x1e2a16, 1.0); scene.add(hemi); // V8: brighter morning sky fill // cool dusk sky, dark ground
 const sun = new T.DirectionalLight(0xffb36a, 2.2); // low warm dusk sun
 sun.position.set(-20, 27, -8);
 sun.castShadow=true;
@@ -150,7 +152,8 @@ const DIFFICULTIES = {
     maxNearby: 4,          // no new wave while this many enemies are ahead
     turretRate: .45, mothRate: .25, boltSpeed: 9,
     encounterShooters: .34, firstShot: .7, // V11: some fixed drones fire too; first shot comes sooner
-    aimAssist: .12, startCharges: 3, encounterKeep: .15
+    aimAssist: .12, startCharges: 3, encounterKeep: .15,
+    featureKeep: .5, pitKeep: .5, beeHoverTime: 12 // V14: L2-L5 keep half their new enemies and loose pits on Easy
   },
   medium: {
     label: 'Medium', blurb: 'Aim carefully. Health returns only through green drops.',
@@ -160,7 +163,8 @@ const DIFFICULTIES = {
     waveInterval: 10, initialWaveDelay: 0, waveMoths: 3, waveShooters: 2, waveDistance: 48, maxNearby: 5,
     turretRate: .7, mothRate: .38, boltSpeed: 10.5,
     encounterShooters: .34, firstShot: .4,
-    aimAssist: .08, startCharges: 2, encounterKeep: .8
+    aimAssist: .08, startCharges: 2, encounterKeep: .8,
+    featureKeep: 1, pitKeep: 1, beeHoverTime: 16
   },
   hard: {
     label: 'Hard', blurb: 'Relentless pressure. Aim, dodge, and protect your health.',
@@ -170,7 +174,8 @@ const DIFFICULTIES = {
     waveInterval: 6.25, initialWaveDelay: 0, waveMoths: 3, waveShooters: 3, waveDistance: 45, maxNearby: 7,
     turretRate: .7, mothRate: .34, boltSpeed: 12,
     encounterShooters: 0, firstShot: 0, // Hard stays exactly V6
-    aimAssist: .06, startCharges: 1, encounterKeep: 1
+    aimAssist: .06, startCharges: 1, encounterKeep: 1,
+    featureKeep: 1, pitKeep: 1, beeHoverTime: 20
   }
 };
 let difficultyKey = 'medium';
@@ -309,16 +314,21 @@ function addGlow(parent, x, y, z, color, scale, opacity=.8) {
 // camera-facing billboard. Gameplay hitboxes stay as invisible meshes, so
 // aiming, cover and balance are unchanged from V7.
 const spriteLoader = new T.TextureLoader();
+let envTracking = true, envCourse = false; const envSprites = []; // V14: scenery sprites, tinted per lighting preset
 const spriteTextures = {};
 function spriteTexture(name) {
   if (!spriteTextures[name]) {
-    const t = spriteLoader.load('art/sprites/' + name + '.png');
+    const t = spriteLoader.load(name.includes('/') ? 'art/' + name + '.png' : 'art/sprites/' + name + '.png'); // V14: 'jungle-biome/x' paths
     t.colorSpace = T.SRGBColorSpace; t.anisotropy = 4;
     spriteTextures[name] = t;
   }
   return spriteTextures[name];
 }
-const SPRITE_ASPECT = {"drone_rotor":1.6203,"crawler_armored":1.9296,"turret_flower":0.9935,"enemy_hive_bee":1.6769,"enemy_lantern_drone":1.1212,"enemy_leaf_buggy":1.4741,"enemy_vine_serpent":1.5515,"enemy_mech_raptor":1.4328,"enemy_manta":2.5859,"enemy_stone_tortoise":1.0226,"enemy_eye_wisp":0.8542,"boss_beetle_tank":1.2152,"drone_front":1.701,"crawler_front":1.5315,"turret_front":0.907,"drone_angle":1.557,"crawler_angle":1.561,"turret_angle":1.0236,"prop_log":2.5983,"prop_thorn":1.835,"prop_fern":1.8624,"prop_rocks":2.527,"prop_pit":2.5296,"soldier_front":0.4427,"soldier_back":0.4245,"soldier_side":0.2357,"icon_multishot":1.024,"icon_fire_rain":0.9961,"icon_orb_blaster":1.0119,"icon_light_cannon":1.0802,"icon_prism":0.9258,"icon_heart":1.1584,"icon_gem_shield":0.9688,"icon_gem_shield_plus":1.9394,"weapon_rifle":1.4798,"weapon_dual":1.1963,"weapon_launcher":1.2075,"weapon_triple":1.2249,"weapon_lance":1.9248,"weapon_orb":1.1963,"icon_grenade":0.8828,"icon_charge_cell":0.8086,"icon_dual":1.1636,"icon_auto":0.9727,"icon_click":0.9883,"icon_reload":0.8984,"icon_shield":1.0,"icon_charge":1.0039,"icon_power1":1.0039,"icon_power2":0.7305,"icon_power3":0.7969,"icon_coin":0.9609,"icon_magnet":1.148,"icon_health":0.9258,"tree_kapok":1.0446,"tree_fig":0.8134,"tree_palm":0.6334,"tree_hardwood":0.9406,"canopy_vines":2.0237,"log_cross":3.9844,"cover_stump":1.0145,"cover_boulder":1.0883,"cover_stone":1.0907,"plant_monstera":1.1222,"plant_paradise":1.0924,"plant_bromeliad":1.2937,"plant_grass":1.0098,"plant_mushroom_blue":0.9929,"plant_mushroom_orange":1.1078,"plant_broadleaf":1.2366,"plant_flowerbush":1.1174,"ruin_arch":1.2816,"ruin_tower":0.6387,"pit_rim":1.0044,"vfx_muzzle":1.0,"vfx_spark":1.0,"vfx_explosion_small":1.0,"vfx_explosion_big":1.0,"vfx_bolt":1.0,"vfx_heal":1.0,"vfx_coin":1.0,"vfx_shield":1.0};
+const SPRITE_ASPECT = {"drone_rotor":1.6203,"crawler_armored":1.9296,"turret_flower":0.9935,"enemy_hive_bee":1.6769,"enemy_lantern_drone":1.1212,"enemy_leaf_buggy":1.4741,"enemy_vine_serpent":1.5515,"enemy_mech_raptor":1.4328,"enemy_manta":2.5859,"enemy_stone_tortoise":1.0226,"enemy_eye_wisp":0.8542,"boss_beetle_tank":1.2152,"drone_front":1.701,"crawler_front":1.5315,"turret_front":0.907,"drone_angle":1.557,"crawler_angle":1.561,"turret_angle":1.0236,"prop_log":2.5983,"prop_thorn":1.835,"prop_fern":1.8624,"prop_rocks":2.527,"prop_pit":2.5296,"soldier_front":0.4427,"soldier_back":0.4245,"soldier_side":0.2357,"icon_multishot":1.024,"icon_fire_rain":0.9961,"icon_orb_blaster":1.0119,"icon_light_cannon":1.0802,"icon_prism":0.9258,"icon_heart":1.1584,"icon_gem_shield":0.9688,"icon_gem_shield_plus":1.9394,"weapon_rifle":1.4798,"weapon_dual":1.1963,"weapon_launcher":1.2075,"weapon_triple":1.7778,"weapon_lance":1.9248,"weapon_orb":1.1963,"icon_grenade":0.8828,"icon_charge_cell":0.8086,"icon_dual":1.1636,"icon_auto":0.9727,"icon_click":0.9883,"icon_reload":0.8984,"icon_shield":1.0,"icon_charge":1.0039,"icon_power1":1.0039,"icon_power2":0.7305,"icon_power3":0.7969,"icon_coin":0.9609,"icon_magnet":1.148,"icon_health":0.9258,"tree_kapok":1.0446,"tree_fig":0.8134,"tree_palm":0.6334,"tree_hardwood":0.9406,"canopy_vines":2.0237,"log_cross":3.9844,"cover_stump":1.0145,"cover_boulder":1.0883,"cover_stone":1.0907,"plant_monstera":1.1222,"plant_paradise":1.0924,"plant_bromeliad":1.2937,"plant_grass":1.0098,"plant_mushroom_blue":0.9929,"plant_mushroom_orange":1.1078,"plant_broadleaf":1.2366,"plant_flowerbush":1.1174,"ruin_arch":1.2816,"ruin_tower":0.6387,"pit_rim":1.0044,"vfx_muzzle":1.0,"vfx_spark":1.0,"vfx_explosion_small":1.0,"vfx_explosion_big":1.0,"vfx_bolt":1.0,"vfx_heal":1.0,"vfx_coin":1.0,"vfx_shield":1.0,
+  // V14: Forest campaign art
+  "jungle-biome/enemy_leaf_buggy_front":1.0908,"jungle-biome/prop_temple_lantern":.4345,"jungle-biome/vfx_spore_cloud_green":2.5382,
+  "jungle-biome/brood_pod_sealed":.872,"jungle-biome/brood_pod_hatching":.872,"jungle-biome/bg_temple_clearing_dusk":3.1787,
+  "boss_beetle_tank_siege":.875,"boss_beetle_tank_brood":.875,"boss_beetle_tank_rampage":.875,"boss_beetle_tank_critical":.875};
 // Unlit sprites read too bright against the dusk scene, so tint them down.
 function makeSprite(name, width, {tint=0xc9c9c9, own=false, bottom=null, height=null}={}) {
   const material = new T.SpriteMaterial({map: spriteTexture(name), color: tint, transparent: true, alphaTest: .12, depthWrite: true});
@@ -327,6 +337,7 @@ function makeSprite(name, width, {tint=0xc9c9c9, own=false, bottom=null, height=
   sp.scale.set(width, height ?? width / aspect, 1);
   if (bottom !== null) sp.center.set(.5, 0); // anchor the sprite's bottom edge
   sp.userData.own = own;
+  if (envTracking && !own) envSprites.push({sp, base: new T.Color(tint), course: envCourse}); // V14: scenery dims with the level's lighting
   return sp;
 }
 // V9: additive effect sprites (black background art from vfx.png).
@@ -459,6 +470,7 @@ for (let d = 3; d < finish + 30; d += 3.5) {
     scene.add(sp);
   }
 }
+envTracking = false; // V14: shared scenery is registered; course sprites register in buildCourse
 // Jungle floor at y = 0 (was y = -9 in the canopy build).
 // v5: real PBR ground — Poly Haven CC0 "Forest Floor" (1k): diffuse +
 // roughness + normal maps. The procedural canvas is the base; the real maps
@@ -764,7 +776,7 @@ function makeThorn(x, d) {
   const art = makeSprite('prop_thorn', 2.6, {bottom:true});
   art.position.y = -.55;
   bush.add(art);
-  scene.add(bush);
+  courseGroup.add(bush);
   return bush;
 }
 const hazards = [];
@@ -793,22 +805,75 @@ const hazardPattern = [
   ['log',305,0],['thorn',305,3],['pothole',330,-2],
   ['log',350,0],['thorn',350,-3],
 ];
-const hazardCourse=extendCourse(hazardPattern.map(([kind,d,x])=>[d,kind,x]));
-for(let d=32,index=0;d<finish-15;d+=38,index++){
-  const side=index%2?1:-1;
-  hazardCourse.push([d,'thorn',-side*3.4]); // V12: retain the authored pits, remove redundant extra pit pairs.
-  if(index%2===0) hazardCourse.push([d+14,'cover',side*1.6]);
+// V14: the course (hazards, cover, rocks, ferns, pits, coins) is built per level
+// into courseGroup. L1 is built first at load with the same random sequence as V13,
+// so Overgrown Trail is unchanged; its seed is kept so it rebuilds identically.
+const courseGroup = new T.Group(); scene.add(courseGroup);
+let hazardCourse = [], courseSeedL1 = null, currentLevel = LEVELS[0];
+function courseHazards(level) {
+  const H = level.hazards || {};
+  const course = extendCourse(hazardPattern.map(([kind,d,x])=>[d,kind,x]));
+  for(let d=32,index=0;d<finish-15;d+=38,index++){
+    const side=index%2?1:-1;
+    if((H.base!=='v13-light' && !(level.id>1 && DIFF.pitKeep<1)) || index%2===0) course.push([d,'thorn',-side*3.4]); // L3 and Easy L2-L5: every other thorn row // V12: retain the authored pits, remove redundant extra pit pairs.
+    if(index%2===0) course.push([d+14,'cover',side*1.6]);
+  }
+  if (H.base === 'v13-light') for (let i = course.length - 1; i >= 0; i--) if (course[i][1] === 'pothole') course.splice(i, 1); // pit gates replace the loose pits
+  if (level.id > 1 && DIFF.pitKeep < 1) { let acc = 0; for (let i = 0; i < course.length; i++) if (course[i][1] === 'pothole') { acc += DIFF.pitKeep; if (acc >= 1) acc -= 1; else course.splice(i--, 1); } } // Easy: fewer loose pits
+  const near = (d, x, gap = 7, lat = 3.4) => course.some(([hd,, hx]) => Math.abs(hd - d) < gap && Math.abs(hx - x) < lat);
+  // L3: pit gates. Two pits across the path leave one safe lane; buggies charge down lanes.
+  const gates = [[-3.4, .4], [-.4, 3.4], [-3.6, 3.6], [-3.4, .4], [-.6, 3.6], [-3.6, 3.6], [-.4, 3.4]];
+  for (let i = 0; i < (H.pitGates || 0); i++) {
+    const d = 120 + i * 105;
+    if (d > finish - 70) break;
+    for (const x of gates[i % gates.length].slice(0, DIFF.pitKeep < 1 ? 1 : 2)) course.push([d, 'pothole', x]); // Easy: one pit per gate
+  }
+  // L5: denser pits and thorns.
+  for (let i = 0; i < Math.round((H.extraPits || 0) * DIFF.featureKeep); i++) {
+    let d = 150 + i * 120, x = i % 2 ? 3 : -3;
+    while (near(d, x, 9)) d += 4;
+    if (d < finish - 70) course.push([d, 'pothole', x]);
+  }
+  for (let i = 0; i < Math.round((H.extraThorns || 0) * DIFF.featureKeep); i++) {
+    let d = 95 + i * 101, x = i % 2 ? -1.8 : 1.8;
+    while (near(d, x, 5, 2.4)) d += 3;
+    if (d < finish - 65) course.push([d, 'thorn', x]);
+  }
+  // L2: a turret every 70-90 m, each with cover in front of it.
+  const tur = level.enemies?.turrets;
+  if (tur) for (const t of turretPlan(level)) {
+    let d = t.d - tur.coverGap, x = T.MathUtils.clamp(t.x * .55, -2.6, 2.6);
+    while (near(d, x, 4, 2.8)) d -= 2;
+    course.push([d, 'cover', x]);
+  }
+  return course;
 }
+// L2 turret gauntlet positions (shared by the course and the encounter list).
+function turretPlan(level) {
+  const tur = level.enemies?.turrets; if (!tur) return [];
+  const out = [], [a, b] = tur.every;
+  for (let d = tur.start, i = 0; d < finish - 65; d += a + ((i * 37) % (b - a + 1)), i++) out.push({d, x: i % 2 ? 3.2 : -3.2});
+  return out;
+}
+function buildCourse(level) {
+  currentLevel = level; builtFor = DIFF;
+  for (let i = envSprites.length - 1; i >= 0; i--) if (envSprites[i].course) envSprites.splice(i, 1);
+  envTracking = envCourse = true;
+  courseGroup.clear();
+  hazards.length = 0; solids.length = 0; solids.push(...gatePosts); softZones.length = 0; shotBlockers.length = 0;
+  if (courseSeedL1 === null) courseSeedL1 = seed; // first build at load is L1
+  seed = level.id === 1 ? courseSeedL1 : 9000 + level.id * 131;
+  hazardCourse = level.boss ? [] : courseHazards(level);
 for(const [d,kind,x] of hazardCourse) {
   let mesh;
   if(kind==='cover'){
-    mesh=shape(scene,box,colors.bark,center(d)+x,.68,-d,2.5,1.36,1.3);
+    mesh=shape(courseGroup,box,colors.bark,center(d)+x,.68,-d,2.5,1.36,1.3);
     shotBlockers.push(mesh);
-    solids.push({d, x, hw:1.25, hd:.65, h:1.36}); // V11: cover is solid
+    solids.push({d, x, hw:1.25, hd:.65, h:1.36, cover:true}); // V11: cover is solid
     mesh.material=ghostMaterial; // V8: fallen-log art over the same cover box
     const art=makeSprite(pick(['cover_stump','cover_boulder','cover_stone']),2.7,{bottom:true,height:1.75,tint:0xd0d0c8});
     art.position.set(center(d)+x,0,-d+.2);
-    scene.add(art);
+    courseGroup.add(art);
   } else if (kind === 'thorn') {
     // v3: thorn bush beside the log — jump the log at the centre, steer
     // around the thorns. Same d as the log, offset ±3 m to the side.
@@ -817,16 +882,16 @@ for(const [d,kind,x] of hazardCourse) {
   } else if (kind === 'log') {
     // Rounded log: cylinder lying across the corridor, same centre,
     // length 12 and diameter 0.8 as the old box log.
-    mesh = shape(scene, pole, colors.wood, center(d), 0.4, -d, .48, 12, .48);
+    mesh = shape(courseGroup, pole, colors.wood, center(d), 0.4, -d, .48, 12, .48);
     mesh.rotation.z = Math.PI / 2;
     shotBlockers.push(mesh);
     solids.push({d, x:0, hw:7, hd:.45, h:.7}); // V11: logs block you until you jump them
     mesh.material = ghostMaterial; // V9: log art over the same blocker
     const art = makeSprite('log_cross', 12.8, {bottom: true, height: 1.85, tint: 0xd2d2ca});
     art.position.set(center(d), -.12, -d + .3);
-    scene.add(art);
+    courseGroup.add(art);
   } else {
-    mesh = shape(scene, orb, pitMat, center(d) + x, 0.055, -d, 1.75, 0.08, 1.8);
+    mesh = shape(courseGroup, orb, pitMat, center(d) + x, 0.055, -d, 1.75, 0.08, 1.8);
   }
   if(kind==='pothole'){
     // V9: painted pit rim lying flat; its centre is transparent so the real pit shows.
@@ -834,13 +899,13 @@ for(const [d,kind,x] of hazardCourse) {
     rim.rotation.x=-Math.PI/2;
     rim.rotation.z=random()*Math.PI*2;
     rim.position.set(center(d)+x,.035,-d);
-    scene.add(rim);
+    courseGroup.add(rim);
   }
   hazards.push({kind, d, x, mesh, hit:false});
 }
 
 // V11: rock piles (solid, jumpable) and fern clumps (slow you) in the path.
-{
+if (!level.boss) {
   const lanes = [-3.8, -1.4, 1.4, 3.8];
   const clear = (d, x) => !hazards.some(h => Math.abs(h.d - d) < 6 && Math.abs(h.x - x) < 3.2)
     && Math.abs(((d + 30) % 60) - 30) > 4 && d > 20 && d < finish - 15;
@@ -849,18 +914,36 @@ for(const [d,kind,x] of hazardCourse) {
     if (!clear(d, x)) continue;
     if (i % 2 === 0) {
       const art = makeSprite('prop_rocks', 2.0, {bottom: true, tint: 0xb4b4b0});
-      art.position.set(center(d) + x, -.04, -d); scene.add(art);
-      shotBlockers.push(shape(scene, box, ghostMaterial, center(d) + x, .35, -d, 1.6, .7, 1.1));
+      art.position.set(center(d) + x, -.04, -d); courseGroup.add(art);
+      shotBlockers.push(shape(courseGroup, box, ghostMaterial, center(d) + x, .35, -d, 1.6, .7, 1.1));
       solids.push({d, x, hw: .8, hd: .55, h: .7});
       hazards.push({kind: 'rock', d, x, mesh: art, hit: true});
     } else {
       const art = makeSprite('prop_fern', 2.2, {bottom: true, tint: 0xb8c2b0});
-      art.position.set(center(d) + x, -.04, -d); scene.add(art);
+      art.position.set(center(d) + x, -.04, -d); courseGroup.add(art);
       softZones.push({d, x, hw: 1.0, hd: .8});
       hazards.push({kind: 'fern', d, x, mesh: art, hit: true});
     }
   }
 }
+  // L5: temple lanterns light the night route (prop_temple_lantern).
+  nightLanterns.length = 0;
+  for (let i = 0; i < (level.hazards?.lanterns || 0); i++) {
+    const d = 30 + i * (finish - 60) / Math.max(1, level.hazards.lanterns - 1), side = i % 2 ? 1 : -1;
+    const lamp = makeSprite('jungle-biome/prop_temple_lantern', 1.15, {bottom: true, tint: 0xd8c8b0});
+    lamp.position.set(center(d) + side * 7.0, -.05, -d); courseGroup.add(lamp);
+    const glow = addGlow(courseGroup, center(d) + side * 7.0, 1.65, -d + .05, 0xffa640, 2.4, .9); glow.material.fog = false;
+    nightLanterns.push({d, x: center(d) + side * 7.0});
+  }
+  if (level.boss) buildArena(); else if (arena.group) arena.group.visible = false;
+  finishGate.visible = finishLine.visible = !level.boss;
+  for (const g of gateLanterns) g.visible = !level.boss;
+  rebuildFloor();
+  buildCoinLines();
+  envTracking = envCourse = false;
+  applyLighting(level.light);
+}
+const nightLanterns = []; let builtFor = null;
 // v5: neon path edges, from the Meridian screenshots — warm red/orange on
 // the LEFT, cool cyan on the RIGHT, so left/right read at a glance and the
 // dark path gets its contrast from the edges, not from daylight.
@@ -890,6 +973,7 @@ for (let d = 40; d < finish; d += 40) {
   }
 }
 // Cut pit openings into the ground so the soldier can visibly fall below it.
+function rebuildFloor() {
 const floorOutline=new T.Shape();
 const floorHalfLength=(finish+440)/2;
 floorOutline.moveTo(-300,-floorHalfLength);
@@ -902,15 +986,15 @@ for(const h of hazards.filter(h=>h.kind==='pothole')){
   const hole=new T.Path();
   hole.absarc(x,h.d-finish/2,1.75,0,Math.PI*2,true);
   floorOutline.holes.push(hole);
-  scene.remove(h.mesh);
+  courseGroup.remove(h.mesh);
   const wall=new T.Mesh(new T.CylinderGeometry(1.75,1.6,1.8,24,1,true),
     new T.MeshStandardMaterial({color:0x3a2616,side:T.DoubleSide,roughness:1}));
   wall.position.set(x,-.9,-h.d);
-  scene.add(wall);
+  courseGroup.add(wall);
   const bottom=new T.Mesh(new T.CircleGeometry(1.6,24),pitMat);
   bottom.rotation.x=-Math.PI/2;
   bottom.position.set(x,-1.8,-h.d);
-  scene.add(bottom);
+  courseGroup.add(bottom);
 }
 forestFloor.geometry.dispose();
 forestFloor.geometry=new T.ShapeGeometry(floorOutline,16);
@@ -919,6 +1003,7 @@ for(let i=0;i<floorUV.count;i++){
   floorUV.setXY(i,floorUV.getX(i)/600+.5,floorUV.getY(i)/(finish+440)+.5);
 }
 floorUV.needsUpdate=true;
+}
 // ---- Enemies, Phase 1 only: beetle (standard), turret (fortification),
 // moth in waves of 5 (zipper). No glider in Phase 1 — it is deferred.
 // x is the lateral offset from the corridor centre. Moth waves are listed
@@ -976,11 +1061,15 @@ const grenades = []; // v4: lobbed grenades in flight (Power Attack)
 const pickups = [];
 const coinGeometry = new T.CylinderGeometry(.22,.22,.075,32); // smooth coins
 const coinLines = [];
+function buildCoinLines() {
+coinLines.length = 0;
+if (currentLevel.boss) return;
+const pits = hazardCourse.filter(([depth,kind])=>kind==='pothole');
 for (let d = 10; d < finish; d += 20) {
-  const nearest=hazardCourse.filter(([depth,kind])=>kind==='pothole')
-    .reduce((best,h)=>Math.abs(h[0]-d)<Math.abs(best[0]-d)?h:best);
+  const nearest=pits.length ? pits.reduce((best,h)=>Math.abs(h[0]-d)<Math.abs(best[0]-d)?h:best) : [1e9,'',0];
   const lane=Math.abs(nearest[0]-d)<12 ? -Math.sign(nearest[2])*4.7 : ((Math.floor(d/20)%3)-1)*3;
   coinLines.push({d,lane});
+}
 }
 const coins = [];
 const effects = [];
@@ -1077,7 +1166,7 @@ function message(text, seconds = 2.2) {
   notice = seconds;
 }
 function remove(entry) {
-  scene.remove(entry.mesh);if(entry.aimLine)scene.remove(entry.aimLine);stopChargeSound(entry);
+  scene.remove(entry.mesh);if(entry.aimLine)scene.remove(entry.aimLine);if(entry.marker)scene.remove(entry.marker.mesh);stopChargeSound(entry);
 }
 function membrane(points, camber) {
   const contour=new T.Shape(points.map(([x,z])=>new T.Vector2(x,z)));
@@ -1153,7 +1242,20 @@ function spawn(config) {
         shape(mesh,smoothOrb,colors.gold,x*.55,.35,z*.55,.05,.05,.05); // v5: panel bolts
       }
       break;
+    // V14: Forest campaign enemies. Hit volumes are invisible; the art is a sprite.
+    case 'buggy': body=shape(mesh,box,mat.beetle,0,1.0,0,2.3,1.55,1.3); break;
+    case 'bee': body=shape(mesh,smoothOrb,mat.beetle,0,.1,0,1.55,.9,.7); break;
+    case 'mini': body=shape(mesh,smoothOrb,mat.moth,0,0,0,.34,.26,.32); break;
+    case 'mushroom': body=shape(mesh,smoothOrb,mat.petals,0,.8,0,.75,.75,.55); break;
   }
+  const parts=[]; // V14: separate weak points (buggy seed pods, hive bee belly)
+  const partGlow=(x,y,z,size)=>{const g=new T.Sprite(new T.SpriteMaterial({map:weakGlowTexture,blending:T.AdditiveBlending,depthWrite:false,transparent:true,fog:false}));g.position.set(x,y,z);g.scale.set(size,size,1);mesh.add(g);return g;};
+  if(config.type==='buggy'){
+    const W=2.8,H=W/SPRITE_ASPECT['jungle-biome/enemy_leaf_buggy_front'];
+    for(const fx of [.25,.42,.59,.76]){const x=(fx-.5)*W,y=(1-.13)*H;parts.push({mesh:shape(mesh,smoothOrb,mat.beetle,x,y,.35,.28,.28,.28),glow:partGlow(x,y,.45,.62),hp:BUGGY.podHp,x,y});}
+  }
+  if(config.type==='bee'){const W=4,H=W/SPRITE_ASPECT.enemy_hive_bee,bx=(.55-.5)*W,by=-.12*H;const dot=new T.Sprite(new T.SpriteMaterial({map:weakTexture,depthWrite:false,fog:false}));dot.position.set(bx,by,.6);dot.scale.set(.42,.42,1);mesh.add(dot);
+    parts.push({mesh:shape(mesh,smoothOrb,mat.beetle,bx,by,.4,.5,.45,.35),glow:partGlow(bx,by,.55,1.4),dot,belly:true,hp:Infinity});}
   const halo=new T.Mesh(new T.TorusGeometry(.75,.025,8,48), new T.MeshBasicMaterial({color:0xff2a3a,transparent:true,opacity:1,depthTest:false,depthWrite:false}));
   const haloGlow=new T.Mesh(new T.TorusGeometry(.75,.065,8,48),new T.MeshBasicMaterial({color:0xff2a3a,transparent:true,opacity:.3,blending:T.AdditiveBlending,depthTest:false,depthWrite:false}));haloGlow.renderOrder=99;halo.add(haloGlow);
   halo.position.set(0,config.type==='turret'?.81:.22,.25);halo.renderOrder=100;mesh.add(halo);
@@ -1176,6 +1278,10 @@ function spawn(config) {
   ghostify(mesh, [halo, haloGlow, fireCore, targetRing, weakPoint, weakGlow]);
   const art = config.type==='moth' ? makeSprite('drone_front', 2.2, {own:true})
     : config.type==='beetle' ? makeSprite('crawler_front', 2.1, {own:true})
+    : config.type==='buggy' ? makeSprite('jungle-biome/enemy_leaf_buggy_front', 2.8, {own:true, bottom:true})
+    : config.type==='bee' ? makeSprite('enemy_hive_bee', 4, {own:true})
+    : config.type==='mini' ? makeSprite('drone_front', 2.2*MINI.scale, {own:true})
+    : config.type==='mushroom' ? makeSprite('plant_mushroom_blue', 1.7, {own:true, bottom:true})
     : makeSprite('turret_front', 2.3, {own:true});
   if (config.type==='beetle') art.position.y = 2.1/SPRITE_ASPECT.crawler_front/2 - .55;
   if (config.type==='turret') art.position.y = 2.3/SPRITE_ASPECT.turret_front/2 - 1.0;
@@ -1183,8 +1289,9 @@ function spawn(config) {
   motion.length = 0;
   scene.add(mesh);
   art.material.fog=false; // V13: enemies stay readable at range; they fade in instead
-  if(!config.training) runStats.spawned++;
-  return {...config,mesh,body,halo,fireCore,aimLine,targetRing,shell,motion,weakPoint,weakGlow,art,hp:config.type==='moth'?2:6,shot:-(config.shotDelay ?? 0)+(config.firstShot ?? 0),range:0,flash:0};
+  if(!config.training && !config.minor) runStats.spawned++; // V14: mini-drones and mushrooms are not counted
+  const hp={moth:2,buggy:BUGGY.hp,bee:BEE.hp,mini:MINI.hp,mushroom:MUSHROOM.hp}[config.type] ?? 6;
+  return {...config,mesh,body,halo,fireCore,aimLine,targetRing,shell,motion,weakPoint,weakGlow,art,parts,hp,maxHp:hp,shot:-(config.shotDelay ?? 0)+(config.firstShot ?? 0),range:0,flash:0,stun:0};
 }
 // V12: red means incoming fire; cyan means an exposed weak point.
 const warningCanvas=document.createElement('canvas');warningCanvas.id='shotWarnings';ui.game.append(warningCanvas);
@@ -1265,13 +1372,18 @@ function reset() {
     list.forEach(remove);
     list.length = 0;
   }
+  clearSpores(); waveCount=0; // V14
+  resetFinish(); // V14: before spawning, so the run's stats count this level's enemies
+  const lvl=currentLevel;
+  if(!lvl.boss){
   targets.push(spawn({d:DIFF.tutorialDistance,type:'moth',x:0,training:true,shooter:false}));
-  targets.push(...encountersFor(DIFF.encounterKeep).map((e,i)=>spawn({...e, shooter: e.type==='moth' && ((i*0.618)%1) < DIFF.encounterShooters, firstShot: DIFF.firstShot})));
-  for(const d of (difficultyKey==='easy'?[520]:[180,520,840])) for(let i=0;i<3;i++) targets.push(spawn({d:d+i*2,type:'beetle',x:(i-1)*1.5,groupId:'pack-'+d}));
+  targets.push(...levelEncounters(lvl).map((e,i)=>{const t=spawn({...e, shooter: e.type==='moth' && ((i*0.618)%1) < DIFF.encounterShooters, firstShot: DIFF.firstShot});if(e.type==='buggy')t.state='wait';return t;}));
+  if(lvl.waves.crawler) for(const d of (difficultyKey==='easy'?[520]:[180,520,840])) for(let i=0;i<3;i++) targets.push(spawn({d:d+i*2,type:'beetle',x:(i-1)*1.5,groupId:'pack-'+d}));
+  }
   dropCycle=0; earnedDrops=0; healthGroups.clear(); logPrompts.clear(); bumpNotice=0;
   leakWarned=Boolean(activeProfile()?.settings?.leakWarningSeen);
-  for(let i=0;i<DIFF.freeDrops;i++) { let d=finish*DIFF.freeDropFractions[i]; while(hazards.some(h=>Math.abs(h.d-d)<4 && Math.abs(h.x)<2) || solids.some(o=>Math.abs(o.d-d)<4 && Math.abs(o.x)<2)) d+=1; addHealthDrop(d,0,false); }
-  exposedDrops=hazards.filter(h=>h.kind==='thorn' && h.d>finish*.25 && h.d<finish*.8).filter((h,i)=>i%8===0).slice(0,DIFF.earnedDropsMax).map(h=>({d:h.d+3,lane:h.x,spawned:false}));
+  if(!lvl.boss) for(let i=0;i<DIFF.freeDrops;i++) { let d=finish*DIFF.freeDropFractions[i]; while(hazards.some(h=>Math.abs(h.d-d)<4 && Math.abs(h.x)<2) || solids.some(o=>Math.abs(o.d-d)<4 && Math.abs(o.x)<2)) d+=1; addHealthDrop(d,0,false); }
+  exposedDrops=lvl.boss?[]:hazards.filter(h=>h.kind==='thorn' && h.d>finish*.25 && h.d<finish*.8).filter((h,i)=>i%8===0).slice(0,DIFF.earnedDropsMax).map(h=>({d:h.d+3,lane:h.x,spawned:false}));
   for (const e of targets.filter(e=>e.type==='beetle')) { e.groupId ||= 'fixed-'+Math.floor(e.d/80); registerHealthGroup(e); }
   for (const line of coinLines) {
     for (let i=0;i<4;i++) {
@@ -1286,7 +1398,6 @@ function reset() {
   distance = lateral = jumpY = jumpVel = 0;
   recoilTimer = 0; shake=0; aimSmooth.x = aimSmooth.y = 0;
   incomingWave=null;finalWaveState=0;waveSide=1; // V13
-  resetFinish();
   pressureTimer=DIFF.initialWaveDelay;
   trappedPit=null;
   pointer.set(0,0);
@@ -1302,7 +1413,10 @@ function reset() {
   AIM_ASSIST_ANGLE=DIFF.aimAssist;
   level=1;
   dual=false;
-  message('W to run · S to stop · Space to jump · Hold left click to fire.', 4);
+  bank=progressFor(difficultyKey).coins; if(!weaponUnlocked(weapon)) weapon='rifle'; weaponHud(); // V14
+  ui.levelLabel.textContent=lvl.boss?'FOREST BOSS · '+lvl.name.toUpperCase():'LEVEL '+lvl.id+' / 5 · '+lvl.name.toUpperCase();
+  if(lvl.boss){ distance=ARENA_D; startBoss(); } else { stopBoss();
+  message(lvl.id===1?'W to run · S to stop · Space to jump · Hold left click to fire.':'L'+lvl.id+' · '+lvl.name, 3); }
   place(1);
   updateTargets(0);
   resetSoldier(); // V10
@@ -1315,16 +1429,21 @@ function setMode(next) {
   held.clear();
   ui.game.classList.toggle('active', mode === 'play');
   syncMusic();
-  ui.menu.hidden = mode === 'play' || mode === 'finish' || mode === 'results';
+  ui.menu.hidden = mode === 'play' || mode === 'finish' || mode === 'results' || mode === 'map';
   ui.results.hidden = mode !== 'results'; // V13
+  ui.levelSelect.hidden = mode !== 'map'; // V14
+  ui.bossbar.hidden = !(boss.active && (mode === 'play' || mode === 'finish' || mode === 'pause'));
+  ui.mapButton.hidden = mode === 'pause';
+  if (mode === 'menu' || mode === 'end') refreshMenuWeapons();
   warningCanvas.hidden=mode!=='play';
   ui.reticle.hidden = mode !== 'play';
-  ui.hud.hidden = mode === 'menu' || mode === 'results';
+  ui.hud.hidden = mode === 'menu' || mode === 'results' || mode === 'map';
   ui.levelbar.hidden = mode !== 'play' && mode !== 'finish';
   ui.speedo.hidden = mode !== 'play' && mode !== 'finish';
   if (mode !== 'play') ui.notice.textContent = '';
   if (mode === 'play' || mode === 'finish') ui.start.blur();
   else if (mode === 'results') ui.resultsRetry.focus();
+  else if (mode === 'map') ui.start.blur();
   else ui.start.focus();
 }
 let displayedItems;
@@ -1352,14 +1471,14 @@ function hud() {
   ui.score.textContent = String(score).padStart(4, '0');
   ui.health.firstElementChild.style.width = health + '%';
   ui.health.setAttribute('aria-valuenow', Math.round(health));
-  ui.coinCount.textContent = 'COINS ' + wallet;
+  ui.coinCount.textContent = 'COINS ' + (bank + wallet); // V14: banked coins carry over between levels
   ui.speed.textContent = currentSpeed.toFixed(1) + ' m/s';
-  ui.distance.textContent = Math.floor(distance) + ' / ' + finish + ' m';
+  ui.distance.textContent = currentLevel.boss ? 'ARENA' : Math.floor(distance) + ' / ' + finish + ' m';
   // v5: Meridian-style HUD — timer top-right, big speed bottom-right, progress bottom-left.
   ui.timer.textContent = formatTime(elapsed);
   ui.speedBig.textContent = Math.round(currentSpeed * 3.6);
   ui.speedbar.style.width = Math.min(100, currentSpeed / RUN_SPEED * 100) + '%';
-  ui.progress.style.width = Math.min(100, distance / finish * 100) + '%';
+  ui.progress.style.width = (currentLevel.boss ? Math.max(0, 100 - (boss.hp / (boss.max || 1)) * 100) : Math.min(100, distance / finish * 100)) + '%';
   const activeItems=[
     dual&&'dual',shield&&'shield',rapid>0&&'reload',heavy>0&&'heavy',
     autoTime>0&&'auto',charges>0&&'charge'
@@ -1384,10 +1503,10 @@ function showKillPop(text) {
 }
 function end(won) {
   setMode('end');
-  const best = recordRun({won, score, coins: coinCount, distance: Math.floor(distance), time: elapsed, difficulty: difficultyKey});
+  const best = recordRun({won, score, coins: coinCount, distance: Math.floor(distance), time: elapsed, difficulty: difficultyKey, level: currentLevel.id});
   if (musicEnabled && audio) music.play(won ? 'win' : 'lose', () => { if (mode === 'end' && musicEnabled) music.play('menu'); });
-  ui.message.textContent = (won ? 'Jungle cleared' : 'Run ended') + ' · ' + DIFF.label + ' · Score ' + score + ' · ' + Math.floor(distance) + ' m' + (best ? ' · New best!' : '');
-  ui.start.textContent = 'Run again';
+  if (currentLevel.boss) { bossToneOff(); ui.message.textContent = 'The Beetle Tank won · ' + DIFF.label + ' · tank health ' + Math.ceil(boss.hp) + ' / ' + boss.max + ' · Checkpoint: the fight restarts at the arena'; ui.start.textContent = 'Retry fight'; }
+  else { ui.message.textContent = (won ? 'Jungle cleared' : 'Run ended') + ' · L' + currentLevel.id + ' ' + currentLevel.name + ' · ' + DIFF.label + ' · Score ' + score + ' · ' + Math.floor(distance) + ' m' + (best ? ' · New best!' : ''); ui.start.textContent = 'Retry level'; }
   tone(won ? 660 : 150, .35);
 }
 function damage(amount, cause, bypassRecovery=false, flat=false) {
@@ -1451,11 +1570,18 @@ function place(smoothing) {
 // V13: recurring waves. Each wave enters from one side, ~2 s after a warning.
 const WAVE_WARNING=2, ENTRANCE_TIME=1.1;
 let incomingWave=null, waveSide=1, finalWaveState=0;
+let waveCount=0; // V14: per-level wave mix (levels.js waves)
 function spawnWave(drones, side, final=false){
-  const wave=Math.floor(elapsed/5), group='wave-'+wave+'-'+Math.floor(distance)+(final?'-final':'');
-  const count=drones+1; // last one is the crawler
+  const W=currentLevel.waves, wave=Math.floor(elapsed/5), group='wave-'+wave+'-'+Math.floor(distance)+(final?'-final':'');
+  waveCount++;
+  drones+=W.extraDrones;
+  if(W.buggyEvery && waveCount%W.buggyEvery===0){ // this wave brings a Leaf Buggy as well
+    const d=distance+DIFF.waveDistance;
+    const b=spawn({d,type:'buggy',x:0,groupId:group}); b.enterAt=Math.max(BUGGY.enterRange[0],DIFF.waveDistance-2); b.state='wait'; targets.push(b); registerHealthGroup(b);
+  }
+  const count=drones+(W.crawler?1:0); // last one is the crawler
   for(let i=0;i<count;i++){
-    const beetleSlot=i===count-1, memberSide=beetleSlot?side:(i%2?-side:side);
+    const beetleSlot=W.crawler && i===count-1, memberSide=beetleSlot?side:(i%2?-side:side);
     const d=distance+DIFF.waveDistance+i*1.6;
     const enemy=spawn({d,type:beetleSlot?'beetle':'moth',x:beetleSlot?side*2.4:memberSide*(i%3+1.5),
       entrySide:memberSide,shooter:!beetleSlot && i<DIFF.waveShooters+(final?1:0),shotDelay:i*.22,firstShot:DIFF.firstShot,
@@ -1488,23 +1614,28 @@ function waveSound(side){
     src.connect(f).connect(ng).connect(out);src.start(at);}
 }
 function updateTargets(dt) {
-  if(distance>=DIFF.warmupDistance && distance<finish-DIFF.breatherDistance) pressureTimer-=dt;
-  const nearby=targets.filter(e=>e.hp>0 && e.d-distance>-3 && e.d-distance<70).length;
-  const waveZone=distance>=DIFF.warmupDistance && distance<finish-DIFF.breatherDistance;
+  const course=!currentLevel.boss; // V14: the boss arena has no waves, final stretch or finish
+  if(course && distance>=DIFF.warmupDistance && distance<finish-DIFF.breatherDistance) pressureTimer-=dt;
+  const nearby=targets.filter(e=>e.hp>0 && !e.minor && e.d-distance>-3 && e.d-distance<70).length;
+  const waveZone=course && distance>=DIFF.warmupDistance && distance<finish-DIFF.breatherDistance;
   // V13: announce a wave ~2 s before it arrives (sound from its side + edge pointer).
   if(waveZone && !incomingWave && pressureTimer<=WAVE_WARNING && nearby<=DIFF.maxNearby) announceWave(waveSide=-waveSide);
   if(waveZone && pressureTimer<=0 && nearby<=DIFF.maxNearby){
-    pressureTimer=DIFF.waveInterval;
+    pressureTimer=DIFF.waveInterval*currentLevel.waves.intervalScale;
     spawnWave(DIFF.waveMoths, incomingWave?.side ?? (waveSide=-waveSide));
   }
   // V13: one final wave as the gate comes into view, then a clear run.
-  if(finalWaveState===0 && distance>=finish-DIFF.breatherDistance-12){finalWaveState=1;announceWave(waveSide=-waveSide);}
+  if(course && finalWaveState===0 && distance>=finish-DIFF.breatherDistance-12){finalWaveState=1;announceWave(waveSide=-waveSide);}
   if(finalWaveState===1 && distance>=finish-DIFF.breatherDistance){finalWaveState=2;spawnWave(DIFF.waveMoths+DIFF.finalWaveExtra,incomingWave?.side ?? waveSide,true);}
   if(incomingWave && elapsed>incomingWave.until) incomingWave=null;
   for (const enemy of targets) {
     if(distance<DIFF.warmupDistance && !enemy.training) {enemy.mesh.visible=false;stopChargeSound(enemy);continue;}
+    if(enemy.stun>0) enemy.stun-=dt; // V14: spore cloud stun
+    const stunned=enemy.stun>0;
+    if(SPECIAL_UPDATE[enemy.type]){ SPECIAL_UPDATE[enemy.type](enemy,dt,stunned); continue; }
     // Zipper moths fly toward the runner, so they close fast.
-    if (enemy.type === 'moth' && !enemy.training && enemy.hp > 0 && enemy.d-distance<70 && enemy.d-distance>-3) enemy.d -= dt * 3.5;
+    if (enemy.type === 'moth' && !stunned && !enemy.training && enemy.hp > 0 && enemy.d-distance<70 && enemy.d-distance>-3) enemy.d -= dt * 3.5;
+    if (enemy.walker && !stunned && enemy.hp > 0) enemy.d -= dt * BOSS.brood.crawlerSpeed; // V14: hatched crawlers walk at you
     const previousRange=enemy.range;
     enemy.range = enemy.d - distance;
     if(enemy.hp>0 && !enemy.passed && previousRange>0 && enemy.range<=0){
@@ -1515,7 +1646,7 @@ function updateTargets(dt) {
     const beat=elapsed*2.7+enemy.d;
     const beetle=enemy.type==='beetle', turret=enemy.type==='turret';
     // Beetles drift toward the runner's lateral position when close.
-    if (beetle && enemy.hp > 0 && enemy.range < 20 && enemy.range > 0) {
+    if (beetle && !stunned && enemy.hp > 0 && enemy.range < 20 && enemy.range > 0) {
       enemy.x += T.MathUtils.clamp(lateral - enemy.x, -dt * 1.5, dt * 1.5);
     }
     const offset=enemy.training ? 0 : beetle ? enemy.x
@@ -1536,6 +1667,7 @@ function updateTargets(dt) {
     else enemy.mesh.scale.setScalar(1);
     // V8: hit flash tints the art warm; drones bank as they weave.
     enemy.art.material.color.setRGB(.79 + enemy.flash * .21, .79 - enemy.flash * .35, .79 - enemy.flash * .45);
+    if (stunned) enemy.art.material.color.setRGB(.45, .95, .45); // V14: stunned enemies glow toxic green
     if (enemy.type==='moth') enemy.art.material.rotation = Math.cos(beat) * .14;
     const active=enemy.range>0 && enemy.range<=combatRange;
     enemy.weakPoint.visible=enemy.type!=='moth' && active && Math.sin(elapsed*1.5+enemy.d*.2)>.2;
@@ -1556,7 +1688,7 @@ function updateTargets(dt) {
       damage(DIFF.collisionDamage, 'Creature collision', false, true);
     }
     // Only turrets shoot in Phase 1.
-    if ((!turret && !(enemy.type==='moth' && enemy.shooter)) || enemy.range > 28 || enemy.range < 7) {stopChargeSound(enemy);continue;}
+    if ((!turret && !(enemy.type==='moth' && enemy.shooter)) || enemy.range > 28 || enemy.range < 7 || stunned) {stopChargeSound(enemy);continue;}
     enemy.shot += dt * (turret?DIFF.turretRate:DIFF.mothRate);
     updateChargeWarning(enemy,turret?DIFF.turretRate:DIFF.mothRate);
     if (enemy.shot < 1.5) continue;
@@ -1572,6 +1704,147 @@ function updateTargets(dt) {
   }
 }
 
+// ---- V14: Forest campaign enemies (brief section 14) ----
+// Red ground lane marker: a ribbon that follows the curved path along one lane.
+function makeLaneMarker(halfWidth) {
+  const N=28, pos=new Float32Array((N+1)*2*3), idx=[];
+  for(let i=0;i<N;i++){const a=i*2;idx.push(a,a+1,a+2,a+1,a+3,a+2);}
+  const geo=new T.BufferGeometry();geo.setAttribute('position',new T.BufferAttribute(pos,3));geo.setIndex(idx);
+  const mesh=new T.Mesh(geo,new T.MeshBasicMaterial({color:0xff2a3a,transparent:true,opacity:0,blending:T.AdditiveBlending,depthWrite:false,side:T.DoubleSide,fog:false}));
+  mesh.renderOrder=5;mesh.frustumCulled=false;scene.add(mesh);
+  return {mesh,update(dFrom,dTo,x,opacity){
+    for(let i=0;i<=N;i++){const d=dFrom+(dTo-dFrom)*i/N,c=center(d)+x;pos.set([c-halfWidth,.06,-d,c+halfWidth,.06,-d],i*6);}
+    geo.attributes.position.needsUpdate=true;geo.computeBoundingSphere();mesh.material.opacity=opacity;mesh.visible=opacity>0;}};
+}
+function enemyFade(enemy){
+  enemy.mesh.visible = enemy.hp > 0 && enemy.range > -3 && enemy.range < FADE_START;
+  enemy.art.material.opacity = T.MathUtils.clamp((FADE_START - enemy.range) / (FADE_START - FADE_END), 0, 1);
+  if (enemy.flash > 0) { enemy.flash = Math.max(0, enemy.flash - (enemy.lastDt||0) * 4); enemy.mesh.scale.setScalar(1 + enemy.flash * .12); } else enemy.mesh.scale.setScalar(1);
+  enemy.art.material.color.setRGB(.79 + enemy.flash * .21, .79 - enemy.flash * .35, .79 - enemy.flash * .45);
+  if (enemy.stun > 0) enemy.art.material.color.setRGB(.45, .95, .45);
+  enemy.weakPoint.visible = enemy.weakGlow.visible = false; enemy.halo.visible = enemy.aimLine.visible = false;
+  for (const p of enemy.parts) { p.glow.visible = enemy.mesh.visible && p.hp > 0; if (p.dot) p.dot.visible = p.glow.visible; const k = 1 + .12 * Math.sin(elapsed * 9 + p.x * 3); p.glow.scale.set(p.glow.userData.s ??= p.glow.scale.x, p.glow.userData.s, 1); p.glow.scale.multiplyScalar(k); }
+}
+function crossed(enemy, previousRange){ return enemy.hp>0 && !enemy.passed && previousRange>0 && enemy.range<=0; }
+function laneFor(x){ return [-3.3,0,3.3].reduce((a,b)=>Math.abs(b-x)<Math.abs(a-x)?b:a); }
+const SPECIAL_UPDATE = {
+  // Leaf Buggy: enters 45-50 m ahead, shows its lane for 1.5 s, then charges at 10 m/s.
+  buggy(e, dt, stunned) {
+    e.lastDt = dt;
+    const prev = e.range;
+    if (e.state === 'wait') {
+      e.range = e.d - distance; e.mesh.visible = false;
+      if (e.hp > 0 && e.range <= (e.enterAt ?? BUGGY.enterRange[1])) {
+        e.state = 'marker'; e.timer = BUGGY.markerTime; e.enter = 0; e.x = laneFor(lateral); e.entrySide = e.x >= 0 ? 1 : -1;
+        e.marker ||= makeLaneMarker(BUGGY.laneHalfWidth);
+        const at = vector(center(e.d) + e.entrySide * 8.5, .6, -e.d); burst(at, colors.leaves, 14); burst(at, colors.lightLeaves, 8);
+        tone(160, .3, .05);
+      }
+      return;
+    }
+    if (e.state === 'marker' && !stunned) { e.timer -= dt; if (e.timer <= 0) { e.state = 'charge'; e.speed = 2; tone(120, .4, .06); } }
+    if (e.state === 'charge' && !stunned && e.hp > 0) { e.speed = Math.min(BUGGY.chargeSpeed, e.speed + dt * 14); e.d -= e.speed * dt; }
+    e.range = e.d - distance;
+    if (crossed(e, prev)) {
+      e.passed = true;
+      if (e.groupId) healthGroups.get(e.groupId).failed = true;
+      if (Math.abs(lateral - e.x) < BUGGY.laneHalfWidth + .35 && jumpY < 1.3) {
+        e.hp = 0; spawnFx('vfx_explosion_small', e.mesh.position.clone().add(vector(0, 1, 0)), 3, .4);
+        const lost = damage(NEW_DAMAGE.buggyRam[difficultyKey], 'Leaf Buggy ram', false, true);
+        if (lost) healthFeedback('−' + lost + ' RAM', 'leak');
+      } else leakEnemy(e);
+    }
+    let drawX = e.x;
+    if (e.enter < 1) { e.enter = Math.min(1, e.enter + dt / .6); drawX = T.MathUtils.lerp(e.entrySide * 8.5, e.x, 1 - (1 - e.enter) ** 3); }
+    e.mesh.position.set(center(e.d) + drawX, e.state === 'charge' ? Math.abs(Math.sin(elapsed * 30)) * .05 : 0, -e.d);
+    e.mesh.rotation.y = -Math.atan((center(e.d + 1) - center(e.d - 1)) / 2);
+    enemyFade(e);
+    const showing = e.hp > 0 && (e.state === 'marker' || e.state === 'charge') && e.range > -2;
+    if (showing) e.marker.update(distance - 3, e.d - 1, e.x, (e.state === 'marker' ? .55 : .3) + .25 * Math.sin(elapsed * 14) ** 2);
+    else e.marker.mesh.visible = false;
+  },
+  // Hive bee: hovers 20-25 m ahead and releases 3 mini-drones every 4 s.
+  bee(e, dt, stunned) {
+    e.lastDt = dt;
+    e.range = e.d - distance;
+    if (!e.active && e.hp > 0 && e.range <= BEE.hover[1] && !targets.some(o => o !== e && o.type === 'bee' && o.active && o.hp > 0)) { e.active = true; e.release = 1.2; e.leaveAt = elapsed + DIFF.beeHoverTime; message('Hive bee · shoot the glowing belly', 2.4); }
+    if (e.active && e.hp > 0 && (distance > finish - 75 || elapsed > e.leaveAt)) { // it flies off after a while, and before the clear run
+      e.hp = 0; e.mesh.visible = false; spawnFx('vfx_spark', e.mesh.position, 2, .3); message('The hive bee flew off', 1.2); return;
+    }
+    if (e.active && e.hp > 0 && !stunned) {
+      const want = distance + (BEE.hover[0] + BEE.hover[1]) / 2 + Math.sin(elapsed * .7 + e.seed) * (BEE.hover[1] - BEE.hover[0]) / 2;
+      e.d += T.MathUtils.clamp(want - e.d, -dt * 7, dt * 7);
+      e.release -= dt;
+      if (e.release <= 0) {
+        e.release = BEE.releaseEvery;
+        for (let i = 0; i < BEE.minis; i++) {
+          const m = spawn({d: e.d - .5, type: 'mini', x: e.drawX + (i - 1) * 1.4, minor: true, groupId: undefined});
+          m.y0 = e.mesh.position.y - .4; m.seed = i * 2.1 + e.d; m.enter = 0; targets.push(m);
+        }
+        burst(e.mesh.position, colors.gold, 10); tone(520, .12, .05);
+      }
+    }
+    e.range = e.d - distance;
+    e.drawX = e.x + (stunned ? 0 : Math.sin(elapsed * 1.1 + e.seed) * 1.6);
+    e.mesh.position.set(center(e.d) + e.drawX, 3.7 + Math.sin(elapsed * 2.3 + e.seed) * .3, -e.d);
+    enemyFade(e);
+    e.art.material.rotation = Math.sin(elapsed * 1.7 + e.seed) * .08;
+  },
+  // Mini-drone: half-size drone, 1 HP, never shoots; flies at you and leaks.
+  mini(e, dt, stunned) {
+    e.lastDt = dt;
+    const prev = e.range;
+    if (!stunned && e.hp > 0) e.d -= dt * MINI.speed;
+    e.range = e.d - distance;
+    if (crossed(e, prev)) {
+      e.passed = true;
+      const lost = damage(NEW_DAMAGE.miniLeak[difficultyKey], 'Mini-drone got past', true, true);
+      if (lost) healthFeedback('−' + lost + ' LEAK', 'leak');
+    }
+    e.enter = Math.min(1, (e.enter ?? 1) + dt / .5);
+    const y = T.MathUtils.lerp(e.y0 ?? 3, 2.3 + Math.sin(elapsed * 5 + e.seed) * .25, e.enter);
+    e.mesh.position.set(center(e.d) + e.x + (stunned ? 0 : Math.sin(elapsed * 3.3 + e.seed) * .9), y, -e.d);
+    enemyFade(e);
+    if (e.range < -3) e.hp = 0;
+  },
+  // Spore mushroom: shoot it to release a stunning cloud.
+  mushroom(e, dt) {
+    e.lastDt = dt;
+    e.range = e.d - distance;
+    e.mesh.position.set(center(e.d) + e.x, 0, -e.d);
+    enemyFade(e);
+  }
+};
+// Spore clouds: stun enemies within 4 m for 2 s; the soldier walking through is slowed by 40%.
+const sporeClouds = [];
+function releaseSpores(at) {
+  const fx = new T.Sprite(new T.SpriteMaterial({map: spriteTexture('jungle-biome/vfx_spore_cloud_green'), transparent: true, depthWrite: false, blending: T.AdditiveBlending, fog: false}));
+  fx.scale.set(7, 7 / SPRITE_ASPECT['jungle-biome/vfx_spore_cloud_green'], 1); fx.position.copy(at).setY(1.3); scene.add(fx);
+  const cloud = {mesh: fx, at: fx.position.clone(), d: -at.z, until: elapsed + MUSHROOM.cloudTime, stunned: new Set()};
+  sporeClouds.push(cloud); stunNear(cloud);
+  tone(240, .35, .06); message('Spore cloud · enemies inside are stunned', 1.6);
+}
+function stunNear(cloud) {
+  for (const e of targets) {
+    if (e.hp <= 0 || e.type === 'mushroom' || cloud.stunned.has(e)) continue;
+    const p = e.mesh.position;
+    if (Math.hypot(p.x - cloud.at.x, p.z - cloud.at.z) < MUSHROOM.stunRadius) { e.stun = MUSHROOM.stunTime; cloud.stunned.add(e); e.charging = false; stopChargeSound(e); }
+  }
+}
+function updateSpores(dt) {
+  for (let i = sporeClouds.length - 1; i >= 0; i--) {
+    const c = sporeClouds[i], left = c.until - elapsed;
+    if (left <= 0) { scene.remove(c.mesh); sporeClouds.splice(i, 1); continue; }
+    c.mesh.material.opacity = Math.min(1, left / .6, (MUSHROOM.cloudTime - left) / .25 + .2);
+    c.mesh.scale.set(7 + (MUSHROOM.cloudTime - left) * .6, (7 + (MUSHROOM.cloudTime - left) * .6) / SPRITE_ASPECT['jungle-biome/vfx_spore_cloud_green'], 1);
+    stunNear(c);
+  }
+}
+function inSporeCloud() {
+  const x = center(distance) + lateral;
+  return sporeClouds.some(c => Math.hypot(c.at.x - x, c.at.z + distance) < MUSHROOM.cloudRadius);
+}
+function clearSpores() { for (const c of sporeClouds) scene.remove(c.mesh); sporeClouds.length = 0; }
 function tracer(from, to, mat = colors.gold) {
   const mesh = beam(scene,from,to,heavy > 0 ? .04 : .024,mat);
   effects.push({mesh, life:.075});
@@ -1591,14 +1864,18 @@ function strike(enemy, amount) {
   enemy.flash = 1; // v5: hit flash (scale pulse, see updateTargets)
   burst(enemy.mesh.position,enemy.hp>0?colors.gold:enemy.halo.material,enemy.hp>0?7:15);
   if (enemy.hp>0) {
-    message(enemy.type==='moth'?'Hit':enemy.vulnerable?'Core exposed':'Armored · aim for the glowing core',.75);
+    const hitText={buggy:'Armored · shoot the glowing seed pods',bee:'Hit · the glowing belly takes double',mini:'Hit'}[enemy.type]; // V14
+    message(hitText || (enemy.type==='moth'?'Hit':enemy.vulnerable?'Core exposed':'Armored · aim for the glowing core'),.75);
     return;
   }
   enemy.mesh.visible=false;enemy.aimLine.visible=false;enemy.halo.visible=false;stopChargeSound(enemy);
-  if(!enemy.training) runStats.kills++; // V13
-  spawnFx('vfx_explosion_small', enemy.mesh.position, enemy.type==='moth' ? 2.2 : 3, .4); // V9
-  score+=enemy.type==='moth' ? 100 : 180;
-  showKillPop(enemy.type==='moth' ? '+100' : '+180'); // v5: kill popup
+  if(enemy.marker) enemy.marker.mesh.visible=false;
+  if(enemy.type==='mushroom'){ releaseSpores(enemy.mesh.position.clone()); return; } // V14
+  if(!enemy.training && !enemy.minor) runStats.kills++; // V13
+  const points={moth:100,buggy:220,bee:250,mini:25}[enemy.type] ?? 180; // V14
+  spawnFx('vfx_explosion_small', enemy.mesh.position.clone().add(vector(0,enemy.type==='buggy'?1.2:0,0)), enemy.type==='moth' ? 2.2 : enemy.type==='mini' ? 1.4 : 3, .4); // V9
+  score+=points;
+  showKillPop('+'+points); // v5: kill popup
   tone(720);
   completeHealthGroup(enemy);
   if (!enemy.drop) return;
@@ -1619,7 +1896,11 @@ function fireBullet(direction,muzzle,damage,assist=true){
   // The camera selects an aim point. The muzzle owns the actual bullet path.
   const cameraRay=new T.Raycaster(camera.position,dir,0,combatRange);
   const candidates=targets.filter(e=>e.hp>0 && e.mesh.visible && e.range>0 && e.range<=combatRange);
-  const hitMeshes=candidates.flatMap(e=>e.weakPoint.visible?[e.body,e.weakPoint]:[e.body]);
+  // V14: hit parts. Bodies and V13 weak points as before, plus seed pods, bee bellies and the boss.
+  const parts=[];
+  for(const e of candidates){parts.push({mesh:e.body,e});if(e.weakPoint.visible)parts.push({mesh:e.weakPoint,e});for(const p of e.parts)if(p.hp>0)parts.push({mesh:p.mesh,e,part:p});}
+  if(boss.active) parts.push(...bossParts());
+  const hitMeshes=parts.map(p=>p.mesh);
   cameraRay.camera=camera;
   const sight=cameraRay.intersectObjects([...hitMeshes,...shotBlockers],false)[0];
   const aimPoint=sight?.point ?? camera.position.clone().addScaledVector(dir,combatRange);
@@ -1638,13 +1919,27 @@ function fireBullet(direction,muzzle,damage,assist=true){
   if(!hit) return;
   burst(hitPoint,colors.gold,5);
   spawnFx('vfx_spark', hitPoint, .9, .12); // V9
-  const enemy=candidates.find(e=>e.body===hit.object || e.weakPoint===hit.object);
-  if(!enemy) return;
+  const part=parts.find(p=>p.mesh===hit.object);
+  if(!part) return;
+  if(part.boss){ bossHit(part,damage); hitMarkerTimer=.15; ui.reticle.classList.add('hit'); return; }
+  const enemy=part.e;
+  if(part.part){ strikePart(enemy,part.part,damage); }
+  else if(enemy.type==='buggy') strike(enemy,damage*.35); // armour; the seed pods are the weak point
+  else if(enemy.type==='bee'||enemy.type==='mini'||enemy.type==='mushroom') strike(enemy,damage);
+  else {
   const core=enemy.vulnerable && hitPoint.distanceTo(enemy.weakPoint.getWorldPosition(vector(0,0,0)))<.32;
   strike(enemy,enemy.type==='moth'?damage:core?damage*3:damage*.35);
+  }
   hitMarkerTimer=.15;
   ui.reticle.classList.add('hit');
   if(enemy.hp<=0){killMarkerTimer=.3;ui.reticle.classList.add('kill');}
+}
+function strikePart(enemy, p, amount) { // V14
+  if (p.belly) { strike(enemy, amount * BEE.bellyMultiplier); return; }
+  const dealt = Math.min(p.hp, amount); p.hp -= amount;
+  burst(p.mesh.getWorldPosition(vector(0,0,0)), colors.lightLeaves, 6);
+  if (p.hp <= 0) { p.glow.visible = false; spawnFx('vfx_spark', p.mesh.getWorldPosition(vector(0,0,0)), 1.2, .2); tone(980, .06, .04); }
+  strike(enemy, dealt);
 }
 // v4: grenade Power Attack — visible lobbed grenade, explodes on impact
 // (or on landing) for damage 3 in a small area. Charges unchanged.
@@ -1668,6 +1963,9 @@ function explodeGrenade(g) {
   for (const e of targets) {
     if (e.hp > 0 && e.mesh.position.distanceTo(g.mesh.position) < GRENADE_RADIUS) strike(e, 3);
   }
+  // V14: a grenade clears every mini-drone near the blast
+  for (const e of targets) if (e.hp > 0 && e.type === 'mini' && e.mesh.position.distanceTo(g.mesh.position) < BEE.grenadeClearRadius) strike(e, 3);
+  if (boss.active) bossGrenade(g.mesh.position);
 }
 function shoot(dt) {
   const candidates = targets.filter(e => e.mesh.visible && e.range > 0 && e.range<=combatRange);
@@ -1689,22 +1987,33 @@ function shoot(dt) {
   }
   powerShot = false;
   if ((pressShot || firing) && cooldown <= 0) {
-    cooldown = rapid > 0 ? .09 : FIRE_COOLDOWN;
+    const w = WEAPONS[weapon]; // V14: rifle or Triple Shot
+    cooldown = rapid > 0 ? .09 : weapon === 'rifle' ? FIRE_COOLDOWN : w.cooldown;
     rapid = Math.max(0, rapid - 1);
     heavy = Math.max(0, heavy - 1);
     const damage = Math.min(3, level + Number(heavy > 0)) >= 2 ? 2 : 1;
-    fireBullet(direction, origin, damage);
+    if (weapon === 'rifle') fireBullet(direction, origin, damage);
+    else for (const yaw of w.pellets) fireBullet(direction.clone().applyAxisAngle(vector(0, 1, 0), yaw), origin, damage);
     if (dual) fireBullet(direction.clone().applyAxisAngle(vector(0, 1, 0), .02), rifle.localToWorld(vector(-.3, 0, -.62)), damage);
   }
   pressShot = false;
   if (autoTime > 0 && autoCooldown <= 0) {
-    const target = candidates.find(e => e.hp > 0 && e.range < 36);
+    const target = candidates.find(e => e.hp > 0 && e.range < 36 && e.type !== 'mushroom');
     if (target) {
       autoCooldown = .85;
       // v4: auto-attack fires a real bullet straight at the target.
       fireBullet(target.mesh.position.clone().sub(origin).normalize(), origin, 1, false);
     }
   }
+}
+function boltBlocked(pos) { // V14
+  const d = -pos.z, lat = pos.x - center(d);
+  for (const o of solids) {
+    if (!o.cover || Math.abs(o.d - d) > o.hd + .2 || Math.abs(lat - o.x) > o.hw + .1 || pos.y > o.h + .05) continue;
+    if (o.arena) coverHit(o);
+    return true;
+  }
+  return false;
 }
 function startRoll(dir) {
   if(trappedPit) return;
@@ -1762,6 +2071,9 @@ function update(dt) {
   if (brake) targetSpeed = 0;
   if (slowTimer > 0) { targetSpeed *= 0.5; slowTimer -= dt; }
   if (jumpY < .4 && softZones.some(z => Math.abs(z.d - distance) < z.hd && Math.abs(z.x - lateral) < z.hw)) targetSpeed *= .8; // V11: ferns
+  const spored = sporeClouds.length > 0 && inSporeCloud(); // V14: walking through a spore cloud slows you by 40%
+  if (spored) targetSpeed *= 1 - MUSHROOM.soldierSlow;
+  if (currentLevel.boss && brake) targetSpeed = -STRAFE_SPEED; // V14: in the arena S steps back
   const rate = targetSpeed > currentSpeed ? 5 : 8;
   currentSpeed = T.MathUtils.lerp(currentSpeed,targetSpeed,1-Math.exp(-dt*rate));
   const right = held.has('KeyD') || held.has('ArrowRight');
@@ -1772,9 +2084,10 @@ function update(dt) {
     rollTime -= dt;
     if (rollTime <= 0) rollDir = 0;
   } else {
-    lateral += turn * STRAFE_SPEED * dt;
+    lateral += turn * STRAFE_SPEED * (spored ? 1 - MUSHROOM.soldierSlow : 1) * dt;
   }
-  lateral = T.MathUtils.clamp(lateral, -CORRIDOR_HALF, CORRIDOR_HALF);
+  const half = currentLevel.boss ? BOSS.arenaHalfWidth : CORRIDOR_HALF; // V14: the arena is 16 m wide
+  lateral = T.MathUtils.clamp(lateral, -half, half);
   rollCooldown -= dt;
   rollInvuln -= dt;
   const previousDistance = distance;
@@ -1784,6 +2097,7 @@ function update(dt) {
   } else {
     distance+=dt*currentSpeed;
     resolveSolids();
+    if (currentLevel.boss) distance = T.MathUtils.clamp(distance, ARENA_D - BOSS.stepRange, ARENA_D + BOSS.stepRange); // forward running stops in the arena
   }
   // --- Jump physics ---
   if (!grounded) {
@@ -1848,8 +2162,11 @@ function update(dt) {
   if (notice <= 0) ui.notice.textContent = '';
   place(1 - Math.exp(-dt*9));
   updateTargets(dt);
+  updateSpores(dt); // V14
+  if (boss.active) updateBoss(dt); // V14
+  if (mode !== 'play') {drawWarningEdges();hud();return;}
   drawWarningEdges();
-  if (mode !== 'play') {hud();return;}
+  updateLanternLights();
   shoot(dt);
   // v4: fly the grenades — lobbed arc, explode on impact or landing.
   for (let i = grenades.length - 1; i >= 0; i--) {
@@ -1860,8 +2177,9 @@ function update(dt) {
     g.mesh.rotation.x += dt * 9;
     let boom = g.life > 2.5 || g.mesh.position.y <= .15;
     if (!boom) for (const e of targets) {
-      if (e.hp > 0 && g.mesh.position.distanceTo(e.mesh.position) < 1.2) { boom = true; break; }
+      if (e.hp > 0 && e.type !== 'mushroom' && g.mesh.position.distanceTo(e.mesh.position) < 1.2) { boom = true; break; }
     }
+    if (!boom && boss.active && bossNear(g.mesh.position)) boom = true; // V14
     if (boom) {
       explodeGrenade(g);
       remove(g);
@@ -1879,8 +2197,10 @@ function update(dt) {
       bolt.mesh.material.rotation = Math.atan2(b.y - a.y, (b.x - a.x) * camera.aspect);
     }
     const hit = bolt.mesh.position.distanceTo(vector(actor.position.x,actor.position.y+.85,-distance)) < .67;
-    if (hit) {burst(bolt.mesh.position,colors.danger,7);const lost=damage(DIFF.shotDamage,'Projectile hit',false,true);if(lost) hitDirections.push({source:bolt.source.clone(),until:elapsed+.5});}
-    if (hit || bolt.mesh.position.z > actor.position.z + 8) {
+    if (hit) {burst(bolt.mesh.position,colors.danger,7);const lost=damage(DIFF.shotDamage,bolt.cause||'Projectile hit',false,true);if(lost) hitDirections.push({source:bolt.source.clone(),until:elapsed+.5});}
+    const blocked = !hit && currentLevel.coverBlocksShots && boltBlocked(bolt.mesh.position); // V14: cover stops enemy fire
+    if (blocked) {burst(bolt.mesh.position,colors.gold,6);spawnFx('vfx_spark',bolt.mesh.position,1,.15);tone(300,.05,.03);}
+    if (hit || blocked || bolt.mesh.position.z > actor.position.z + 8) {
       remove(bolt);
       bolts.splice(i,1);
     }
@@ -1917,8 +2237,10 @@ function update(dt) {
       tone(1040,.07,.025);
     }
   }
-  updateFinishApproach();
-  if (distance >= finish && mode === 'play') startFinish(); // V13: celebration, then results
+  if (!currentLevel.boss) {
+    updateFinishApproach();
+    if (distance >= finish && mode === 'play') startFinish(); // V13: celebration, then results
+  }
   hud();
 }
 
@@ -1939,11 +2261,10 @@ ui.start.onclick = event => {
   resumed = mode === 'pause';
   if (!audio && window.AudioContext) audio = new AudioContext();
   audio?.resume().catch(() => {});
-  if (!resumed) setDifficulty(ui.difficulty.value);
-  if (!resumed) levelTrack = LEVEL_TRACKS[runCount++ % LEVEL_TRACKS.length]; // V11
-  setMode('play');
-  if (!resumed) reset();
-  // Start and resume keep the last aim instead of aiming at the menu button.
+  if (resumed) { setMode('play'); return; } // Start and resume keep the last aim instead of aiming at the menu button.
+  setDifficulty(ui.difficulty.value);
+  if (mode === 'end') { startLevel(currentLevel.id); return; } // V14: retry the level (the boss restarts at the arena)
+  openMap(); // V14: the title screen leads to the level-select map
 };
 addEventListener('pointermove', aim);
 // V11: browsers only allow sound after a click or key press; start the menu theme then.
@@ -1990,6 +2311,7 @@ addEventListener('keydown', e => {
     e.preventDefault();
     if (!e.repeat) powerShot=true; // E = Power Attack (was Space)
   }
+  if (mode==='play' && e.code==='KeyQ' && !e.repeat) { e.preventDefault(); swapWeapon(); } // V14
   if (e.code==='KeyM' && !e.repeat) toggleMusic();
   if (e.code === 'Escape') pause();
 });
@@ -1998,7 +2320,7 @@ addEventListener('blur', pause);
 document.addEventListener('visibilitychange', () => {if (document.hidden) pause();});
 const panorama = new T.TextureLoader().load('art/sprites/sky_jungle_sunrise.jpg', texture => {
   texture.colorSpace=T.SRGBColorSpace;
-  scene.background=texture;
+  if(lightingKey==='sunrise') scene.background=texture; // V14: dusk and night use their own skies
   resizePanorama();
 });
 function resizePanorama() {
@@ -2060,6 +2382,7 @@ function startFinish(){
   tone(990,.25,.07);
 }
 function finishUpdate(dt){
+  if(currentLevel.boss){ bossFinishUpdate(dt); return; } // V14
   finishT+=dt;
   const slow=finishT<.6?.3:1, g=dt*slow; // 0.6 s of slow motion as he passes under the banner
   const target=finishT<1.3?RUN_SPEED:0;
@@ -2084,14 +2407,26 @@ function finishUpdate(dt){
   hud();
   if(finishT>=2.9 && mode==='finish'){menuAngle=Math.PI;showResults();}
 }
-function starsFor(){return {clear:true,health:health>=50,fast:elapsed<180 && runStats.leaks<=3};}
+// V14: boss stars are win, 50+ health and under 2:30.
+function starsFor(){const b=currentLevel.boss;return {clear:true,health:health>=50,fast:b?elapsed<BOSS.starTime:elapsed<180 && runStats.leaks<=3};}
 function showResults(){
-  const healthBonus=Math.round(health)*10, timeBonus=Math.max(0,Math.ceil(180-elapsed))*20;
+  const isBoss=currentLevel.boss, limit=isBoss?BOSS.starTime:180, limitText=isBoss?'2:30':'3:00';
+  const healthBonus=Math.round(health)*10, timeBonus=Math.max(0,Math.ceil(limit-elapsed))*20;
   const total=score+healthBonus+timeBonus, stars=starsFor(), count=[stars.clear,stars.health,stars.fast].filter(Boolean).length;
-  const best=recordRun({won:true,score:total,coins:coinCount,distance:Math.floor(finish),time:elapsed,difficulty:difficultyKey,stars:count});
+  const reward=isBoss?BOSS.reward.coins:0;
+  recordRun({won:true,score:total,coins:coinCount,distance:Math.floor(isBoss?0:finish),time:elapsed,difficulty:difficultyKey,stars:count,level:currentLevel.id});
+  const hadTriple=weaponUnlocked('triple');
+  const best=recordLevel({difficulty:difficultyKey,level:currentLevel.id,score:total,stars:count,time:elapsed,coins:coinCount+reward,weapon:isBoss?BOSS.reward.weapon:null}); // V14: unlocks the next stop
+  bank=progressFor(difficultyKey).coins; wallet=0;
   setMode('results');
-  ui.resultsTitle.textContent='Jungle cleared · '+DIFF.label;
-  const rows=[
+  ui.resultsTitle.textContent=(isBoss?'Beetle Tank destroyed':'L'+currentLevel.id+' · '+currentLevel.name+' cleared')+' · '+DIFF.label;
+  const rows=isBoss?[
+    ['Time',formatTime(elapsed)],
+    ['Crawlers',runStats.kills+' / '+runStats.spawned+' destroyed'],
+    ['Health bonus',Math.round(health)+' × 10',healthBonus],
+    ['Time bonus',timeBonus?Math.ceil(limit-elapsed)+' s under '+limitText+' × 20':'Over '+limitText,timeBonus],
+    ['Reward',reward+' coins'+(hadTriple?'':' · Triple Shot unlocked')],
+    ['Total score','',total]]:[
     ['Time',formatTime(elapsed)],
     ['Kills',runStats.kills+' / '+runStats.spawned],
     ['Leaks',String(runStats.leaks)],
@@ -2103,18 +2438,431 @@ function showResults(){
     if(label==='Total score')tr.className='total';
     tr.innerHTML='<th>'+label+'</th><td>'+detail+'</td><td class="pts">'+(points===undefined?'':'<span data-to="'+points+'">0</span>')+'</td>';
     return tr;}));
-  const starInfo=[[stars.clear,'Cleared'],[stars.health,'50+ health'],[stars.fast,'Under 3:00 · ≤3 leaks']];
+  const starInfo=[[stars.clear,isBoss?'Won':'Cleared'],[stars.health,'50+ health'],[stars.fast,isBoss?'Under 2:30':'Under 3:00 · ≤3 leaks']];
   ui.resultsStars.replaceChildren(...starInfo.map(([got,label],i)=>{const el=document.createElement('div');el.className='star'+(got?' got':'');el.style.setProperty('--i',i);el.innerHTML='<b>★</b><small>'+label+'</small>';return el;}));
-  ui.resultsBest.textContent=best?'New best!':'';
+  ui.resultsBest.textContent=(best?'New best! ':'')+(isBoss&&!hadTriple?'Triple Shot unlocked · press Q to swap weapons in every level':'');
+  const next=LEVELS[currentLevel.id]; // V14: Continue goes to the next stop (no Quartermaster yet)
+  ui.resultsContinue.disabled=false; ui.resultsContinue.removeAttribute('title');
+  ui.resultsContinue.textContent=isBoss?'Continue · Map':'Continue · '+(next.boss?'The Beetle Tank':'L'+next.id+' '+next.name);
   // tally: rows appear one by one, points count up
   const spans=[...ui.resultsRows.querySelectorAll('[data-to]')];
   spans.forEach((sp,k)=>{const to=+sp.dataset.to,start=performance.now()+400+k*350;
     const step=now=>{const t=Math.min(1,Math.max(0,(now-start)/600));sp.textContent=Math.round(to*t);if(t<1&&mode==='results')requestAnimationFrame(step);};requestAnimationFrame(step);});
   resultsTimer=setTimeout(()=>{for(let k=0;k<count;k++)setTimeout(()=>tone(700+k*180,.15,.06),k*260);},1600);
 }
-ui.resultsRetry.onclick=()=>{ if(!audio && window.AudioContext) audio=new AudioContext(); audio?.resume().catch(()=>{});
-  levelTrack=LEVEL_TRACKS[runCount++ % LEVEL_TRACKS.length]; setMode('play'); reset(); };
-ui.resultsMenu.onclick=()=>{ setMode('menu'); ui.message.textContent='Jungle cleared · '+DIFF.label; ui.start.textContent='Run again'; };
+ui.resultsRetry.onclick=()=>startLevel(currentLevel.id); // V14
+ui.resultsMenu.onclick=()=>{ setMode('menu'); ui.message.textContent=currentLevel.name+' cleared · '+DIFF.label; ui.start.textContent='LAUNCH MISSION'; };
+
+// ---- V14: lighting presets (sunrise, dusk fog, night with temple lanterns) ----
+function gradientSky(top, mid, horizon) {
+  const c = document.createElement('canvas'); c.width = 8; c.height = 256;
+  const x = c.getContext('2d'), g = x.createLinearGradient(0, 0, 0, 256);
+  g.addColorStop(0, top); g.addColorStop(.55, mid); g.addColorStop(1, horizon);
+  x.fillStyle = g; x.fillRect(0, 0, 8, 256);
+  const t = new T.CanvasTexture(c); t.colorSpace = T.SRGBColorSpace; return t;
+}
+const LIGHTING = {
+  sunrise: {fog: 0x55604c, density: .012, hemi: [0x8fa3b0, 0x1e2a16, 1.0], sun: [0xffb36a, 2.2], rim: 1.8, bounce: .35, accent: 14, exposure: 1.35, env: .55, tint: [1, 1, 1], hazardTint: [1, 1, 1], sky: null},
+  dusk: {fog: 0x5b4148, density: .021, hemi: [0x9c7c8c, 0x22160e, .72], sun: [0xff7a3a, 1.5], rim: 1.25, bounce: .22, accent: 10, exposure: 1.22, env: .4, tint: [.8, .68, .66], hazardTint: [.9, .82, .8], sky: () => gradientSky('#1e1830', '#6a3e4a', '#c86a42')},
+  night: {fog: 0x0a1220, density: .02, hemi: [0x3a4c70, 0x05070a, .26], sun: [0x8aa2d0, .32], rim: .9, bounce: .08, accent: 6, exposure: 1.05, env: .18, tint: [.24, .28, .4], hazardTint: [.62, .64, .76], sky: () => gradientSky('#02040a', '#0a1428', '#16243a')}
+};
+const skyCache = {};
+// V14: load the Forest campaign art up front so stage swaps (tank damage states, pods, clouds) never show an empty frame.
+for (const name of ['boss_beetle_tank_siege', 'boss_beetle_tank_brood', 'boss_beetle_tank_rampage', 'boss_beetle_tank_critical', 'jungle-biome/brood_pod_sealed', 'jungle-biome/brood_pod_hatching',
+  'jungle-biome/enemy_leaf_buggy_front', 'jungle-biome/vfx_spore_cloud_green', 'jungle-biome/bg_temple_clearing_dusk', 'jungle-biome/prop_temple_lantern', 'enemy_hive_bee', 'plant_mushroom_blue', 'weapon_triple', 'cover_stone']) spriteTexture(name);
+let lightingKey = 'sunrise';
+const lanternLights = [0, 1, 2].map(() => { const l = new T.PointLight(0xffa850, 0, 16, 1.6); scene.add(l); return l; });
+function applyLighting(key) {
+  const L = LIGHTING[key] || LIGHTING.sunrise; lightingKey = LIGHTING[key] ? key : 'sunrise';
+  scene.fog.color.set(L.fog); scene.fog.density = L.density;
+  hemi.color.set(L.hemi[0]); hemi.groundColor.set(L.hemi[1]); hemi.intensity = L.hemi[2];
+  sun.color.set(L.sun[0]); sun.intensity = L.sun[1];
+  rim.intensity = L.rim; bounce.intensity = L.bounce; accentLight.intensity = L.accent;
+  renderer.toneMappingExposure = L.exposure; scene.environmentIntensity = L.env;
+  if (L.sky) scene.background = skyCache[key] ||= L.sky();
+  else if (panorama.image) scene.background = panorama;
+  else scene.background = new T.Color(0x0a1420);
+  for (const {sp, base, course} of envSprites) {
+    const k = course ? L.hazardTint : L.tint;
+    sp.material.color.setRGB(base.r * k[0], base.g * k[1], base.b * k[2]);
+  }
+  for (const l of lanternLights) l.intensity = 0;
+}
+function updateLanternLights() {
+  if (!nightLanterns.length) return;
+  const near = nightLanterns.filter(l => l.d > distance - 10 && l.d < distance + 40).slice(0, 3);
+  lanternLights.forEach((light, i) => {
+    const l = near[i];
+    light.intensity = l ? 22 : 0;
+    if (l) light.position.set(l.x, 2.2, -l.d);
+  });
+}
+
+// ---- V14: the Beetle Tank (boss) ----
+const ARENA_D = finish + 50; // the arena is built past the finish gate, in the clearing
+const arena = {group: null, covers: []};
+const TANK_W = 6.2, TANK_H = TANK_W / .875, TANK_BASE = 16 / 640;
+const tankLocal = (fx, fy, z) => vector((fx - .5) * TANK_W, (1 - fy - TANK_BASE) * TANK_H, z);
+function buildArena() {
+  if (!arena.group) {
+    arena.group = new T.Group(); scene.add(arena.group);
+    const W = 76, H = W / SPRITE_ASPECT['jungle-biome/bg_temple_clearing_dusk'], d = ARENA_D + 50;
+    const fade = document.createElement('canvas'); fade.width = fade.height = 128; // soft edges so the backdrop melts into the dusk sky
+    const fx = fade.getContext('2d'), gx = fx.createLinearGradient(0, 0, 128, 0), gy = fx.createLinearGradient(0, 0, 0, 128);
+    gx.addColorStop(0, '#000'); gx.addColorStop(.16, '#fff'); gx.addColorStop(.84, '#fff'); gx.addColorStop(1, '#000');
+    fx.fillStyle = gx; fx.fillRect(0, 0, 128, 128);
+    gy.addColorStop(0, '#000'); gy.addColorStop(.3, '#0000'); fx.fillStyle = gy; fx.fillRect(0, 0, 128, 128);
+    const backdrop = new T.Mesh(new T.PlaneGeometry(W, H), new T.MeshBasicMaterial({map: spriteTexture('jungle-biome/bg_temple_clearing_dusk'), alphaMap: new T.CanvasTexture(fade), transparent: true, fog: false, color: 0xc4b4ac, depthWrite: false}));
+    backdrop.position.set(center(d), H / 2 - .15, -d); backdrop.rotation.y = Math.atan2(center(ARENA_D) - center(d), d - ARENA_D); // faces the arena; stands behind the tank, never under the floor
+    backdrop.renderOrder = -1; arena.group.add(backdrop);
+    for (const side of [-1, 1]) for (let i = 0; i < 5; i++) { // ruins frame the clearing
+      const dd = ARENA_D + 6 + i * 9, tw = makeSprite(i % 2 ? 'ruin_tower' : 'tree_kapok', i % 2 ? 6 : 12, {bottom: true, tint: 0x9a8c8c});
+      tw.position.set(center(dd) + side * (11.5 + (i % 3)), -.1, -dd); arena.group.add(tw);
+    }
+  }
+  arena.group.visible = true;
+  arena.covers = [];
+  for (const x of BOSS.cover.lanes) { // three carved stone blocks; they crumble after 6 hits
+    const d = ARENA_D + BOSS.cover.range;
+    const mesh = shape(courseGroup, box, ghostMaterial, center(d) + x, .75, -d, 2.4, 1.5, 1.2); shotBlockers.push(mesh);
+    const art = makeSprite('cover_stone', 2.8, {bottom: true, height: 1.85, tint: 0xd4ccc4}); art.position.set(center(d) + x, 0, -d + .3); courseGroup.add(art);
+    const o = {d, x, hw: 1.2, hd: .6, h: 1.5, cover: true, arena: true, hits: 0, mesh, art};
+    solids.push(o); arena.covers.push(o);
+  }
+}
+function coverHit(o, crumble = false) {
+  if (o.hits >= BOSS.cover.hits) return;
+  o.hits = crumble ? BOSS.cover.hits : o.hits + 1;
+  const left = 1 - o.hits / BOSS.cover.hits;
+  o.art.material.color.setRGB(.5 + .34 * left, .45 + .35 * left, .42 + .35 * left);
+  o.art.scale.y = 1.85 * (.55 + .45 * left);
+  burst(o.art.position.clone().setY(1), rockMat, 5);
+  if (o.hits >= BOSS.cover.hits) {
+    spawnFx('vfx_explosion_small', o.art.position.clone().setY(.9), 3, .45); burst(o.art.position.clone().setY(.8), rockMat, 18);
+    o.art.visible = false; solids.splice(solids.indexOf(o), 1); shotBlockers.splice(shotBlockers.indexOf(o.mesh), 1);
+    message('Cover crumbled', 1.2); tone(110, .3, .08);
+  }
+}
+const boss = {active: false};
+const bossGroup = new T.Group(); bossGroup.visible = false; scene.add(bossGroup);
+const tankArt = makeSprite('boss_beetle_tank_siege', TANK_W, {own: true}); tankArt.center.set(.5, TANK_BASE); tankArt.material.fog = false; bossGroup.add(tankArt);
+const tankArmour = shape(bossGroup, box, ghostMaterial, 0, 3.1, 0, 5.2, 6.2, 2.2);
+const tankCore = shape(bossGroup, smoothOrb, ghostMaterial, ...tankLocal(.564, .425, 1.3).toArray(), .62, .62, .62);
+const coreGlow = new T.Sprite(new T.SpriteMaterial({map: weakGlowTexture, blending: T.AdditiveBlending, depthWrite: false, transparent: true, fog: false}));
+coreGlow.position.copy(tankLocal(.564, .425, 1.4)); bossGroup.add(coreGlow);
+const coreDot = new T.Sprite(new T.SpriteMaterial({map: weakTexture, depthWrite: false, fog: false})); coreDot.position.copy(tankLocal(.564, .425, 1.45)); coreDot.scale.set(.7, .7, 1); bossGroup.add(coreDot);
+const cannons = [tankLocal(.87, .31, .8), tankLocal(.87, .42, .8)].map(at => {
+  const halo = new T.Mesh(new T.TorusGeometry(.75, .04, 8, 48), new T.MeshBasicMaterial({color: 0xff2a3a, transparent: true, depthTest: false, depthWrite: false}));
+  halo.renderOrder = 100; halo.position.copy(at); bossGroup.add(halo); halo.visible = false;
+  return {at, halo};
+});
+const tankAim = new T.Line(new T.BufferGeometry().setFromPoints([vector(0, 0, 0), vector(0, 0, 0)]), new T.LineBasicMaterial({color: 0xff2a3a, transparent: true, opacity: 0, depthTest: false, depthWrite: false}));
+tankAim.renderOrder = 99; scene.add(tankAim);
+const pods = [tankLocal(.24, .78, 1.5), tankLocal(.77, .78, 1.5)].map(at => {
+  const art = makeSprite('jungle-biome/brood_pod_sealed', 1.25, {own: true}); art.position.copy(at); art.material.fog = false; bossGroup.add(art);
+  const hitMesh = shape(bossGroup, smoothOrb, ghostMaterial, at.x, at.y, at.z + .2, .62, .62, .62);
+  return {at, art, mesh: hitMesh, hp: 0};
+});
+const chargeMarker = makeLaneMarker(BOSS.rampage.laneHalfWidth);
+const slamRing = new T.Mesh(new T.RingGeometry(.86, 1, 64), new T.MeshBasicMaterial({color: 0xff2a3a, transparent: true, opacity: 0, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide, fog: false}));
+slamRing.rotation.x = -Math.PI / 2; slamRing.visible = false; scene.add(slamRing);
+let bossTone = null;
+function bossToneOn(progress, remaining) {
+  if (!DIFF.warningSound || audio?.state !== 'running' || bossTone) return;
+  const osc = audio.createOscillator(), gain = audio.createGain(); osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(140 + progress * 120, audio.currentTime); osc.frequency.linearRampToValueAtTime(620, audio.currentTime + Math.max(.05, remaining));
+  gain.gain.value = .035; osc.connect(gain).connect(audio.destination); osc.start(); bossTone = {osc, gain};
+}
+function bossToneOff() { if (!bossTone) return; try { bossTone.gain.gain.setTargetAtTime(0, audio.currentTime, .015); bossTone.osc.stop(audio.currentTime + .06); } catch {} bossTone = null; }
+function bossPos() { return vector(center(boss.d) + boss.x, 0, -boss.d); }
+function startBoss() {
+  Object.assign(boss, {active: true, dead: false, max: BOSS.hp[difficultyKey], hp: BOSS.hp[difficultyKey], phase: 1, rangeBase: BOSS.tankRange,
+    d: ARENA_D + BOSS.tankRange, x: 0, timer: 2.4, volley: null, coreOpen: 0, hatch: BOSS.brood.hatchEvery, rstate: 'idle', rtimer: 1.6,
+    laneX: 0, slamR: 0, rammed: false, flash: 0, art: '', killT: 0, podsDestroyed: 0});
+  for (const p of pods) { p.hp = 0; p.art.visible = false; }
+  bossGroup.visible = true; tankAim.material.opacity = 0; chargeMarker.mesh.visible = false; slamRing.visible = false;
+  setTankArt(); placeBoss(); ui.bossbar.hidden = false; bossBar();
+  message('Hide behind the stones · shoot the core when it opens', 4.5);
+}
+function stopBoss() {
+  boss.active = false; bossGroup.visible = false; bossToneOff(); tankAim.material.opacity = 0;
+  chargeMarker.mesh.visible = false; slamRing.visible = false; ui.bossbar.hidden = true;
+  for (const c of cannons) c.halo.visible = false;
+}
+function setTankArt() {
+  const f = boss.hp / boss.max;
+  const name = f > .66 ? 'siege' : f > .33 ? 'brood' : f > BOSS.rampage.criticalAt ? 'rampage' : 'critical';
+  if (name !== boss.art) { boss.art = name; tankArt.material.map = spriteTexture('boss_beetle_tank_' + name); tankArt.material.needsUpdate = true; }
+}
+function placeBoss() {
+  bossGroup.position.copy(bossPos());
+  bossGroup.rotation.y = -Math.atan((center(boss.d + 1) - center(boss.d - 1)) / 2);
+  bossGroup.updateMatrixWorld(true);
+}
+function bossBar() {
+  ui.bossFill.style.width = Math.max(0, boss.hp / boss.max * 100) + '%';
+  ui.bossPhase.textContent = ['', 'SIEGE', 'BROOD', 'RAMPAGE'][boss.phase] + ' · ' + Math.max(0, Math.ceil(boss.hp)) + ' / ' + boss.max;
+}
+function coreIsOpen() { return boss.coreOpen > 0 || boss.rstate === 'stuck'; }
+function bossParts() {
+  const list = [{mesh: tankArmour, boss: true, kind: 'armour'}];
+  if (coreIsOpen()) list.push({mesh: tankCore, boss: true, kind: 'core'});
+  for (const p of pods) if (p.hp > 0) list.push({mesh: p.mesh, boss: true, kind: 'pod', pod: p});
+  return list;
+}
+function bossHit(part, amount) {
+  if (part.kind === 'pod') {
+    part.pod.hp -= amount; burst(part.pod.mesh.getWorldPosition(vector(0, 0, 0)), colors.danger, 6);
+    if (part.pod.hp <= 0) { part.pod.art.visible = false; boss.podsDestroyed++; spawnFx('vfx_explosion_small', part.pod.mesh.getWorldPosition(vector(0, 0, 0)), 2, .35); bossDamage(BOSS.podTankDamage, 'Pod destroyed · −' + BOSS.podTankDamage); }
+    return;
+  }
+  amount *= BOSS.bulletDamage; // a rifle round against the tank (tuned so the fight lasts 2-3 minutes)
+  bossDamage(part.kind === 'core' ? amount * BOSS.core : amount * BOSS.armour, part.kind === 'core' ? 'Core hit' : 'Armored · wait for the cyan core');
+}
+function bossNear(pos) { return pos.distanceTo(bossPos().add(vector(0, 2.6, 0))) < 3.8; }
+function bossGrenade(pos) {
+  if (!bossNear(pos) && !pods.some(p => p.hp > 0 && p.mesh.getWorldPosition(vector(0, 0, 0)).distanceTo(pos) < 2.6)) return;
+  for (const p of pods) if (p.hp > 0 && p.mesh.getWorldPosition(vector(0, 0, 0)).distanceTo(pos) < 2.6) { p.hp = 0; p.art.visible = false; boss.podsDestroyed++; bossDamage(BOSS.podTankDamage, 'Pod destroyed'); }
+  if (bossNear(pos)) bossDamage(boss.rstate === 'stuck' ? 3 * BOSS.rampage.grenadeMultiplier : 3 * BOSS.armour, boss.rstate === 'stuck' ? 'Grenade · triple damage while it is stuck' : 'Grenade on armour');
+}
+function bossDamage(n, text) {
+  if (!boss.active || boss.dead) return;
+  boss.hp -= n; boss.flash = 1; score += Math.round(n * 10);
+  if (text) message(text, .8);
+  const f = boss.hp / boss.max, phase = f > .66 ? 1 : f > .33 ? 2 : 3;
+  if (phase !== boss.phase && boss.hp > 0) {
+    boss.phase = phase; boss.volley = null; boss.coreOpen = 0; bossToneOff();
+    for (const c of cannons) c.halo.visible = false; tankAim.material.opacity = 0;
+    if (phase === 2) { boss.timer = 2.5; boss.hatch = BOSS.brood.hatchEvery; for (const p of pods) { p.hp = BOSS.podHp; p.art.visible = true; } message('BROOD · shoot the swelling pods before they hatch', 3.5); }
+    if (phase === 3) { for (const p of pods) { p.hp = 0; p.art.visible = false; } boss.rstate = 'idle'; boss.rtimer = 1.4; charges = Math.min(3, charges + BOSS.rampage.grenadeBonus); message('RAMPAGE · dodge the red lane, jump the shockwave · +' + BOSS.rampage.grenadeBonus + ' grenades', 4); }
+    shake = Math.max(shake, .3); tone(90, .5, .12);
+  }
+  setTankArt(); bossBar();
+  if (boss.hp <= 0) bossDefeated();
+}
+function fireVolleyBolt(i) {
+  const c = cannons[i % 2], start = c.at.clone().applyMatrix4(bossGroup.matrixWorld);
+  const aimX = center(distance) + lateral + (i - 1) * .45, target = vector(aimX, .9 + jumpY * .3, -distance);
+  const mesh = makeFx('vfx_bolt', 1.6); mesh.position.copy(start); scene.add(mesh);
+  burst(start, colors.danger, 6); spawnFx('vfx_muzzle', start, 1.4, .12);
+  bolts.push({mesh, source: start.clone(), velocity: target.sub(start).normalize().multiplyScalar(DIFF.boltSpeed * 1.15), cause: 'Tank cannon bolt'});
+  tone(150, .14, .06);
+}
+function updateVolley(dt) {
+  const S = BOSS.siege, every = boss.phase === 1 ? S.volleyEvery : BOSS.brood.volleyEvery;
+  if (!boss.volley) {
+    boss.timer -= dt;
+    if (boss.timer <= 0) boss.volley = {t: 0, fired: 0};
+  }
+  const v = boss.volley;
+  if (!v) { for (const c of cannons) c.halo.visible = false; tankAim.material.opacity = 0; return; }
+  v.t += dt;
+  const progress = Math.min(1, v.t / S.chargeTime), remaining = S.chargeTime - v.t;
+  for (const c of cannons) { c.halo.visible = DIFF.warningRing && v.t < S.chargeTime; c.halo.quaternion.copy(camera.quaternion); c.halo.scale.setScalar(Math.max(.08, 1.15 - progress)); c.halo.material.color.set(remaining < .2 ? 0xffffff : 0xff2a3a); }
+  if (v.t < S.chargeTime) {
+    const a = cannons[0].at.clone().applyMatrix4(bossGroup.matrixWorld), b = vector(center(distance) + lateral, .9, -distance), pos = tankAim.geometry.attributes.position;
+    pos.setXYZ(0, a.x, a.y, a.z); pos.setXYZ(1, b.x, b.y, b.z); pos.needsUpdate = true; tankAim.geometry.computeBoundingSphere();
+    tankAim.material.opacity = DIFF.aimLineLead > 0 || remaining < .6 ? .3 + progress * .7 : 0;
+    bossToneOn(progress, remaining);
+    return;
+  }
+  bossToneOff(); tankAim.material.opacity = 0;
+  while (v.fired < S.bolts && v.t >= S.chargeTime + v.fired * S.boltGap) fireVolleyBolt(v.fired++);
+  if (v.fired >= S.bolts) {
+    boss.volley = null; boss.timer = Math.max(.6, every - S.chargeTime - S.bolts * S.boltGap);
+    if (boss.phase === 1) { boss.coreOpen = S.coreOpen; message('Core open · shoot it now', 1.2); tone(1200, .08, .04); }
+  }
+}
+function updateBrood(dt) {
+  const B = BOSS.brood;
+  boss.hatch -= dt;
+  for (const p of pods) {
+    if (p.hp <= 0) continue;
+    const swell = boss.hatch < B.swell ? 1 - boss.hatch / B.swell : 0;
+    p.art.scale.set(1.25 * (1 + swell * .3 + Math.sin(elapsed * (6 + swell * 14)) * .06 * swell), 1.25 / .872 * (1 + swell * .3), 1);
+    const want = swell > .5 ? 'hatching' : 'sealed';
+    if (p.state !== want) { p.state = want; p.art.material.map = spriteTexture('jungle-biome/brood_pod_' + want); p.art.material.needsUpdate = true; }
+    p.art.material.color.setRGB(.8 + swell * .2, .8, .8 + swell * .2);
+  }
+  if (boss.hatch <= 0) {
+    for (const p of pods) if (p.hp > 0) {
+      const at = p.mesh.getWorldPosition(vector(0, 0, 0));
+      const c = spawn({d: boss.d - 2, type: 'beetle', x: at.x - center(boss.d - 2), walker: true}); c.passed = false; targets.push(c);
+      burst(at, colors.leaves, 12); spawnFx('vfx_explosion_small', at, 1.8, .3);
+    }
+    boss.hatch = B.hatchEvery;
+    for (const p of pods) { p.hp = BOSS.podHp; p.art.visible = true; p.state = ''; }
+    tone(200, .3, .06);
+  }
+}
+function updateRampage(dt) {
+  const R = BOSS.rampage, base = ARENA_D + boss.rangeBase;
+  boss.rangeBase = Math.max(BOSS.rampageMinRange, boss.rangeBase - BOSS.creepSpeed * dt); // creeps forward
+  boss.rtimer -= dt;
+  const toward = (want, speed) => { boss.d += T.MathUtils.clamp(want - boss.d, -speed * dt, speed * dt); };
+  switch (boss.rstate) {
+    case 'idle': toward(base, 4); boss.x += T.MathUtils.clamp(-boss.x, -dt * 3, dt * 3);
+      if (boss.rtimer <= 0) { boss.rstate = 'warn'; boss.rtimer = R.markerTime; boss.laneX = T.MathUtils.clamp(lateral, -6, 6); message('Horn charge · get out of the red lane', 1.2); tone(90, .9, .08); }
+      break;
+    case 'warn': boss.x += T.MathUtils.clamp(boss.laneX - boss.x, -dt * 8, dt * 8);
+      if (Math.random() < dt * 12) burst(bossPos().add(vector((Math.random() - .5) * 4, 1.2, 1)), rockMat, 3); // revs and smokes
+      if (boss.rtimer <= 0) { boss.rstate = 'charge'; boss.rammed = false; boss.x = boss.laneX; shake = Math.max(shake, .2); }
+      break;
+    case 'charge': {
+      toward(ARENA_D + R.chargeEnd, R.chargeSpeed);
+      for (const o of arena.covers) if (o.hits < BOSS.cover.hits && Math.abs(o.x - boss.laneX) < R.laneHalfWidth + 1.2 && boss.d < o.d + 1.2) coverHit(o, true);
+      if (!boss.rammed && boss.d - distance < 2.2) {
+        boss.rammed = true;
+        if (Math.abs(lateral - boss.laneX) < R.laneHalfWidth + .35 && jumpY < 1.3) { const lost = damage(DIFF.collisionDamage, 'Horn charge', false, true); if (lost) healthFeedback('−' + lost + ' CHARGE', 'leak'); }
+      }
+      if (boss.d <= ARENA_D + R.chargeEnd + .05) { boss.rstate = 'stuck'; boss.rtimer = R.stuck; shake = Math.max(shake, .3); tone(70, .5, .12); message('STUCK · core open · grenades do triple damage', 2); }
+      break; }
+    case 'stuck': if (boss.rtimer <= 0) { boss.rstate = 'back'; } break;
+    case 'back': toward(base, 6); boss.x += T.MathUtils.clamp(-boss.x, -dt * 4, dt * 4);
+      if (Math.abs(boss.d - base) < .1) { boss.rstate = 'slamWarn'; boss.rtimer = R.slamWarn; message('Ground slam · JUMP the shockwave', 1.2); tone(80, .9, .08); }
+      break;
+    case 'slamWarn': if (Math.random() < dt * 12) burst(bossPos().add(vector((Math.random() - .5) * 4, 1.2, 1)), rockMat, 3);
+      if (boss.rtimer <= 0) { boss.rstate = 'slam'; boss.slamR = 1; boss.slamHit = false; shake = Math.max(shake, .35); spawnFx('vfx_explosion_big', bossPos().add(vector(0, .5, 0)), 6, .5); tone(60, .6, .14); }
+      break;
+    case 'slam': {
+      boss.slamR += R.slamSpeed * dt;
+      const me = vector(center(distance) + lateral, 0, -distance), gap = me.distanceTo(bossPos());
+      if (!boss.slamHit && boss.slamR >= gap) { boss.slamHit = true; if (jumpY < R.slamJump) { const lost = damage(DIFF.collisionDamage, 'Ground slam', false, true); if (lost) healthFeedback('−' + lost + ' SLAM', 'leak'); } }
+      if (boss.slamR > 34) { boss.rstate = 'idle'; boss.rtimer = 1.4; }
+      break; }
+  }
+  const showLane = boss.rstate === 'warn' || boss.rstate === 'charge';
+  if (showLane) chargeMarker.update(ARENA_D - BOSS.stepRange - 1, boss.d - 1, boss.laneX - center(boss.d) + center(boss.d), .45 + .35 * Math.sin(elapsed * 16) ** 2);
+  else chargeMarker.mesh.visible = false;
+  const slamWarn = boss.rstate === 'slamWarn', slam = boss.rstate === 'slam';
+  slamRing.visible = slamWarn || slam;
+  if (slamRing.visible) {
+    const r = slam ? boss.slamR : 4 + Math.sin(elapsed * 18) * .4;
+    slamRing.position.copy(bossPos()).setY(.07); slamRing.scale.setScalar(r);
+    slamRing.material.opacity = slam ? .85 : .35 + .3 * Math.sin(elapsed * 14) ** 2;
+  }
+}
+function updateBoss(dt) {
+  if (boss.dead) return;
+  boss.coreOpen = Math.max(0, boss.coreOpen - dt);
+  if (boss.phase === 1 || boss.phase === 2) updateVolley(dt);
+  if (boss.phase === 2) updateBrood(dt);
+  if (boss.phase === 3) updateRampage(dt);
+  else { boss.x += T.MathUtils.clamp(-boss.x, -dt * 3, dt * 3); boss.d += T.MathUtils.clamp(ARENA_D + boss.rangeBase - boss.d, -dt * 3, dt * 3); }
+  placeBoss();
+  const open = coreIsOpen(), pulse = 1 + .14 * Math.sin(elapsed * 12);
+  coreGlow.visible = coreDot.visible = open; coreGlow.scale.set(2.1 * pulse, 2.1 * pulse, 1); coreDot.scale.set(.75 * pulse, .75 * pulse, 1);
+  boss.flash = Math.max(0, boss.flash - dt * 4);
+  const shakeX = (boss.rstate === 'warn' || boss.rstate === 'slamWarn') ? Math.sin(elapsed * 70) * .08 : 0;
+  tankArt.position.x = shakeX;
+  const red = boss.art === 'critical' ? .1 : 0;
+  tankArt.material.color.setRGB(.86 + boss.flash * .14 + red, .84 - boss.flash * .3, .84 - boss.flash * .4);
+}
+function bossDefeated() {
+  boss.dead = true; boss.hp = 0; bossToneOff(); bossBar();
+  for (const c of cannons) c.halo.visible = false; tankAim.material.opacity = 0; chargeMarker.mesh.visible = false; slamRing.visible = false;
+  for (const e of targets) if (e.hp > 0) { e.hp = 0; e.mesh.visible = false; stopChargeSound(e); }
+  for (const b of bolts) remove(b); bolts.length = 0;
+  mode = 'finish'; finishT = 0; firing = pressShot = powerShot = false; held.clear();
+  ui.reticle.hidden = true; warningCanvas.hidden = true;
+  if (musicEnabled && audio) music.play('win', () => { if (mode === 'results' && musicEnabled) music.play('menu'); });
+  message('Beetle Tank destroyed', 3);
+}
+function bossFinishUpdate(dt) { // a large explosion and a short slow-motion beat, then the results
+  finishT += dt;
+  const g = dt * (finishT < .9 ? .25 : 1);
+  if (Math.floor((finishT - dt) / .18) !== Math.floor(finishT / .18) && finishT < 1.6) {
+    const at = bossPos().add(vector((Math.random() - .5) * 5, 1 + Math.random() * 5, 1));
+    spawnFx('vfx_explosion_big', at, 5 + Math.random() * 3, .7); burst(at, colors.danger, 10); tone(70 + Math.random() * 40, .3, .1);
+  }
+  if (finishT > 1.1) { bossGroup.visible = finishT < 1.25 ? Math.floor(finishT * 30) % 2 === 0 : false; }
+  shake = Math.max(0, .4 - finishT * .2);
+  updateEffects(g);
+  place(1 - Math.exp(-g * 9));
+  camera.position.x += Math.sin(finishT * 60) * shake * .1;
+  camera.updateMatrixWorld();
+  hud();
+  if (finishT >= 2.6 && mode === 'finish') { stopBoss(); menuAngle = Math.PI; showResults(); }
+}
+
+// ---- V14: levels, level-select map, progression and weapons ----
+function levelEncounters(level) {
+  const E = level.enemies;
+  let list = encountersFor(DIFF.encounterKeep);
+  if (E.base === 'v13-no-turrets' || E.base === 'v13-drones-crawlers') list = list.filter(e => e.type !== 'turret');
+  if (E.base === 'v13-drones-turrets') list = list.filter(e => e.type !== 'beetle');
+  list = list.map(e => ({...e}));
+  let acc = 0; const keep = () => { acc += DIFF.featureKeep; if (acc >= 1 - 1e-9) { acc -= 1; return true; } return false; }; // Easy keeps an even share
+  if (E.turrets) turretPlan(level).forEach((t, i) => keep() && list.push({d: t.d, type: 'turret', x: t.x, drop: ['shield', 'charge', 'heavy'][i % 3]}));
+  const every = (spec, fn) => { if (!spec) return; const [a, b] = spec.every; for (let d = spec.start, i = 0; d < finish - 70; d += a + ((i * 29) % (b - a + 1)), i++) if (keep()) fn(d, i); };
+  every(E.buggies, (d, i) => list.push({d, type: 'buggy', x: 0, enterAt: BUGGY.enterRange[0] + (i * 7) % 6, drop: i % 3 === 1 ? 'charge' : undefined}));
+  every(E.bees, (d, i) => {
+    const side = i % 2 ? 1 : -1;
+    list.push({d, type: 'bee', x: side * 1.4, seed: i * 1.7, drop: 'shield'});
+    for (let k = 0; k < (E.mushrooms?.perBee || 0); k++) list.push({d: d - 6 + k * 5, type: 'mushroom', x: side * (4.4 + (k % 2) * .4), minor: true});
+  });
+  if (E.sideBySide) for (const x of [-1.2, 1.2]) list.push({d: E.sideBySide.d, type: 'beetle', x, groupId: 'side-by-side'});
+  return list.sort((a, b) => a.d - b.d);
+}
+let weapon = 'rifle', bank = 0;
+function weaponUnlocked(key) { return key === 'rifle' || progressFor(difficultyKey).weapons.includes(key); }
+function swapWeapon() {
+  if (!weaponUnlocked('triple')) { message('Beat the Beetle Tank to unlock the Triple Shot', 1.6); return; }
+  weapon = weapon === 'rifle' ? 'triple' : 'rifle';
+  saveSetting('weapon', weapon); weaponHud(); tone(660, .06, .05);
+  message(WEAPONS[weapon].name + ' · Q to swap', 1.2);
+}
+function weaponHud() {
+  if (!weaponUnlocked(weapon)) weapon = 'rifle';
+  const w = WEAPONS[weapon];
+  ui.weaponChip.hidden = !weaponUnlocked('triple');
+  ui.weaponChip.innerHTML = '<span style="background-image:url(art/sprites/' + w.icon + '.png)"></span><b>' + w.name.toUpperCase() + '</b><small>Q to swap</small>';
+}
+function refreshMenuWeapons() {
+  ui.tripleCard.hidden = !weaponUnlocked('triple');
+  ui.menuCoins.textContent = progressFor(difficultyKey).coins + ' coins banked · ' + DIFF.label;
+}
+function startLevel(id) {
+  const level = LEVELS[Math.max(0, Math.min(LEVELS.length - 1, id - 1))];
+  if (!audio && window.AudioContext) audio = new AudioContext();
+  audio?.resume().catch(() => {});
+  if (boss.active) stopBoss();
+  buildCourse(level); // rebuilt each run: difficulty sets L2-L5 pit density, and the arena cover is restored
+  levelTrack = level.music;
+  setMode('play');
+  reset();
+}
+function openMap() {
+  setMode('map');
+  renderMap();
+}
+function stars(n) { return '★'.repeat(n) + '☆'.repeat(3 - n); }
+function renderMap() {
+  const pr = progressFor(difficultyKey);
+  ui.mapDifficulty.value = difficultyKey;
+  ui.mapCoins.textContent = pr.coins + ' coins' + (pr.weapons.includes('triple') ? ' · Triple Shot unlocked' : '');
+  ui.mapStops.replaceChildren(...LEVELS.map(level => {
+    const open = level.id <= pr.unlocked, best = pr.levels[level.id];
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'map-stop' + (level.boss ? ' boss' : '') + (open ? '' : ' locked') + (best ? ' cleared' : '');
+    b.style.left = level.hazards.mapStop[0] + '%'; b.style.top = level.hazards.mapStop[1] + '%';
+    b.disabled = !open; b.dataset.level = level.id;
+    b.setAttribute('aria-label', (level.boss ? 'Boss: ' : 'Level ' + level.id + ': ') + level.name + (open ? ', ' + (best ? best.stars + ' of 3 stars' : 'not cleared') : ', locked'));
+    b.innerHTML = '<i>' + (open ? (level.boss ? '☠' : level.id) : '🔒') + '</i><span><b>' + (level.boss ? 'Boss · ' : '') + level.name + '</b><small>' + (open ? stars(best?.stars || 0) : 'Locked') + '</small></span>';
+    b.onclick = () => startLevel(level.id);
+    b.onmouseenter = b.onfocus = () => { ui.mapInfo.textContent = level.idea + (best ? ' · Best ' + best.score + ' pts' : ''); };
+    return b;
+  }));
+  ui.mapInfo.textContent = 'Pick a stop on the trail. Clearing a level on any difficulty unlocks the next.';
+  (ui.mapStops.querySelector('.map-stop:not(.locked):not(.cleared)') || ui.mapStops.querySelector('.map-stop'))?.focus();
+}
+ui.mapBack.onclick = () => { setMode('menu'); ui.message.textContent = 'Forest campaign · ' + DIFF.label; ui.start.textContent = 'LAUNCH MISSION'; };
+ui.mapDifficulty.addEventListener('change', e => { setDifficulty(e.target.value); renderMap(); });
+ui.mapButton.onclick = () => openMap();
+ui.resultsContinue.onclick = () => {
+  if (currentLevel.boss) { openMap(); return; }
+  startLevel(currentLevel.id + 1);
+};
 
 function setDifficulty(key) {
   difficultyKey = DIFFICULTIES[key] ? key : 'medium';
@@ -2122,9 +2870,12 @@ function setDifficulty(key) {
   ui.difficulty.value = difficultyKey;
   ui.difficultyBlurb.textContent = DIFF.blurb;
   saveSetting('difficulty', difficultyKey);
+  if (ui.mapDifficulty) ui.mapDifficulty.value = difficultyKey;
+  refreshMenuWeapons(); // V14
 }
 ui.difficulty.addEventListener('change', e => setDifficulty(e.target.value));
-initProfiles(ui, profile => setDifficulty(profile?.settings?.difficulty || 'medium'));
+buildCourse(LEVELS[0]); // V14: Overgrown Trail, built with the same random sequence as V13
+initProfiles(ui, profile => { weapon = profile?.settings?.weapon === 'triple' ? 'triple' : 'rifle'; setDifficulty(profile?.settings?.difficulty || 'medium'); });
 ui.start.disabled = false;
 ui.start.textContent = 'LAUNCH MISSION'; // v5: Meridian-style launch button
 if (ui.loader) ui.loader.classList.add('done'); // v5: loading screen lifts after the first frame
@@ -2164,9 +2915,9 @@ renderer.setAnimationLoop(now => {
 });
 
 if(new URLSearchParams(location.search).has('test')) window.gameTest={
-  start(key){setDifficulty(key);reset();setMode('play');renderer.setAnimationLoop(null);},
-  step(dt){if(mode==='play')update(dt);},
-  bot(key){this.start(key);let jumpAt=0;for(let t=0;t<700 && mode==='play';t+=1/30){held.clear();held.add('KeyW');const desired=Math.sin(t*1.2)*2.5;if(Math.abs(desired-lateral)>.12)held.add(desired>lateral?'KeyD':'KeyA');firing=true;pointer.set(0,0);if(t>=jumpAt){if(grounded){grounded=false;jumpVel=trappedPit?10.5:JUMP_VELOCITY;}jumpAt=t+1.1;}update(1/30);}return this.state();},
+  start(key,id=1){setDifficulty(key);if(currentLevel.id!==id||id===6||builtFor!==DIFF)buildCourse(LEVELS[id-1]);levelTrack=currentLevel.music;reset();setMode('play');renderer.setAnimationLoop(null);},
+  step(dt){if(mode==='play')update(dt);else if(mode==='finish')finishUpdate(dt);},
+  bot(key,id=1){this.start(key,id);let jumpAt=0;for(let t=0;t<700 && mode==='play';t+=1/30){held.clear();held.add('KeyW');const desired=Math.sin(t*1.2)*2.5;if(Math.abs(desired-lateral)>.12)held.add(desired>lateral?'KeyD':'KeyA');firing=true;pointer.set(0,0);if(t>=jumpAt){if(grounded){grounded=false;jumpVel=trappedPit?10.5:JUMP_VELOCITY;}jumpAt=t+1.1;}update(1/30);}return this.state();},
   state(){return {mode,health,distance,elapsed,finish,difficultyKey,earnedDrops,damageEvents,pickups:pickups.map(p=>({key:p.key,d:p.d,lane:p.lane,expiresAt:p.expiresAt})),targets:targets.map(e=>({d:e.d,type:e.type,hp:e.hp,training:e.training})),diff:DIFF};},
   damage(n,source){recovery=rollInvuln=shield=0;damage(n,source,false,true);},
   collectHealth(){collectDrop('health');},
@@ -2189,6 +2940,107 @@ if(new URLSearchParams(location.search).has('test')) window.gameTest={
     this.start(key);elapsed=1;distance=44.3;lateral=0;jumpY=0;currentSpeed=6;resolveSolids();const log={speed:currentSpeed,shake,flinch:soldierShot?.name};
     return {noRegen,capped,fullHealthWaste,sources,cappedEarned,expired,noWarmupWave,warmupWave,log};},
   async sound(){audio ||= new AudioContext();await audio.resume();const enemy=targets.find(e=>e.type==='turret');enemy.shot=.8;enemy.range=20;updateChargeWarning(enemy,DIFF.turretRate);const running=Boolean(enemy.chargeTone);stopChargeSound(enemy);return {running,stopped:enemy.chargeTone===null,state:audio.state};},
+  // ---- V14 checks ----
+  levelInfo(){return {id:currentLevel.id,name:currentLevel.name,light:lightingKey,music:levelTrack,fog:scene.fog.density,hazards:hazards.filter(h=>h.kind==='pothole'||h.kind==='thorn').length,covers:solids.filter(o=>o.cover).length,
+    types:targets.reduce((a,e)=>(a[e.type]=(a[e.type]||0)+1,a),{}),lanterns:nightLanterns.length};},
+  turretCover(){const t=targets.filter(e=>e.type==='turret');return t.map(e=>({d:e.d,x:e.x,cover:solids.filter(o=>o.cover&&o.d<e.d&&e.d-o.d<20).map(o=>({d:o.d,x:o.x}))}));},
+  clearTargets(){for(const e of targets)remove(e);targets.length=0;for(const b of bolts)remove(b);bolts.length=0;pressureTimer=1e9;finalWaveState=2;},
+  buggy(key,inLane=true){this.start(key,3);this.clearTargets();distance=300;lateral=1.2;currentSpeed=0;held.clear();
+    const b=spawn({d:346,type:'buggy',x:0,enterAt:47});b.state='wait';targets.push(b);const log={};let t=0;
+    for(;t<6&&b.state!=='charge';t+=1/30){update(1/30);if(b.state==='marker'&&log.markerAt===undefined){log.markerAt=+t.toFixed(2);log.range=+b.range.toFixed(1);log.lane=b.x;log.markerVisible=b.marker.mesh.visible;}}
+    log.chargeAfter=+(t-log.markerAt).toFixed(2);
+    const before=health;if(!inLane)lateral=b.x+3.2;recovery=rollInvuln=shield=0;
+    for(let k=0;k<180&&!b.passed;k++){update(1/30);if(b.state==='charge'&&log.speed===undefined&&b.speed>=BUGGY.chargeSpeed-.01)log.speed=b.speed;}
+    log.lost=before-health;log.passed=b.passed;log.cause=damageEvents.at(-1)?.cause;
+    const c=spawn({d:distance+40,type:'buggy',x:0});const pod=c.parts[0];strikePart(c,pod,1);strikePart(c,pod,1);log.pod={podHp:pod.hp,buggyHp:c.hp,glow:pod.glow.visible};strike(c,1);log.bodyArmour=null;remove(c);
+    return log;},
+  bee(key){this.start(key,4);this.clearTargets();distance=400;lateral=0;currentSpeed=0;held.clear();
+    const b=spawn({d:420,type:'bee',x:0,seed:0});targets.push(b);const log={releases:[]};let last=0;
+    for(let t=0;t<12.6;t+=1/30){update(1/30);const n=targets.filter(e=>e.type==='mini').length;if(n>last){log.releases.push({t:+t.toFixed(2),count:n-last,range:+b.range.toFixed(1)});last=n;}}
+    log.hover=+b.range.toFixed(1);
+    const fresh=spawn({d:distance+22,type:'bee',x:0,seed:1});const hp=fresh.hp;strikePart(fresh,fresh.parts[0],1);log.belly=hp-fresh.hp;const hp2=fresh.hp;strike(fresh,1);log.body=hp2-fresh.hp;remove(fresh);
+    const minis=targets.filter(e=>e.type==='mini'&&e.hp>0);log.minisAlive=minis.length;
+    const at=minis[0]?.mesh.position.clone();if(at)explodeGrenade({mesh:{position:at}});log.minisAfterGrenade=targets.filter(e=>e.type==='mini'&&e.hp>0).length;
+    b.hp=0;b.mesh.visible=false;for(const e of targets)if(e.type==='mini')e.hp=0;
+    const m=spawn({d:distance+1,type:'mini',x:lateral,minor:true});targets.push(m);recovery=rollInvuln=shield=0;const h=health;for(let k=0;k<30;k++)update(1/30);log.miniLeak=h-health;
+    return log;},
+  spores(key){this.start(key,4);this.clearTargets();distance=400;lateral=0;currentSpeed=0;held.clear();
+    const m=spawn({d:430,type:'mushroom',x:4.4,minor:true});const near=spawn({d:431,type:'moth',x:2.5,shooter:true});const far=spawn({d:437,type:'moth',x:-2});targets.push(m,near,far);
+    update(1/30);strike(m,1);const log={near:+near.stun.toFixed(2),far:+far.stun.toFixed(2),cloud:sporeClouds.length};
+    const d0=near.d;for(let k=0;k<30;k++)update(1/30);log.nearMovedWhileStunned=+(d0-near.d).toFixed(2);
+    for(let k=0;k<45;k++)update(1/30);log.stunEndsAfter2s=near.stun<=0;
+    this.clearTargets();clearSpores();distance=400;lateral=0;releaseSpores(vector(center(400)+0,1,-400));held.clear();held.add('KeyW');currentSpeed=0;
+    for(let k=0;k<20;k++){update(1/30);distance=400;}log.speedInCloud=+currentSpeed.toFixed(2);clearSpores();for(let k=0;k<40;k++){update(1/30);}log.speedOutside=+currentSpeed.toFixed(2);held.clear();
+    return log;},
+  boss(key){this.start(key,6);const log={start:{hp:boss.hp,max:boss.max,distance,phase:boss.phase,art:boss.art,covers:arena.covers.length,bar:!ui.bossbar.hidden}};
+    held.clear();lateral=-5;distance=ARENA_D+3;let warn=null,firstBolt=null;
+    for(let t=0;t<4;t+=1/30){update(1/30);if(warn===null&&cannons[0].halo.visible)warn=+t.toFixed(2);if(firstBolt===null&&bolts.length){firstBolt=+t.toFixed(2);log.boltCause=bolts[0].cause;}if(firstBolt!==null&&boss.coreOpen>0&&log.coreOpen===undefined)log.coreOpen=+boss.coreOpen.toFixed(2);}
+    log.volley={warnAt:warn,firstBoltAt:firstBolt};
+    const cv=arena.covers[1];let hits=0;while(solids.includes(cv)&&hits<10){boltBlocked(vector(center(cv.d)+cv.x,.9,-cv.d));hits++;}log.coverCrumbledAfter=hits;
+    const armourHp=boss.hp;bossHit({kind:'armour'},3);log.armour=+(armourHp-boss.hp).toFixed(2);boss.coreOpen=1;const ch=boss.hp;bossHit({kind:'core'},1);log.core=+(ch-boss.hp).toFixed(2);
+    bossDamage(boss.hp-boss.max*.66+.01);log.phase2={phase:boss.phase,art:boss.art,pods:pods.filter(p=>p.hp>0).length};
+    const p0=pods[0];bossHit({kind:'pod',pod:p0},1);const hpBeforePod=boss.hp;bossHit({kind:'pod',pod:p0},1);log.podDamage=+(hpBeforePod-boss.hp).toFixed(2);
+    const crawlersBefore=targets.filter(e=>e.walker).length;let swell=false;for(let t=0;t<8.2;t+=1/30){update(1/30);if(pods[1].state==='hatching')swell=true;if(mode!=='play')break;}log.hatched=targets.filter(e=>e.walker).length-crawlersBefore;log.swellBeforeHatch=swell;
+    this.clearTargets();health=100;
+    bossDamage(boss.hp-boss.max*.33+.01);log.phase3={phase:boss.phase,art:boss.art,charges};
+    let marker=null,charge=null,stuck=null,slamWarn=null;lateral=0;distance=ARENA_D;
+    for(let t=0;t<12;t+=1/30){if(boss.rstate==='warn')lateral=boss.laneX>0?-6:6;if(boss.rstate==='slam'&&boss.slamR>3)jumpY=Math.max(jumpY,0);update(1/30);
+      if(marker===null&&boss.rstate==='warn'){marker=+t.toFixed(2);log.markerVisible=chargeMarker.mesh.visible;}
+      if(charge===null&&boss.rstate==='charge')charge=+t.toFixed(2);if(stuck===null&&boss.rstate==='stuck'){stuck=+t.toFixed(2);log.coreOpenWhenStuck=coreIsOpen();const h=boss.hp;bossGrenade(bossPos().add(vector(0,2,0)));log.stuckGrenade=+(h-boss.hp).toFixed(2);}
+      if(slamWarn===null&&boss.rstate==='slamWarn'){slamWarn=+t.toFixed(2);log.slamRing=slamRing.visible;}}
+    log.rampage={markerAt:marker,chargeAt:charge,warnTime:charge!==null&&marker!==null?+(charge-marker).toFixed(2):null,stuckAt:stuck,slamWarnAt:slamWarn,damageTaken:100-health};
+    bossDamage(boss.hp-boss.max*.1);log.critical=boss.art;
+    health=1;recovery=rollInvuln=shield=0;damage(5,'test',false,true);log.death={mode,start:ui.start.textContent};
+    startLevel(6);renderer.setAnimationLoop(null);log.restart={mode,hp:boss.hp,phase:boss.phase,distance,covers:arena.covers.filter(o=>solids.includes(o)).length,level:currentLevel.id};
+    return log;},
+  defeatBoss(key){this.start(key,6);elapsed=100;health=80;bossDamage(boss.hp+1);const m1=mode;for(let i=0;i<100&&mode==='finish';i++)finishUpdate(1/30);
+    return {afterKill:m1,mode,title:ui.resultsTitle.textContent,rows:ui.resultsRows.textContent,stars:ui.resultsStars.querySelectorAll('.got').length,best:ui.resultsBest.textContent,cont:ui.resultsContinue.textContent,progress:JSON.parse(JSON.stringify(progressFor(key)))};},
+  weapons(key){this.start(key,1);const before=weapon;swapWeapon();const after=weapon;const n=effects.length;pressShot=true;cooldown=0;scene.updateMatrixWorld();shoot(1/30);const tracers=effects.length-n;swapWeapon();return {unlocked:weaponUnlocked('triple'),before,after,back:weapon,chip:!ui.weaponChip.hidden,tracers};},
+  finishLevel(key,id){this.start(key,id);elapsed=170;health=90;distance=finish-.1;currentSpeed=6;update(1/30);for(let i=0;i<120&&mode==='finish';i++)finishUpdate(1/30);
+    return {mode,title:ui.resultsTitle.textContent,stars:ui.resultsStars.querySelectorAll('.got').length,cont:ui.resultsContinue.textContent,progress:JSON.parse(JSON.stringify(progressFor(key)))};},
+  continueNext(){ui.resultsContinue.click();renderer.setAnimationLoop(null);return {mode,level:currentLevel.id,name:currentLevel.name};},
+  map(key){setDifficulty(key);openMap();return [...ui.mapStops.children].map(b=>({text:b.textContent,locked:b.disabled,left:b.style.left,top:b.style.top}));},
+  progress(key){return JSON.parse(JSON.stringify(progressFor(key)));},
+  lightView(id,d){this.start('medium',id);this.clearTargets();if(id<6){distance=d;lateral=0;jumpY=0;currentSpeed=0;}place(1);updateTargets(0);updateLanternLights();scene.updateMatrixWorld(true);renderer.render(scene,camera);return this.levelInfo();},
+  closeUp(){distance=300;lateral=0;held.clear();const b=spawn({d:312,type:'buggy',x:-2.2});b.state='marker';b.enter=1;b.timer=99;b.marker=makeLaneMarker(BUGGY.laneHalfWidth);targets.push(b);
+    const bee=spawn({d:309,type:'bee',x:2.2,seed:0});bee.active=true;bee.release=99;bee.leaveAt=1e9;targets.push(bee);const m=spawn({d:306,type:'mushroom',x:4.6,minor:true});targets.push(m);
+    const mini=spawn({d:304,type:'mini',x:.6,minor:true});mini.enter=1;targets.push(mini);update(1/30);bee.d=309;place(1);scene.updateMatrixWorld(true);renderer.render(scene,camera);},
+  scene(fn){fn&&fn();scene.updateMatrixWorld(true);place(1);renderer.render(scene,camera);drawWarningEdges();},
+  buggyView(){this.start('medium',3);this.clearTargets();distance=300;lateral=0;currentSpeed=0;const b=spawn({d:346,type:'buggy',x:0,enterAt:47});b.state='wait';targets.push(b);for(let k=0;k<30;k++)update(1/30);place(1);scene.updateMatrixWorld(true);renderer.render(scene,camera);return {state:b.state,range:b.range};},
+  beeView(){this.start('medium',4);this.clearTargets();distance=400;lateral=0;currentSpeed=0;const b=spawn({d:421,type:'bee',x:0,seed:0});targets.push(b);const m=spawn({d:412,type:'mushroom',x:-4.4,minor:true});targets.push(m);for(let k=0;k<75;k++)update(1/30);place(1);scene.updateMatrixWorld(true);renderer.render(scene,camera);return targets.filter(e=>e.hp>0).map(e=>e.type);},
+  sporeView(){const m=targets.find(e=>e.type==='mushroom'&&e.hp>0);if(m)strike(m,1);for(let k=0;k<8;k++)update(1/30);place(1);scene.updateMatrixWorld(true);renderer.render(scene,camera);return sporeClouds.length;},
+  bossView(phase=1){this.start('medium',6);held.clear();if(phase>1)bossDamage(boss.hp-boss.max*(phase===2?.6:.3));if(phase===4)bossDamage(boss.hp-boss.max*.1);
+    for(let k=0;k<(phase===1?50:phase===2?200:20);k++)update(1/30);if(phase===1){while(!cannons[0].halo.visible&&mode==='play')update(1/30);for(let k=0;k<12;k++)update(1/30);}
+    if(phase===3){while(boss.rstate!=='warn'&&mode==='play')update(1/30);for(let k=0;k<10;k++)update(1/30);}
+    place(1);scene.updateMatrixWorld(true);renderer.render(scene,camera);return {phase:boss.phase,art:boss.art,rstate:boss.rstate};},
+  aimError:.12,
+  bossBot(key,aimError){if(aimError!==undefined)this.aimError=aimError; // a competent scripted player: hides behind the stones, peeks to hit the open core, shoots pods, dodges charges, jumps slams
+    this.start(key,6);let t=0;const dt=1/30;
+    let rs=(this.bossSeed=(this.bossSeed||7)+1)*97;const rnd=()=>((rs=(Math.imul(rs,1664525)+1013904223)>>>0)/4294967296);const jitter=()=>(rnd()+rnd()+rnd()-1.5)*this.aimError;
+    const aimAt=p=>{const v=p.clone().project(camera);pointer.set(T.MathUtils.clamp(v.x+jitter()/camera.aspect,-1,1),T.MathUtils.clamp(v.y+jitter(),-1,1));};
+    for(;t<400&&mode==='play';t+=dt){
+      held.clear();firing=false;
+      const cover=arena.covers.filter(o=>solids.includes(o)).sort((a,b)=>Math.abs(a.x-lateral)-Math.abs(b.x-lateral))[0];
+      let wantX=cover?cover.x:0, wantD=ARENA_D+BOSS.stepRange;
+      if(boss.phase<3){
+        const exposed=coreIsOpen()||pods.some(p=>p.hp>0&&boss.hatch<3.5);
+        if(exposed||!boss.volley&&boss.timer>.6) wantX=(cover?cover.x:0)+(cover&&cover.x>0?-2.3:2.3);
+        if(coreIsOpen()) aimAt(tankCore.getWorldPosition(vector(0,0,0)));
+        else {const pod=pods.find(p=>p.hp>0);aimAt(pod?pod.mesh.getWorldPosition(vector(0,0,0)):tankArmour.getWorldPosition(vector(0,0,0)));}
+        firing=wantX!==(cover?cover.x:0);
+        const crawler=targets.find(e=>e.walker&&e.hp>0&&e.range<15);if(crawler){aimAt(crawler.mesh.position);firing=true;}
+      } else {
+        wantD=ARENA_D;
+        if(boss.rstate==='warn'||boss.rstate==='charge') wantX=boss.laneX>0?-6.5:6.5; else wantX=lateral;
+        aimAt(coreIsOpen()?tankCore.getWorldPosition(vector(0,0,0)):tankArmour.getWorldPosition(vector(0,0,0)));firing=true;
+        if(boss.rstate==='stuck'&&charges>0&&!this._threw){powerShot=true;this._threw=true;} if(boss.rstate!=='stuck')this._threw=false;
+        if(boss.rstate==='slam'&&grounded){const gap=vector(center(distance)+lateral,0,-distance).distanceTo(bossPos());if(boss.slamR>gap-3.2&&boss.slamR<gap)held.add('Space'),grounded=false,jumpVel=JUMP_VELOCITY;}
+      }
+      if(Math.abs(wantX-lateral)>.15)held.add(wantX>lateral?'KeyD':'KeyA');
+      if(wantD>distance+.2)held.add('KeyW');else if(wantD<distance-.2)held.add('KeyS');
+      update(dt);
+    }
+    return {mode,time:+t.toFixed(1),health,bossHp:+boss.hp.toFixed(1),phase:boss.phase,causes:damageEvents.reduce((a,e)=>(a[e.cause]=(a[e.cause]||0)+e.amount,a),{})};},
   warning(key,remaining=0.4,side=0){this.start(key);distance=100;const enemy=spawn({d:120,type:'turret',x:side});targets.push(enemy);enemy.range=20;enemy.mesh.position.set(center(120)+side,1,-120);place(1);enemy.shot=1.5-remaining*DIFF.turretRate;updateChargeWarning(enemy,DIFF.turretRate);drawWarningEdges();scene.updateMatrixWorld(true);renderer.render(scene,camera);return {ring:enemy.halo.visible,line:enemy.aimLine.visible,color:enemy.halo.material.color.getHexString(),size:enemy.halo.scale.x,core:enemy.fireCore.visible};}
 
 };

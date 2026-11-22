@@ -2,7 +2,9 @@
 
 [Play the game](https://pkumar1301.github.io/Arcade_Archer/)
 
-The current build is V13, with an animated soldier, difficulty settings, local player profiles, solid obstacles, visible power-up effects, an original synthesized soundtrack, and a 950 m jungle level ending at a finish gate with an arcade results screen, free mouse aiming, a 70 m rifle range (anything fully visible can be shot), armored weak points, recurring enemy waves, and pits that require a directional jump to escape.
+The current build is V14: the whole Forest biome. Five 950 m levels (Overgrown Trail, Temple Approach, Buggy Run, Hive Grove, Night of the Ancients) and the Beetle Tank boss, chosen from a level-select map along a jungle trail. Clearing a level unlocks the next; stars, scores, coins and weapons are saved per difficulty. Beating the Beetle Tank unlocks the Triple Shot.
+
+The game has an animated soldier, difficulty settings, local player profiles, solid obstacles, visible power-up effects, an original synthesized soundtrack, finish gates with an arcade results screen, free mouse aiming, a 70 m rifle range (anything fully visible can be shot), armored weak points, recurring enemy waves, and pits that require a directional jump to escape.
 
 ## Controls
 
@@ -11,9 +13,11 @@ The current build is V13, with an animated soldier, difficulty settings, local p
 - Space jumps. Use Space with A/D to escape a pit.
 - Move the mouse to aim and hold left click to fire.
 - E or right click throws a grenade.
+- Q swaps between the rifle and the Triple Shot (after the boss).
+- In the boss arena, S steps back.
 - Esc pauses. M toggles music.
 
-Surviving enemies cost health when they pass the player (3 / 6 / 10 by difficulty). See CHANGES_V13.md for the latest changes and CHANGES_V10.md for animation limitations.
+Surviving enemies cost health when they pass the player (3 / 6 / 10 by difficulty). See CHANGES_V14.md for the latest changes and CHANGES_V10.md for animation limitations.
 
 ## Local play
 
@@ -32,3 +36,5 @@ V12 removes health regeneration. Green health drops restore up to 20 health. Inc
 Automated checks and remaining playtest work are recorded in docs/V12-validation.md.
 
 V13 adds enemy entrances (drones drop from the canopy, crawlers burst from the foliage), a fade-in instead of pop-in, a sound and edge warning before each wave, a final wave and finish gate, and a results tally with up to three stars per difficulty. The jungle biome sprite pack for later levels is in art/jungle-biome/.
+
+V14 adds Leaf Buggies (red lane marker, then a charge), hive bees with mini-drones, spore mushrooms that stun, dusk and night lighting, and the three-phase Beetle Tank. Level data lives in levels.js. Automated checks are in tools/test_v14.mjs and docs/V14-validation.md.

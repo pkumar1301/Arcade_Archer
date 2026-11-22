@@ -179,3 +179,41 @@ button:disabled{opacity:.45;cursor:default}
 .results-actions{display:flex;gap:8px;flex-wrap:wrap}
 .results-actions button{flex:1;min-width:120px}
 @media (max-height:620px){#results h2{font-size:28px}.star b{font-size:34px}}
+/* V14: level-select map, boss bar, weapon chip */
+#mapButton{background:#182c26;color:#fbf3d5;border:1px solid #f0cc8177;padding:7px 13px}
+#menuCoins{margin:2px 0 0;color:#edc478;font:600 12px system-ui,sans-serif;letter-spacing:.06em}
+#levelSelect{position:absolute;inset:0;z-index:9;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:14px 16px;background:radial-gradient(70% 60% at 50% 45%,#0b1a14ee,#03080cfa);color:#fff1c5}
+#levelSelect[hidden]{display:none}
+.map-head{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;width:min(94vw,calc((100vh - 130px) * 1.5));justify-content:space-between}
+.map-head .eyebrow{margin:0}
+.map-head h2{margin:0;font:400 clamp(24px,4vh,36px) Georgia,serif}
+.map-head label{font:700 11px system-ui,sans-serif;letter-spacing:.12em;color:#cfe3ea}
+.map-head select{margin-left:6px}
+#mapCoins{font:600 12px system-ui,sans-serif;color:#edc478;letter-spacing:.06em}
+#mapBack{margin:0;padding:8px 18px;background:transparent;color:#edc478;border:1px solid #edc47888;box-shadow:none}
+.map-frame{position:relative;width:min(94vw,calc((100vh - 130px) * 1.5));aspect-ratio:3/2;border:1px solid #edc47866;box-shadow:0 18px 70px #000c;overflow:hidden;border-radius:6px}
+.map-frame img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+#mapStops{position:absolute;inset:0}
+.map-stop{position:absolute;transform:translate(-50%,-22px);margin:0;padding:0;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:0;box-shadow:none;color:#fff1c5;text-transform:none;letter-spacing:.02em;text-align:center;width:max-content;max-width:150px}
+.map-stop i{font-style:normal;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:linear-gradient(180deg,#ffe9a8,#edc478);color:#15281f;font:800 17px system-ui,sans-serif;border:3px solid #0b1a14;box-shadow:0 0 0 2px #edc478,0 6px 18px #000c;transition:transform .15s}
+.map-stop span{display:block;padding:3px 9px 4px;border-radius:8px;background:#0b1a14e6;border:1px solid #edc47888;box-shadow:0 4px 14px #000b}
+.map-stop b{display:block;font:700 12px/1.2 system-ui,sans-serif}
+.map-stop small{display:block;font:700 12px/1.2 system-ui,sans-serif;color:#ffd76a;letter-spacing:.12em}
+.map-stop:hover:not(:disabled) i,.map-stop:focus-visible i{transform:scale(1.15)}
+.map-stop:hover:not(:disabled),.map-stop:focus-visible{background:none}
+.map-stop:focus-visible{outline:none}.map-stop:focus-visible span{outline:2px solid #fff}
+.map-stop.boss i{background:linear-gradient(180deg,#ff9a6a,#ff623e);color:#fff;box-shadow:0 0 0 2px #ff623e,0 6px 18px #000c}
+.map-stop.locked{opacity:1}.map-stop.locked i{background:#3a4448;color:#fff;box-shadow:0 0 0 2px #ffffff55,0 6px 18px #000c}
+.map-stop.locked span{filter:grayscale(.8) brightness(.8)}
+.map-stop.cleared:not(.boss) i{box-shadow:0 0 0 2px #6dff8a,0 6px 18px #000c}
+#mapInfo{margin:0;min-height:1.4em;font:500 14px system-ui,sans-serif;color:#cfe3ea;text-align:center}
+@media(max-width:900px),(max-height:620px){.map-stop b,.map-stop small{font-size:10px}.map-stop i{width:30px;height:30px;font-size:13px}.map-stop{transform:translate(-50%,-17px);max-width:120px}}
+#bossbar{position:absolute;top:22px;left:50%;transform:translateX(-50%);width:min(520px,44vw);z-index:6;text-align:center;pointer-events:none}
+#bossbar[hidden]{display:none}
+#bossbar b{display:block;font:800 13px system-ui,sans-serif;letter-spacing:.3em;color:#ffd76a;text-shadow:0 2px 6px #000}
+#bossbar .track{height:12px;margin:5px 0 3px;background:#1a0c0ccc;border:1px solid #ff623e;border-radius:3px;overflow:hidden}
+#bossbar #bossFill{display:block;height:100%;width:100%;background:linear-gradient(90deg,#ff3a24,#ff9a3a);transition:width .15s}
+#bossbar small{color:#ffe0c0;font-size:11px}
+#weaponChip{margin-top:6px;display:inline-flex}
+#weaponChip[hidden]{display:none}
+#weaponChip span{width:40px}

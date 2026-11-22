@@ -1,0 +1,1051 @@
+{
+  "checks": {
+    "L1 unchanged (V13 bot)": {
+      "pass": true,
+      "detail": {
+        "easy": {
+          "mode": "finish",
+          "health": 4,
+          "d": 950.1,
+          "t": 196.1
+        },
+        "medium": {
+          "mode": "end",
+          "health": 0,
+          "d": 130,
+          "t": 28.2
+        },
+        "hard": {
+          "mode": "end",
+          "health": 0,
+          "d": 90.1,
+          "t": 20.6
+        }
+      }
+    },
+    "Levels as data (music, light, enemy mix)": {
+      "pass": true,
+      "detail": [
+        {
+          "id": 1,
+          "music": "jungle",
+          "light": "sunrise",
+          "types": {
+            "moth": 29,
+            "turret": 6,
+            "beetle": 12
+          }
+        },
+        {
+          "id": 2,
+          "music": "canopy",
+          "light": "sunrise",
+          "types": {
+            "moth": 29,
+            "turret": 10,
+            "beetle": 12
+          }
+        },
+        {
+          "id": 3,
+          "music": "jungle",
+          "light": "dusk",
+          "types": {
+            "moth": 29,
+            "buggy": 12,
+            "beetle": 12
+          }
+        },
+        {
+          "id": 4,
+          "music": "canopy",
+          "light": "dusk",
+          "types": {
+            "moth": 29,
+            "mushroom": 18,
+            "bee": 6,
+            "turret": 6
+          }
+        },
+        {
+          "id": 5,
+          "music": "night",
+          "light": "night",
+          "types": {
+            "moth": 29,
+            "buggy": 6,
+            "turret": 6,
+            "mushroom": 6,
+            "bee": 3,
+            "beetle": 14
+          }
+        },
+        {
+          "id": 6,
+          "music": "boss",
+          "light": "dusk",
+          "types": {}
+        }
+      ]
+    },
+    "L2 turret every 70-90 m with cover in front": {
+      "pass": true,
+      "detail": {
+        "turrets": 10,
+        "gaps": [
+          70,
+          86,
+          81,
+          76,
+          71,
+          87,
+          82,
+          77,
+          72
+        ]
+      }
+    },
+    "Bot clears Easy on every level": {
+      "pass": true,
+      "detail": {
+        "L1": {
+          "mode": "finish",
+          "health": 4,
+          "d": 950,
+          "t": 196
+        },
+        "L2": {
+          "mode": "finish",
+          "health": 13,
+          "d": 950,
+          "t": 196
+        },
+        "L3": {
+          "mode": "finish",
+          "health": 82,
+          "d": 950,
+          "t": 177
+        },
+        "L4": {
+          "mode": "finish",
+          "health": 63,
+          "d": 950,
+          "t": 177
+        },
+        "L5": {
+          "mode": "finish",
+          "health": 63,
+          "d": 950,
+          "t": 177
+        }
+      }
+    },
+    "Bot dies early on Medium and Hard": {
+      "pass": true,
+      "detail": {
+        "medium L1": {
+          "mode": "end",
+          "health": 0,
+          "d": 130,
+          "t": 28
+        },
+        "medium L2": {
+          "mode": "end",
+          "health": 0,
+          "d": 147,
+          "t": 32
+        },
+        "medium L3": {
+          "mode": "end",
+          "health": 0,
+          "d": 120,
+          "t": 26
+        },
+        "medium L4": {
+          "mode": "end",
+          "health": 0,
+          "d": 133,
+          "t": 30
+        },
+        "medium L5": {
+          "mode": "end",
+          "health": 0,
+          "d": 145,
+          "t": 32
+        },
+        "hard L1": {
+          "mode": "end",
+          "health": 0,
+          "d": 90,
+          "t": 21
+        },
+        "hard L2": {
+          "mode": "end",
+          "health": 0,
+          "d": 86,
+          "t": 22
+        },
+        "hard L3": {
+          "mode": "end",
+          "health": 0,
+          "d": 105,
+          "t": 21
+        },
+        "hard L4": {
+          "mode": "end",
+          "health": 0,
+          "d": 81,
+          "t": 19
+        },
+        "hard L5": {
+          "mode": "end",
+          "health": 0,
+          "d": 90,
+          "t": 21
+        }
+      }
+    },
+    "Buggy lane marker 1.5 s before every charge; pods take damage; ram damage matches": {
+      "pass": true,
+      "detail": {
+        "easy": {
+          "inLane": {
+            "markerAt": 0,
+            "range": 46,
+            "lane": 0,
+            "markerVisible": true,
+            "chargeAfter": 1.53,
+            "speed": 10,
+            "lost": 5,
+            "passed": true,
+            "cause": "Leaf Buggy ram",
+            "pod": {
+              "podHp": 0,
+              "buggyHp": 6,
+              "glow": false
+            },
+            "bodyArmour": null
+          },
+          "dodged": {
+            "markerAt": 0,
+            "range": 46,
+            "lane": 0,
+            "markerVisible": true,
+            "chargeAfter": 1.53,
+            "speed": 10,
+            "lost": 3,
+            "passed": true,
+            "cause": "Enemy got past you",
+            "pod": {
+              "podHp": 0,
+              "buggyHp": 6,
+              "glow": false
+            },
+            "bodyArmour": null
+          }
+        },
+        "medium": {
+          "inLane": {
+            "markerAt": 0,
+            "range": 46,
+            "lane": 0,
+            "markerVisible": true,
+            "chargeAfter": 1.53,
+            "speed": 10,
+            "lost": 10,
+            "passed": true,
+            "cause": "Leaf Buggy ram",
+            "pod": {
+              "podHp": 0,
+              "buggyHp": 6,
+              "glow": false
+            },
+            "bodyArmour": null
+          },
+          "dodged": {
+            "markerAt": 0,
+            "range": 46,
+            "lane": 0,
+            "markerVisible": true,
+            "chargeAfter": 1.53,
+            "speed": 10,
+            "lost": 6,
+            "passed": true,
+            "cause": "Enemy got past you",
+            "pod": {
+              "podHp": 0,
+              "buggyHp": 6,
+              "glow": false
+            },
+            "bodyArmour": null
+          }
+        },
+        "hard": {
+          "inLane": {
+            "markerAt": 0,
+            "range": 46,
+            "lane": 0,
+            "markerVisible": true,
+            "chargeAfter": 1.53,
+            "speed": 10,
+            "lost": 18,
+            "passed": true,
+            "cause": "Leaf Buggy ram",
+            "pod": {
+              "podHp": 0,
+              "buggyHp": 6,
+              "glow": false
+            },
+            "bodyArmour": null
+          },
+          "dodged": {
+            "markerAt": 0,
+            "range": 46,
+            "lane": 0,
+            "markerVisible": true,
+            "chargeAfter": 1.53,
+            "speed": 10,
+            "lost": 10,
+            "passed": true,
+            "cause": "Enemy got past you",
+            "pod": {
+              "podHp": 0,
+              "buggyHp": 6,
+              "glow": false
+            },
+            "bodyArmour": null
+          }
+        }
+      }
+    },
+    "Hive bee: 3 mini-drones every 4 s; belly double; grenade clears minis": {
+      "pass": true,
+      "detail": {
+        "easy": {
+          "releases": [
+            {
+              "t": 1.17,
+              "count": 3,
+              "range": 24.4
+            },
+            {
+              "t": 5.2,
+              "count": 3,
+              "range": 21.3
+            },
+            {
+              "t": 9.23,
+              "count": 3,
+              "range": 23
+            }
+          ],
+          "hover": 24.6,
+          "belly": 2,
+          "body": 1,
+          "minisAlive": 3,
+          "minisAfterGrenade": 0,
+          "miniLeak": 1
+        },
+        "medium": {
+          "releases": [
+            {
+              "t": 1.17,
+              "count": 3,
+              "range": 24.4
+            },
+            {
+              "t": 5.2,
+              "count": 3,
+              "range": 21.3
+            },
+            {
+              "t": 9.23,
+              "count": 3,
+              "range": 23
+            }
+          ],
+          "hover": 23.9,
+          "belly": 2,
+          "body": 1,
+          "minisAlive": 3,
+          "minisAfterGrenade": 0,
+          "miniLeak": 3
+        },
+        "hard": {
+          "releases": [
+            {
+              "t": 1.17,
+              "count": 3,
+              "range": 24.4
+            },
+            {
+              "t": 5.2,
+              "count": 3,
+              "range": 21.3
+            },
+            {
+              "t": 9.23,
+              "count": 3,
+              "range": 23
+            }
+          ],
+          "hover": 23.9,
+          "belly": 2,
+          "body": 1,
+          "minisAlive": 3,
+          "minisAfterGrenade": 0,
+          "miniLeak": 5
+        }
+      }
+    },
+    "Spore mushroom stuns within 4 m for 2 s; cloud slows the soldier": {
+      "pass": true,
+      "detail": {
+        "near": 2,
+        "far": 0,
+        "cloud": 1,
+        "nearMovedWhileStunned": 0,
+        "stunEndsAfter2s": true,
+        "speedInCloud": 3.47,
+        "speedOutside": 6
+      }
+    },
+    "Dusk fog on L3 and L4, night with lanterns on L5": {
+      "pass": true,
+      "detail": [
+        {
+          "id": 3,
+          "light": "dusk",
+          "fog": 0.021,
+          "lanterns": 0
+        },
+        {
+          "id": 4,
+          "light": "dusk",
+          "fog": 0.021,
+          "lanterns": 0
+        },
+        {
+          "id": 5,
+          "light": "night",
+          "fog": 0.02,
+          "lanterns": 24
+        }
+      ]
+    },
+    "Boss: three phases at the right health, warnings, cover crumbles after 6 hits, death restarts at the arena": {
+      "pass": true,
+      "detail": {
+        "easy": {
+          "start": {
+            "hp": 80,
+            "max": 80,
+            "distance": 1000,
+            "phase": 1,
+            "art": "siege",
+            "covers": 3,
+            "bar": true
+          },
+          "boltCause": "Tank cannon bolt",
+          "coreOpen": 1.5,
+          "volley": {
+            "warnAt": 2.37,
+            "firstBoltAt": 3.43
+          },
+          "coverCrumbledAfter": 6,
+          "armour": 0.4,
+          "core": 1.2,
+          "phase2": {
+            "phase": 2,
+            "art": "brood",
+            "pods": 2
+          },
+          "podDamage": 5,
+          "hatched": 1,
+          "swellBeforeHatch": true,
+          "phase3": {
+            "phase": 3,
+            "art": "rampage",
+            "charges": 3
+          },
+          "markerVisible": true,
+          "coreOpenWhenStuck": true,
+          "stuckGrenade": 9,
+          "slamRing": true,
+          "rampage": {
+            "markerAt": 1.37,
+            "chargeAt": 2.4,
+            "warnTime": 1.03,
+            "stuckAt": 3.77,
+            "slamWarnAt": 8.77,
+            "damageTaken": 6
+          },
+          "critical": "critical",
+          "death": {
+            "mode": "end",
+            "start": "Retry fight"
+          },
+          "restart": {
+            "mode": "play",
+            "hp": 80,
+            "phase": 1,
+            "distance": 1000,
+            "covers": 3,
+            "level": 6
+          }
+        },
+        "medium": {
+          "start": {
+            "hp": 120,
+            "max": 120,
+            "distance": 1000,
+            "phase": 1,
+            "art": "siege",
+            "covers": 3,
+            "bar": true
+          },
+          "boltCause": "Tank cannon bolt",
+          "coreOpen": 1.5,
+          "volley": {
+            "warnAt": 2.37,
+            "firstBoltAt": 3.43
+          },
+          "coverCrumbledAfter": 6,
+          "armour": 0.4,
+          "core": 1.2,
+          "phase2": {
+            "phase": 2,
+            "art": "brood",
+            "pods": 2
+          },
+          "podDamage": 5,
+          "hatched": 1,
+          "swellBeforeHatch": true,
+          "phase3": {
+            "phase": 3,
+            "art": "rampage",
+            "charges": 3
+          },
+          "markerVisible": true,
+          "coreOpenWhenStuck": true,
+          "stuckGrenade": 9,
+          "slamRing": true,
+          "rampage": {
+            "markerAt": 1.37,
+            "chargeAt": 2.4,
+            "warnTime": 1.03,
+            "stuckAt": 3.77,
+            "slamWarnAt": 8.77,
+            "damageTaken": 12
+          },
+          "critical": "critical",
+          "death": {
+            "mode": "end",
+            "start": "Retry fight"
+          },
+          "restart": {
+            "mode": "play",
+            "hp": 120,
+            "phase": 1,
+            "distance": 1000,
+            "covers": 3,
+            "level": 6
+          }
+        },
+        "hard": {
+          "start": {
+            "hp": 160,
+            "max": 160,
+            "distance": 1000,
+            "phase": 1,
+            "art": "siege",
+            "covers": 3,
+            "bar": true
+          },
+          "boltCause": "Tank cannon bolt",
+          "coreOpen": 1.5,
+          "volley": {
+            "warnAt": 2.37,
+            "firstBoltAt": 3.43
+          },
+          "coverCrumbledAfter": 6,
+          "armour": 0.4,
+          "core": 1.2,
+          "phase2": {
+            "phase": 2,
+            "art": "brood",
+            "pods": 2
+          },
+          "podDamage": 5,
+          "hatched": 1,
+          "swellBeforeHatch": true,
+          "phase3": {
+            "phase": 3,
+            "art": "rampage",
+            "charges": 3
+          },
+          "markerVisible": true,
+          "coreOpenWhenStuck": true,
+          "stuckGrenade": 9,
+          "slamRing": true,
+          "rampage": {
+            "markerAt": 1.37,
+            "chargeAt": 2.4,
+            "warnTime": 1.03,
+            "stuckAt": 3.77,
+            "slamWarnAt": 8.77,
+            "damageTaken": 20
+          },
+          "critical": "critical",
+          "death": {
+            "mode": "end",
+            "start": "Retry fight"
+          },
+          "restart": {
+            "mode": "play",
+            "hp": 160,
+            "phase": 1,
+            "distance": 1000,
+            "covers": 3,
+            "level": 6
+          }
+        }
+      }
+    },
+    "Boss fight length (scripted player, Medium)": {
+      "pass": true,
+      "detail": {
+        "aim 0.12": [
+          {
+            "mode": "finish",
+            "time": 80.2,
+            "health": 93,
+            "bossHp": 0,
+            "phase": 3,
+            "causes": {
+              "Tank cannon bolt": 7
+            }
+          },
+          {
+            "mode": "finish",
+            "time": 79.4,
+            "health": 93,
+            "bossHp": 0,
+            "phase": 3,
+            "causes": {
+              "Tank cannon bolt": 7
+            }
+          }
+        ],
+        "aim 0.25": [
+          {
+            "mode": "finish",
+            "time": 116.7,
+            "health": 67,
+            "bossHp": 0,
+            "phase": 3,
+            "causes": {
+              "Tank cannon bolt": 21,
+              "Creature collision": 12
+            }
+          },
+          {
+            "mode": "finish",
+            "time": 117.8,
+            "health": 93,
+            "bossHp": 0,
+            "phase": 3,
+            "causes": {
+              "Tank cannon bolt": 7
+            }
+          }
+        ]
+      }
+    },
+    "Level select: L1 unlocked, others locked, six stops on the trail": {
+      "pass": true,
+      "detail": [
+        {
+          "text": "1Overgrown Trail☆☆☆",
+          "locked": false,
+          "left": "14%",
+          "top": "84%"
+        },
+        {
+          "text": "🔒Temple ApproachLocked",
+          "locked": true,
+          "left": "30%",
+          "top": "68%"
+        },
+        {
+          "text": "🔒Buggy RunLocked",
+          "locked": true,
+          "left": "36%",
+          "top": "40%"
+        },
+        {
+          "text": "🔒Hive GroveLocked",
+          "locked": true,
+          "left": "65%",
+          "top": "49%"
+        },
+        {
+          "text": "🔒Night of the AncientsLocked",
+          "locked": true,
+          "left": "62%",
+          "top": "28%"
+        },
+        {
+          "text": "🔒Boss · The Beetle TankLocked",
+          "locked": true,
+          "left": "87%",
+          "top": "24%"
+        }
+      ]
+    },
+    "Clearing a level unlocks the next; Continue goes to it": {
+      "pass": true,
+      "detail": {
+        "l1clear": {
+          "mode": "results",
+          "title": "L1 · Overgrown Trail cleared · Easy",
+          "stars": 3,
+          "cont": "Continue · L2 Temple Approach",
+          "progress": {
+            "unlocked": 2,
+            "levels": {
+              "1": {
+                "stars": 3,
+                "score": 1070,
+                "time": 170.03333333333333
+              }
+            },
+            "coins": 0,
+            "weapons": []
+          }
+        },
+        "map1": [
+          false,
+          false,
+          true,
+          true,
+          true,
+          true
+        ],
+        "cont": {
+          "mode": "play",
+          "level": 2,
+          "name": "Temple Approach"
+        }
+      }
+    },
+    "Beating the boss unlocks the Triple Shot; Q swaps weapons": {
+      "pass": true,
+      "detail": {
+        "before": {
+          "unlocked": false,
+          "before": "rifle",
+          "after": "rifle",
+          "back": "rifle",
+          "chip": false,
+          "tracers": 9
+        },
+        "after": {
+          "unlocked": true,
+          "before": "rifle",
+          "after": "triple",
+          "back": "rifle",
+          "chip": true,
+          "tracers": 27
+        },
+        "rows": "Time01:40.000Crawlers0 / 0 destroyedHealth bonus80 × 100Time bonus50 s under 2:30 × 200Reward200 coins · Triple Shot unlockedTotal score0",
+        "cont": "Continue · Map"
+      }
+    },
+    "Old save codes load; progress survives a reload; map shows stars and locks": {
+      "pass": true,
+      "detail": {
+        "imported": {
+          "unlocked": 2,
+          "levels": {
+            "1": {
+              "stars": 2,
+              "score": 9000,
+              "time": 175
+            }
+          },
+          "coins": 0,
+          "weapons": []
+        },
+        "mapShown": true,
+        "playing": {
+          "mode": "play",
+          "level": 2
+        },
+        "progressAfter": {
+          "unlocked": 4,
+          "levels": {
+            "1": {
+              "stars": 2,
+              "score": 9000,
+              "time": 175
+            },
+            "3": {
+              "stars": 3,
+              "score": 1040,
+              "time": 170.03333333333333
+            }
+          },
+          "coins": 0,
+          "weapons": []
+        },
+        "map": [
+          "1Overgrown Trail★★☆",
+          "2Temple Approach☆☆☆",
+          "3Buggy Run★★★",
+          "4Hive Grove☆☆☆",
+          "🔒Night of the AncientsLocked [locked]",
+          "🔒Boss · The Beetle TankLocked [locked]"
+        ]
+      }
+    },
+    "No page or console errors": {
+      "pass": true,
+      "detail": []
+    }
+  },
+  "data": {
+    "levels": [
+      {
+        "id": 1,
+        "name": "Overgrown Trail",
+        "light": "sunrise",
+        "music": "jungle",
+        "fog": 0.012,
+        "hazards": 51,
+        "covers": 12,
+        "types": {
+          "moth": 29,
+          "turret": 6,
+          "beetle": 12
+        },
+        "lanterns": 0
+      },
+      {
+        "id": 2,
+        "name": "Temple Approach",
+        "light": "sunrise",
+        "music": "canopy",
+        "fog": 0.012,
+        "hazards": 51,
+        "covers": 22,
+        "types": {
+          "moth": 29,
+          "turret": 10,
+          "beetle": 12
+        },
+        "lanterns": 0
+      },
+      {
+        "id": 3,
+        "name": "Buggy Run",
+        "light": "dusk",
+        "music": "jungle",
+        "fog": 0.021,
+        "hazards": 41,
+        "covers": 12,
+        "types": {
+          "moth": 29,
+          "buggy": 12,
+          "beetle": 12
+        },
+        "lanterns": 0
+      },
+      {
+        "id": 4,
+        "name": "Hive Grove",
+        "light": "dusk",
+        "music": "canopy",
+        "fog": 0.021,
+        "hazards": 51,
+        "covers": 12,
+        "types": {
+          "moth": 29,
+          "mushroom": 18,
+          "bee": 6,
+          "turret": 6
+        },
+        "lanterns": 0
+      },
+      {
+        "id": 5,
+        "name": "Night of the Ancients",
+        "light": "night",
+        "music": "night",
+        "fog": 0.02,
+        "hazards": 65,
+        "covers": 12,
+        "types": {
+          "moth": 29,
+          "buggy": 6,
+          "turret": 6,
+          "mushroom": 6,
+          "bee": 3,
+          "beetle": 14
+        },
+        "lanterns": 24
+      },
+      {
+        "id": 6,
+        "name": "The Beetle Tank",
+        "light": "dusk",
+        "music": "boss",
+        "fog": 0.021,
+        "hazards": 0,
+        "covers": 3,
+        "types": {},
+        "lanterns": 0
+      }
+    ],
+    "bots": {
+      "easy L1": {
+        "mode": "finish",
+        "health": 4,
+        "d": 950,
+        "t": 196
+      },
+      "easy L2": {
+        "mode": "finish",
+        "health": 13,
+        "d": 950,
+        "t": 196
+      },
+      "easy L3": {
+        "mode": "finish",
+        "health": 82,
+        "d": 950,
+        "t": 177
+      },
+      "easy L4": {
+        "mode": "finish",
+        "health": 63,
+        "d": 950,
+        "t": 177
+      },
+      "easy L5": {
+        "mode": "finish",
+        "health": 63,
+        "d": 950,
+        "t": 177
+      },
+      "medium L1": {
+        "mode": "end",
+        "health": 0,
+        "d": 130,
+        "t": 28
+      },
+      "medium L2": {
+        "mode": "end",
+        "health": 0,
+        "d": 147,
+        "t": 32
+      },
+      "medium L3": {
+        "mode": "end",
+        "health": 0,
+        "d": 120,
+        "t": 26
+      },
+      "medium L4": {
+        "mode": "end",
+        "health": 0,
+        "d": 133,
+        "t": 30
+      },
+      "medium L5": {
+        "mode": "end",
+        "health": 0,
+        "d": 145,
+        "t": 32
+      },
+      "hard L1": {
+        "mode": "end",
+        "health": 0,
+        "d": 90,
+        "t": 21
+      },
+      "hard L2": {
+        "mode": "end",
+        "health": 0,
+        "d": 86,
+        "t": 22
+      },
+      "hard L3": {
+        "mode": "end",
+        "health": 0,
+        "d": 105,
+        "t": 21
+      },
+      "hard L4": {
+        "mode": "end",
+        "health": 0,
+        "d": 81,
+        "t": 19
+      },
+      "hard L5": {
+        "mode": "end",
+        "health": 0,
+        "d": 90,
+        "t": 21
+      }
+    },
+    "bossFight": {
+      "aim 0.12": [
+        {
+          "mode": "finish",
+          "time": 80.2,
+          "health": 93,
+          "bossHp": 0,
+          "phase": 3,
+          "causes": {
+            "Tank cannon bolt": 7
+          }
+        },
+        {
+          "mode": "finish",
+          "time": 79.4,
+          "health": 93,
+          "bossHp": 0,
+          "phase": 3,
+          "causes": {
+            "Tank cannon bolt": 7
+          }
+        }
+      ],
+      "aim 0.25": [
+        {
+          "mode": "finish",
+          "time": 116.7,
+          "health": 67,
+          "bossHp": 0,
+          "phase": 3,
+          "causes": {
+            "Tank cannon bolt": 21,
+            "Creature collision": 12
+          }
+        },
+        {
+          "mode": "finish",
+          "time": 117.8,
+          "health": 93,
+          "bossHp": 0,
+          "phase": 3,
+          "causes": {
+            "Tank cannon bolt": 7
+          }
+        }
+      ]
+    }
+  },
+  "errors": []
+}

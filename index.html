@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Jungle Soldier | Zone 1 · Level 1 — The Forest</title>
-<link rel="stylesheet" href="style.css?v=13">
+<title>Jungle Soldier | Zone 1 — The Forest</title>
+<link rel="stylesheet" href="style.css?v=14">
 </head>
 <body>
 <main id="game">
@@ -13,10 +13,11 @@
 <audio id="music" src="art/canopy-loop.wav" loop preload="none"></audio>
 <div id="loader"><div class="loadbar"><i></i></div><p>LOADING JUNGLE · PBR TEXTURES · DUSK HDRI</p></div>
 <header id="hud" hidden>
-<div class="hud-panel left"><small>SCORE</small><strong id="score">0000</strong><div id="health" role="meter" aria-label="Health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><i></i></div><span id="shield"></span><div id="activeItems"></div></div>
+<div class="hud-panel left"><small>SCORE</small><strong id="score">0000</strong><div id="health" role="meter" aria-label="Health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><i></i></div><span id="shield"></span><div id="activeItems"></div><div id="weaponChip" class="power-chip" hidden></div></div>
 <div class="hud-panel right"><small>TIME</small><strong id="timer">00:00.000</strong><small id="coinCount"></small></div>
 </header>
-<div id="levelbar" hidden><small>LEVEL 1 / 1</small><div class="track"><i id="progress"></i></div><small id="distance"></small></div>
+<div id="bossbar" hidden><b>THE BEETLE TANK</b><div class="track"><i id="bossFill"></i></div><small id="bossPhase"></small></div>
+<div id="levelbar" hidden><small id="levelLabel">LEVEL 1 / 5</small><div class="track"><i id="progress"></i></div><small id="distance"></small></div>
 <div id="speedo" hidden><strong><span id="speedBig">0</span><small> KM/H</small></strong><div class="track"><i id="speedbar"></i></div><small id="speed"></small></div>
 <div id="reticle" hidden></div>
 <div id="killpop" aria-hidden="true"></div>
@@ -27,13 +28,20 @@
 <table class="tally"><tbody id="resultsRows"></tbody></table>
 <div id="resultsStars" class="stars"></div>
 <p id="resultsBest"></p>
-<div class="results-actions"><button type="button" id="resultsContinue" disabled title="The level system is coming soon">Continue · Coming soon</button><button type="button" id="resultsRetry">Retry</button><button type="button" id="resultsMenu" class="ghost">Menu</button></div>
+<div class="results-actions"><button type="button" id="resultsContinue">Continue</button><button type="button" id="resultsRetry">Retry</button><button type="button" id="resultsMenu" class="ghost">Menu</button></div>
 </section>
 <div id="notice" aria-live="polite"></div>
 <div id="powerbar" aria-live="polite"></div>
+<section id="levelSelect" hidden aria-labelledby="mapTitle">
+<div class="map-head"><div><p class="eyebrow">ZONE 1 · THE FOREST</p><h2 id="mapTitle">Jungle trail</h2></div>
+<label>Difficulty <select id="mapDifficulty"><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></label>
+<span id="mapCoins"></span><button type="button" id="mapBack" class="ghost">Menu</button></div>
+<div class="map-frame"><img src="art/jungle-trail-map.webp" alt="Jungle trail map from the Overgrown Trail to the temple"><div id="mapStops"></div></div>
+<p id="mapInfo" aria-live="polite"></p>
+</section>
 <section id="menu">
 <div class="menu-main">
-<p class="eyebrow">ZONE 1 · LEVEL 1 — THE FOREST · V13</p>
+<p class="eyebrow">ZONE 1 · THE FOREST · 5 LEVELS + BOSS · V14</p>
 <h1>Jungle<br>Soldier</h1>
 <p id="message">Hold the line in the forest. Move the mouse to aim. Hold left click to fire.</p>
 <div class="stats" aria-label="Soldier stats">
@@ -45,11 +53,12 @@
 <div class="weapons" aria-label="Weapons">
 <div class="weapon selected"><img src="art/sprites/weapon_rifle.png" alt=""><strong>RIFLE</strong><span>30 m range · mouse aim</span></div>
 <div class="weapon"><img src="art/sprites/icon_grenade.png" alt=""><strong>GRENADE</strong><span>Power Attack · 3 charges</span></div>
+<div class="weapon" id="tripleCard" hidden><img src="art/sprites/weapon_triple.png" alt=""><strong>TRIPLE SHOT</strong><span>Spread of 3 · Q to swap</span></div>
 </div>
 <div class="profile" aria-label="Player profile">
 <div class="profile-row"><label>Profile <select id="profileSelect"></select></label><button type="button" id="profileDelete" class="ghost" hidden>Delete</button><button type="button" id="profileExport" class="ghost">Copy save code</button></div>
 <form id="profileForm" class="profile-row"><input id="profileName" maxlength="18" placeholder="New call sign" autocomplete="off" aria-label="New profile name"><button type="submit" class="ghost">Create profile</button></form>
-<p id="profileStats"></p><p id="profileNote" aria-live="polite"></p>
+<p id="profileStats"></p><p id="menuCoins"></p><p id="profileNote" aria-live="polite"></p>
 <details id="profileTransfer"><summary>Move a profile between devices</summary><textarea id="profileCode" rows="2" placeholder="Paste a save code here"></textarea><button type="button" id="profileImport" class="ghost">Load save code</button></details>
 </div>
 <div class="settings"><label>Difficulty <select id="difficulty"><option value="easy">Easy</option><option value="medium" selected>Medium</option><option value="hard">Hard</option></select></label><span id="difficultyBlurb"></span></div>
@@ -57,6 +66,7 @@
 </div>
 <div class="menu-actions">
 <button id="start" disabled>Loading…</button>
+<button id="mapButton" type="button" class="ghost">Level map</button>
 <button id="musicToggle" type="button" aria-pressed="true">Music on · M</button>
 </div>
 <ul class="controls" aria-label="Game controls">
@@ -68,10 +78,11 @@
 <li><span>Aim</span><span>Mouse</span></li>
 <li><span>Fire rifle</span><span>Hold left click</span></li>
 <li><span>Grenade</span><span><kbd>E</kbd> / right click</span></li>
+<li><span>Swap weapon</span><span><kbd>Q</kbd> (after the boss)</span></li>
 <li><span>Pause</span><span><kbd>Esc</kbd></span></li>
 </ul>
 </section>
 </main>
-<script type="module" src="game.js?v=13"></script>
+<script type="module" src="game.js?v=14"></script>
 </body>
 </html>

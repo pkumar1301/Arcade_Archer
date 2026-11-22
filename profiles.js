@@ -6,6 +6,56 @@
 
 const KEY = 'jungleSoldier.save.v1';
 const DIFFS = ['easy', 'medium', 'hard'];
+// V14: Forest campaign progress, kept per difficulty: unlocked levels, best stars
+// and best score per level, banked coins and unlocked weapons. Level 6 is the boss.
+const LEVEL_COUNT = 6, KNOWN_WEAPONS = ['triple'];
+const guestProgress = {}; // guests keep progress for this browser session only
+const blankProgress = () => ({ unlocked: 1, levels: {}, coins: 0, weapons: [] });
+// Older saves (V7-V13) only know Level 1: a cleared run unlocks Level 2 and keeps its stars and score.
+function migrateProgress(best) {
+  const pr = blankProgress();
+  if (best?.cleared) {
+    pr.unlocked = 2;
+    pr.levels[1] = { stars: Math.max(1, Math.min(3, +best.stars || 1)), score: +best.score || 0, time: best.time == null ? null : +best.time };
+  }
+  return pr;
+}
+function cleanProgress(raw) {
+  const pr = blankProgress();
+  if (!raw || typeof raw !== 'object') return pr;
+  pr.unlocked = Math.max(1, Math.min(LEVEL_COUNT, Math.floor(+raw.unlocked || 1)));
+  for (let id = 1; id <= LEVEL_COUNT; id++) {
+    const l = raw.levels?.[id];
+    if (l) pr.levels[id] = { stars: Math.max(0, Math.min(3, Math.floor(+l.stars || 0))), score: Math.max(0, Math.floor(+l.score || 0)), time: l.time == null ? null : +l.time };
+  }
+  pr.coins = Math.max(0, Math.floor(+raw.coins || 0));
+  pr.weapons = KNOWN_WEAPONS.filter(w => Array.isArray(raw.weapons) && raw.weapons.includes(w));
+  return pr;
+}
+function ensureProgress(p) {
+  p.progress ||= {};
+  for (const d of DIFFS) p.progress[d] = p.progress[d] ? cleanProgress(p.progress[d]) : migrateProgress(p.stats?.best?.[d]);
+  return p.progress;
+}
+export function progressFor(difficulty) {
+  const d = DIFFS.includes(difficulty) ? difficulty : 'medium';
+  const p = activeProfile();
+  if (!p) return guestProgress[d] ||= blankProgress();
+  return (p.progress && p.progress[d]) || ensureProgress(p)[d];
+}
+// Records a cleared level. Returns true for a new best (stars or score) on that level.
+export function recordLevel({ difficulty, level, score = 0, stars = 0, time = null, coins = 0, weapon = null }) {
+  const pr = progressFor(difficulty);
+  const prev = pr.levels[level] || { stars: 0, score: 0, time: null };
+  const better = stars > prev.stars || score > prev.score;
+  pr.levels[level] = { stars: Math.max(prev.stars, stars), score: Math.max(prev.score, score), time: prev.time == null ? time : (time == null ? prev.time : Math.min(prev.time, time)) };
+  pr.unlocked = Math.min(LEVEL_COUNT, Math.max(pr.unlocked, level + 1));
+  pr.coins += Math.max(0, Math.floor(coins));
+  if (weapon && KNOWN_WEAPONS.includes(weapon) && !pr.weapons.includes(weapon)) pr.weapons.push(weapon);
+  if (activeProfile()) persist();
+  render();
+  return better;
+}
 let store = { activeId: null, profiles: {} };
 let ui, onChange;
 
@@ -15,6 +65,7 @@ function load() {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed.profiles === 'object') store = parsed;
+      for (const p of Object.values(store.profiles)) ensureProgress(p); // V14: older saves gain campaign progress
     }
   } catch { /* private window or blocked storage: play without saving */ }
 }
@@ -45,13 +96,15 @@ export function saveSetting(key, value) {
 }
 
 // Returns true when the run set a new best distance or score for that difficulty.
-export function recordRun({ won, score, coins, distance, time, difficulty, stars = 0 }) {
+// V14: the per-difficulty best line is Level 1 (Overgrown Trail); other levels only count runs, wins and coins.
+export function recordRun({ won, score, coins, distance, time, difficulty, stars = 0, level = 1 }) {
   const p = activeProfile();
   if (!p) return false;
   const s = p.stats;
   s.runs++;
   if (won) s.wins++;
   s.totalCoins += coins;
+  if (level !== 1) { p.lastPlayed = new Date().toISOString(); persist(); render(); return false; }
   const prev = s.best[difficulty] || { distance: 0, score: 0, time: null, cleared: false };
   const better = distance > prev.distance || score > prev.score || stars > (prev.stars || 0);
   s.best[difficulty] = {
@@ -73,15 +126,16 @@ function checksum(text) {
   for (let i = 0; i < text.length; i++) h = (Math.imul(h, 31) + text.charCodeAt(i)) >>> 0;
   return h.toString(36).slice(-4);
 }
+// V14: JS2 codes add campaign progress. JS1 codes (V7-V13) still load and are migrated.
 function exportCode(p) {
-  const json = JSON.stringify({ v: 1, name: p.name, settings: p.settings, stats: p.stats, created: p.created });
+  const json = JSON.stringify({ v: 2, name: p.name, settings: p.settings, stats: p.stats, progress: ensureProgress(p), created: p.created });
   const body = btoa(unescape(encodeURIComponent(json)));
-  return 'JS1-' + body + '-' + checksum(body);
+  return 'JS2-' + body + '-' + checksum(body);
 }
 function importCode(code) {
-  const m = String(code).trim().match(/^JS1-([A-Za-z0-9+/=]+)-([a-z0-9]{1,4})$/);
-  if (!m || checksum(m[1]) !== m[2]) throw new Error('That save code is incomplete or mistyped.');
-  const data = JSON.parse(decodeURIComponent(escape(atob(m[1]))));
+  const m = String(code).trim().match(/^JS([12])-([A-Za-z0-9+/=]+)-([a-z0-9]{1,4})$/);
+  if (!m || checksum(m[2]) !== m[3]) throw new Error('That save code is incomplete or mistyped.');
+  const data = JSON.parse(decodeURIComponent(escape(atob(m[2]))));
   const p = blankProfile(cleanName(data.name) || 'Soldier');
   p.created = data.created || p.created;
   p.settings = { difficulty: DIFFS.includes(data.settings?.difficulty) ? data.settings.difficulty : 'medium', leakWarningSeen: data.settings?.leakWarningSeen === true };
@@ -90,9 +144,13 @@ function importCode(code) {
     runs: +st.runs || 0, wins: +st.wins || 0, totalCoins: +st.totalCoins || 0,
     best: Object.fromEntries(DIFFS.filter(d => st.best?.[d]).map(d => [d, {
       distance: +st.best[d].distance || 0, score: +st.best[d].score || 0,
-      cleared: !!st.best[d].cleared, time: st.best[d].time == null ? null : +st.best[d].time
+      cleared: !!st.best[d].cleared, time: st.best[d].time == null ? null : +st.best[d].time,
+      stars: Math.max(0, Math.min(3, Math.floor(+st.best[d].stars || 0)))
     }]))
   };
+  p.progress = m[1] === '2' && data.progress
+    ? Object.fromEntries(DIFFS.map(d => [d, cleanProgress(data.progress[d])]))
+    : Object.fromEntries(DIFFS.map(d => [d, migrateProgress(p.stats.best[d])]));
   // Replace an existing profile with the same name instead of duplicating it.
   const same = Object.values(store.profiles).find(x => x.name.toLowerCase() === p.name.toLowerCase());
   if (same) { p.id = same.id; }
@@ -120,14 +178,15 @@ function render() {
     ui.profileStats.textContent = 'Guest: runs are not saved. Create a profile to keep your bests.';
     return;
   }
+  ensureProgress(p);
   const rows = DIFFS.map(d => {
-    const b = p.stats.best[d];
+    const pr = p.progress[d];
     const label = d[0].toUpperCase() + d.slice(1);
-    if (!b) return label + ' –';
-    const stars = b.stars ? ' ' + '★'.repeat(b.stars) + '☆'.repeat(3 - b.stars) : '';
-    return label + ' ' + (b.cleared ? '✓ ' + fmtTime(b.time) : b.distance + ' m') + stars + ' · ' + b.score + ' pts';
+    const stars = Object.values(pr.levels).reduce((n, l) => n + l.stars, 0);
+    const open = pr.unlocked >= LEVEL_COUNT ? 'Boss open' : 'Level ' + pr.unlocked + ' open';
+    return label + ' · ' + open + ' · ★' + stars + ' · ' + pr.coins + ' coins' + (pr.weapons.includes('triple') ? ' · Triple Shot' : '');
   });
-  ui.profileStats.textContent = 'Best: ' + rows.join('   ') + '   ·   Runs ' + p.stats.runs + ' · Coins ' + p.stats.totalCoins;
+  ui.profileStats.textContent = 'Forest: ' + rows.join('   ') + '   ·   Runs ' + p.stats.runs;
 }
 function flash(text) {
   ui.profileNote.textContent = text;
