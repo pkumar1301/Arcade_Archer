@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Jungle Soldier | Zone 1 · Level 1 — The Forest</title>
-<link rel="stylesheet" href="style.css?v=12">
+<link rel="stylesheet" href="style.css?v=13">
 </head>
 <body>
 <main id="game">
@@ -20,11 +20,20 @@
 <div id="speedo" hidden><strong><span id="speedBig">0</span><small> KM/H</small></strong><div class="track"><i id="speedbar"></i></div><small id="speed"></small></div>
 <div id="reticle" hidden></div>
 <div id="killpop" aria-hidden="true"></div>
+<div id="stretchBanner" aria-live="polite">FINAL STRETCH</div>
+<section id="results" hidden aria-labelledby="resultsTitle">
+<p class="eyebrow">MISSION COMPLETE</p>
+<h2 id="resultsTitle">Jungle cleared</h2>
+<table class="tally"><tbody id="resultsRows"></tbody></table>
+<div id="resultsStars" class="stars"></div>
+<p id="resultsBest"></p>
+<div class="results-actions"><button type="button" id="resultsContinue" disabled title="The level system is coming soon">Continue · Coming soon</button><button type="button" id="resultsRetry">Retry</button><button type="button" id="resultsMenu" class="ghost">Menu</button></div>
+</section>
 <div id="notice" aria-live="polite"></div>
 <div id="powerbar" aria-live="polite"></div>
 <section id="menu">
 <div class="menu-main">
-<p class="eyebrow">ZONE 1 · LEVEL 1 — THE FOREST · V12</p>
+<p class="eyebrow">ZONE 1 · LEVEL 1 — THE FOREST · V13</p>
 <h1>Jungle<br>Soldier</h1>
 <p id="message">Hold the line in the forest. Move the mouse to aim. Hold left click to fire.</p>
 <div class="stats" aria-label="Soldier stats">
@@ -63,6 +72,6 @@
 </ul>
 </section>
 </main>
-<script type="module" src="game.js?v=12"></script>
+<script type="module" src="game.js?v=13"></script>
 </body>
 </html>

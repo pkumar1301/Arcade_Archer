@@ -57,6 +57,7 @@ const DRUMS = { // kick, snare, hat (16 steps)
 const midiHz = m => 440 * Math.pow(2, (m - 69) / 12);
 
 export function createMusic() {
+  let lift = 1; // V13
   let ctx = null, master, comp, echo, echoGain, pulse25, pulse12, noiseBuf;
   let track = null, trackName = '', step = 0, nextTime = 0, timer = null, volume = .5, onDone = null;
 
@@ -115,7 +116,7 @@ export function createMusic() {
   }
 
   function scheduleStep(t) {
-    const tr = track, bars = tr.bars, sixteenth = 60 / tr.bpm / 4;
+    const tr = track, bars = tr.bars, sixteenth = 60 / (tr.bpm * lift) / 4;
     const barIdx = Math.floor(step / 16) % bars.length, s = step % 16, bar = bars[barIdx];
     if (tr.once && step >= bars.length * 16) { stopScheduling(); onDone?.(); return; }
     // lead
@@ -143,7 +144,7 @@ export function createMusic() {
   }
   function tick() {
     if (!track) return;
-    const sixteenth = 60 / track.bpm / 4;
+    const sixteenth = 60 / (track.bpm * lift) / 4;
     while (track && nextTime < ctx.currentTime + .15) { scheduleStep(nextTime); nextTime += sixteenth; }
   }
   function stopScheduling() { clearInterval(timer); timer = null; track = null; }
@@ -153,9 +154,12 @@ export function createMusic() {
     tracks: Object.fromEntries(Object.entries(TRACKS).map(([k, v]) => [k, v.title])),
     init,
     setVolume(v) { volume = v; if (ctx && track) master.gain.setTargetAtTime(volume * .5, ctx.currentTime, .05); },
+    // V13: final stretch: play the current track a little faster and louder.
+    lift(factor) { lift = factor; if (ctx && track) master.gain.setTargetAtTime(volume * .5 * Math.min(1.3, factor * 1.1), ctx.currentTime, .2); },
     play(name, done) {
       if (!ctx || !TRACKS[name]) return;
       if (name === trackName && track) return;
+      lift = 1;
       stopScheduling();
       const tr = TRACKS[name]; tr.bars = tr.bars || build(tr);
       track = tr; trackName = name; step = 0; onDone = done || null;

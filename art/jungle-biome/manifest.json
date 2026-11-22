@@ -1,0 +1,152 @@
+[
+  {
+    "file": "enemy_leaf_buggy_front.png",
+    "width": 1033,
+    "height": 947,
+    "aspect": 1.0908,
+    "source": "leaf-buggy-front.png",
+    "use": "Buggy Run, night gauntlet",
+    "pivot": "bottom-center (tyre contact)",
+    "notes": "Eye lamps, side vents and wheel rings recoloured warm orange-red so it reads against green foliage. Rear seed pods keep their green glow."
+  },
+  {
+    "file": "boss_beetle_tank_intact.png",
+    "width": 636,
+    "height": 765,
+    "aspect": 0.8314,
+    "source": "beetle-tank-states.png",
+    "use": "Beetle Tank arena",
+    "pivot": "bottom-center (tread baseline)",
+    "notes": "Both states share one canvas size, centreline and baseline; swap without offsets. Cyan core = weak point."
+  },
+  {
+    "file": "boss_beetle_tank_damaged.png",
+    "width": 636,
+    "height": 765,
+    "aspect": 0.8314,
+    "source": "beetle-tank-states.png",
+    "use": "Beetle Tank arena (Rampage)",
+    "pivot": "bottom-center (tread baseline)",
+    "notes": "Both states share one canvas size, centreline and baseline; swap without offsets. Cyan core = weak point."
+  },
+  {
+    "file": "brood_pod_sealed.png",
+    "width": 538,
+    "height": 617,
+    "aspect": 0.872,
+    "source": "beetle-brood-pod-states.png",
+    "use": "Beetle Tank Brood phase",
+    "pivot": "bottom-center (mounting base)",
+    "notes": "Both states share one canvas; bases aligned."
+  },
+  {
+    "file": "brood_pod_hatching.png",
+    "width": 538,
+    "height": 617,
+    "aspect": 0.872,
+    "source": "beetle-brood-pod-states.png",
+    "use": "Beetle Tank Brood phase",
+    "pivot": "bottom-center (mounting base)",
+    "notes": "Both states share one canvas; bases aligned."
+  },
+  {
+    "file": "armour_chest_plate.png",
+    "width": 571,
+    "height": 679,
+    "aspect": 0.8409,
+    "source": "armour-attachments.png",
+    "use": "Soldier upgrade reference / shop icon",
+    "pivot": "center",
+    "notes": "Bronze trim or leaf emblem still to add (see brief section 12)."
+  },
+  {
+    "file": "armour_shoulder_plate.png",
+    "width": 479,
+    "height": 497,
+    "aspect": 0.9638,
+    "source": "armour-attachments.png",
+    "use": "Soldier upgrade reference / shop icon",
+    "pivot": "center",
+    "notes": "Shoulder plate can be mirrored for the other side. Bronze trim or leaf emblem still to add (see brief section 12)."
+  },
+  {
+    "file": "armour_visor_helmet.png",
+    "width": 597,
+    "height": 525,
+    "aspect": 1.1371,
+    "source": "armour-attachments.png",
+    "use": "Soldier upgrade reference / shop icon",
+    "pivot": "center",
+    "notes": "Bronze trim or leaf emblem still to add (see brief section 12)."
+  },
+  {
+    "file": "prop_temple_lantern.png",
+    "width": 358,
+    "height": 824,
+    "aspect": 0.4345,
+    "source": "jungle-lantern-and-vine-ripper.png",
+    "use": "Night route landmark",
+    "pivot": "bottom-center",
+    "notes": ""
+  },
+  {
+    "file": "weapon_vine_ripper.png",
+    "width": 1014,
+    "height": 400,
+    "aspect": 2.535,
+    "source": "jungle-lantern-and-vine-ripper.png",
+    "use": "Quartermaster shop icon / 3D reference",
+    "pivot": "center",
+    "notes": ""
+  },
+  {
+    "file": "vfx_spore_cloud_green.png",
+    "width": 1396,
+    "height": 550,
+    "aspect": 2.5382,
+    "source": "blue-spore-cloud.png",
+    "use": "Hive Grove, night gauntlet (stun / slow hazard)",
+    "pivot": "center",
+    "notes": "Black background: draw with additive blending (like the other vfx_ sprites). Recoloured from cyan to toxic green."
+  },
+  {
+    "file": "bg_temple_clearing_dusk.png",
+    "width": 1672,
+    "height": 526,
+    "aspect": 3.1787,
+    "source": "temple-clearing.png",
+    "use": "Beetle Tank arena far backdrop",
+    "pivot": "bottom-center",
+    "notes": "Cropped above the ground line, graded for dusk, bottom 8% fades to transparent so it meets the 3D floor. Never place under the floor."
+  },
+  {
+    "file": "bg_quartermaster_tent.jpg",
+    "width": 1672,
+    "height": 941,
+    "aspect": 1.7768,
+    "source": "supply-tent.png",
+    "use": "Quartermaster screen backdrop",
+    "pivot": "full-bleed",
+    "notes": "Unchanged. Left side is open for tabs and item tiles."
+  },
+  {
+    "file": "finish_gate.png",
+    "width": 1936,
+    "height": 801,
+    "aspect": 2.417,
+    "source": "finish_gate.png",
+    "use": "Level finish gate",
+    "pivot": "bottom-center",
+    "notes": "Place as a fixed vertical plane across the path (not a camera-facing billboard). At 14 m wide the opening between the posts is about 11 m, which spans the 11 m corridor; height is about 5.8 m."
+  },
+  {
+    "file": "finish_line_checker.png",
+    "width": 2096,
+    "height": 304,
+    "aspect": 6.8947,
+    "source": "finish_line_checker.png",
+    "use": "Finish line on the ground",
+    "pivot": "center",
+    "notes": "Lay flat on the ground directly under the gate, stretched across the path: 12 m wide by about 1.7 m deep keeps the squares square."
+  }
+]

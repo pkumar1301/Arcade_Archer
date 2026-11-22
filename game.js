@@ -139,14 +139,14 @@ const DIFFICULTIES = {
   easy: {
     label: 'Easy', blurb: 'Learn the jungle. Health returns only through green drops.',
     hazardScale: .35, shotDamage: 4, leakDamage: 3, collisionDamage: 6,
-    warmupDistance: 55, tutorialDistance: 25, logPromptDistance: 4, healRevealDistance: 25, breatherDistance: 35,
+    warmupDistance: 55, tutorialDistance: 25, logPromptDistance: 4, healRevealDistance: 25, breatherDistance: 150, finalWaveExtra: 1,
     healAmount: 20, freeDrops: 3, freeDropFractions: [.25,.5,.75], healCollectRadius: 1.6, earnedDropsMax: 4, earnedDropFade: 12, jumpPrompts: Infinity, aimLineLead: Infinity, warningRing: true, warningSound: true, edgePointers: true,      // projectile, collision and hazard damage
              // enemy slips past you
     turretsPass: false,    // walking past a fixed emplacement costs nothing
     waveInterval: 40, initialWaveDelay: 18,      // seconds between recurring waves
     waveMoths: 1,          // drones per recurring wave (beetle always added)
     waveShooters: 1,       // how many of those drones fire (V11: was 1, so almost nothing fired on Easy)
-    waveDistance: 40,      // spawn ahead of the soldier (rifle range is 30)
+    waveDistance: 50,      // V13: waves enter at least 45 m ahead (rifle range is 70)
     maxNearby: 4,          // no new wave while this many enemies are ahead
     turretRate: .45, mothRate: .25, boltSpeed: 9,
     encounterShooters: .34, firstShot: .7, // V11: some fixed drones fire too; first shot comes sooner
@@ -155,9 +155,9 @@ const DIFFICULTIES = {
   medium: {
     label: 'Medium', blurb: 'Aim carefully. Health returns only through green drops.',
     hazardScale: .55, shotDamage: 7, leakDamage: 6, collisionDamage: 12,
-    warmupDistance: 55, tutorialDistance: 25, logPromptDistance: 4, healRevealDistance: 25, breatherDistance: 35,
+    warmupDistance: 55, tutorialDistance: 25, logPromptDistance: 4, healRevealDistance: 25, breatherDistance: 150, finalWaveExtra: 1,
     healAmount: 20, freeDrops: 2, freeDropFractions: [.4,.75], healCollectRadius: 1.6, earnedDropsMax: 3, earnedDropFade: 8, jumpPrompts: 3, aimLineLead: .6, warningRing: true, warningSound: true, edgePointers: true, turretsPass: false,
-    waveInterval: 10, initialWaveDelay: 0, waveMoths: 3, waveShooters: 2, waveDistance: 34, maxNearby: 5,
+    waveInterval: 10, initialWaveDelay: 0, waveMoths: 3, waveShooters: 2, waveDistance: 48, maxNearby: 5,
     turretRate: .7, mothRate: .38, boltSpeed: 10.5,
     encounterShooters: .34, firstShot: .4,
     aimAssist: .08, startCharges: 2, encounterKeep: .8
@@ -165,9 +165,9 @@ const DIFFICULTIES = {
   hard: {
     label: 'Hard', blurb: 'Relentless pressure. Aim, dodge, and protect your health.',
     hazardScale: 1, shotDamage: 10, leakDamage: 10, collisionDamage: 20,
-    warmupDistance: 55, tutorialDistance: 25, logPromptDistance: 4, healRevealDistance: 25, breatherDistance: 35,
+    warmupDistance: 55, tutorialDistance: 25, logPromptDistance: 4, healRevealDistance: 25, breatherDistance: 150, finalWaveExtra: 1,
     healAmount: 20, freeDrops: 1, freeDropFractions: [.55], healCollectRadius: 1.6, earnedDropsMax: 3, earnedDropFade: 6, jumpPrompts: 0, aimLineLead: 0, warningRing: true, warningSound: true, edgePointers: true, turretsPass: true,
-    waveInterval: 6.25, initialWaveDelay: 0, waveMoths: 3, waveShooters: 3, waveDistance: 28, maxNearby: 7,
+    waveInterval: 6.25, initialWaveDelay: 0, waveMoths: 3, waveShooters: 3, waveDistance: 45, maxNearby: 7,
     turretRate: .7, mothRate: .34, boltSpeed: 12,
     encounterShooters: 0, firstShot: 0, // Hard stays exactly V6
     aimAssist: .06, startCharges: 1, encounterKeep: 1
@@ -496,17 +496,22 @@ forestFloor.rotation.x=-Math.PI/2;
 forestFloor.position.set(0,0,-finish/2);
 forestFloor.receiveShadow=true;
 scene.add(forestFloor);
-// Finish arch, on the ground.
-const archX = center(finish);
-for (const side of [-1, 1]) shape(scenery, pole, colors.lightWood, archX + side * 3.1, 2, -finish, .25, 4, .25);
-shape(scenery, smoothOrb, colors.gold, archX, 4, -finish, 3.35, .1, .13); // rounded arch bar, was a box
-// v2: arch dressed with vines, flowers and gold finials
-for (const side of [-1, 1]) {
-  shape(scenery, smoothOrb, glowGold, archX + side * 3.1, 4.15, -finish, .3, .3, .3);
-  shape(scenery, smoothOrb, flowerMats[side < 0 ? 0 : 1], archX + side * 2.2, 4.05, -finish, .22, .16, .22);
-  beam(scenery, vector(archX + side * 3.1, 3.6, -finish), vector(archX + side * 2.6, 2.2, -finish), .06, mossMat);
-}
-shape(scenery, crownGeometry, colors.lightLeaves, archX, 4.35, -finish, 1.4, .6, 1);
+// V13: finish gate and checkered line (art/sprites/finish_gate.png, finish_line_checker.png).
+// The gate is a fixed panel across the path (not a billboard), 14 m wide, opening ~10 m, lanterns glow through the fog.
+const GATE_W=14, GATE_H=14/2.417;
+const finishYaw=-Math.atan((center(finish+1)-center(finish-1))/2);
+const gateMat=new T.MeshBasicMaterial({map:spriteTexture('finish_gate'),color:0xcfc8bc,transparent:true,alphaTest:.25,fog:false,opacity:0});
+const finishGate=new T.Mesh(new T.PlaneGeometry(GATE_W,GATE_H),gateMat);
+finishGate.position.set(center(finish),GATE_H/2-.05,-finish);finishGate.rotation.y=finishYaw;scene.add(finishGate);
+const gateBack=new T.Mesh(finishGate.geometry,gateMat);gateBack.rotation.y=Math.PI;gateBack.position.z=-.02;finishGate.add(gateBack); // back face, so FINISH reads correctly from beyond the gate
+const checkerMat=new T.MeshStandardMaterial({map:spriteTexture('finish_line_checker'),transparent:true,alphaTest:.2,roughness:1,polygonOffset:true,polygonOffsetFactor:-2});
+const finishLine=new T.Mesh(new T.PlaneGeometry(12,12/6.8947),checkerMat);
+finishLine.rotation.set(-Math.PI/2,0,finishYaw);finishLine.position.set(center(finish),.03,-finish);scene.add(finishLine);
+const gateLanterns=[-1,1].map(side=>{
+  const g=addGlow(scene,0,0,0,0xffb347,2.6,.85);g.material.fog=false;
+  const local=vector(side*GATE_W*(.5-.085),GATE_H*(1-320/809)-GATE_H/2,.05).applyAxisAngle(vector(0,1,0),finishYaw);
+  g.position.copy(finishGate.position).add(local);return g;});
+const gatePosts=[-1,1].map(side=>({d:finish,x:side*5.75,hw:.7,hd:.4,h:6})); // posts are solid (added to solids below)
 
 // ---- v2: light shafts + floating pollen/fireflies (cheap: 12 planes + 1 Points draw) ----
 const shaftMat=new T.MeshBasicMaterial({color:0xffe9b0,transparent:true,opacity:.055,side:T.DoubleSide,depthWrite:false});
@@ -764,9 +769,11 @@ function makeThorn(x, d) {
 }
 const hazards = [];
 const solids = []; // V11: things you can't walk through {d, x, hw, hd, h}; jump clears them if h is low enough
+solids.push(...gatePosts); // V13: finish gate posts
 const softZones = []; // V11: ferns in the path slow you down
 const shotBlockers=[];
-const combatRange=30;
+const combatRange=70; // V13: anything fully visible (fade-in ends at 70 m) can be shot
+const FADE_START=85, FADE_END=70; // V13: enemies fade in between 85 m and 70 m
 function radialTexture(glow=false) {
   const c=document.createElement('canvas'); c.width=c.height=128; const x=c.getContext('2d');
   const g=x.createRadialGradient(64,64,0,64,64,64);
@@ -939,7 +946,7 @@ const encounterPlan=[
   [360,'turret',-3,'charge'],
   [372,'beetle',0]
 ];
-const allEncounters=extendCourse(encounterPlan).filter((_,index)=>index%2===0).filter((_,index)=>index%5!==4).map(([d,type,x,drop])=>({d,type,x,drop})).filter(e=>e.d>=85 && e.d<finish-35);
+const allEncounters=extendCourse(encounterPlan).filter((_,index)=>index%2===0).filter((_,index)=>index%5!==4).map(([d,type,x,drop])=>({d,type,x,drop})).filter(e=>e.d>=85 && e.d<finish-60); // V13: last 60 m is a clear run
 // V7: easier modes keep an evenly spread fraction of the fixed encounters.
 function encountersFor(keep){
   if(keep>=1) return allEncounters;
@@ -1175,6 +1182,8 @@ function spawn(config) {
   mesh.add(art);
   motion.length = 0;
   scene.add(mesh);
+  art.material.fog=false; // V13: enemies stay readable at range; they fade in instead
+  if(!config.training) runStats.spawned++;
   return {...config,mesh,body,halo,fireCore,aimLine,targetRing,shell,motion,weakPoint,weakGlow,art,hp:config.type==='moth'?2:6,shot:-(config.shotDelay ?? 0)+(config.firstShot ?? 0),range:0,flash:0};
 }
 // V12: red means incoming fire; cyan means an exposed weak point.
@@ -1210,6 +1219,12 @@ function drawWarningEdges(){
     let dx=p.x,dy=-p.y;if(p.z>1){dx=-dx;dy=-dy;}const k=Math.min((w/2-24)/Math.max(.001,Math.abs(dx)*w/2),(h/2-24)/Math.max(.001,Math.abs(dy)*h/2));
     const sx=w/2+dx*w/2*k,sy=h/2+dy*h/2*k;x.save();x.translate(sx,sy);x.rotate(Math.atan2(dy*h,dx*w));x.globalAlpha=.6+.4*Math.sin(elapsed*12)**2;x.strokeStyle='#ff2a3a';x.shadowColor='#ff2a3a';x.shadowBlur=12;x.lineWidth=4;x.beginPath();x.moveTo(-10,-10);x.lineTo(0,0);x.lineTo(-10,10);x.stroke();x.restore();
   }
+  if(incomingWave && DIFF.edgePointers && mode==='play'){ // V13: double chevron on the side a wave is coming from
+    const sx=incomingWave.side>0?w-30:30,sy=h*.46;x.save();x.translate(sx,sy);if(incomingWave.side<0)x.scale(-1,1);
+    x.globalAlpha=.55+.45*Math.sin(elapsed*10)**2;x.strokeStyle='#ff2a3a';x.shadowColor='#ff2a3a';x.shadowBlur=14;x.lineWidth=5;x.lineCap='round';
+    for(const off of [-12,4]){x.beginPath();x.moveTo(off-8,-16);x.lineTo(off+8,0);x.lineTo(off-8,16);x.stroke();}
+    x.restore();
+  }
   for(let i=hitDirections.length-1;i>=0;i--){const hit=hitDirections[i];if(elapsed>=hit.until){hitDirections.splice(i,1);continue;}const p=hit.source.clone().project(camera);const a=Math.atan2(-p.y,p.x)+(p.z>1?Math.PI:0);x.save();x.translate(w/2,h/2);x.scale(w/2-18,h/2-18);x.strokeStyle='#ff2a3a';x.globalAlpha=(hit.until-elapsed)*2;x.lineWidth=.025;x.beginPath();x.arc(0,0,1,a-.2,a+.2);x.stroke();x.restore();}
 }
 // V12: finite health economy. All placement and combat values come from DIFFICULTIES.
@@ -1221,6 +1236,7 @@ function healthFeedback(text,kind) {
   ui.health.parentElement.append(el);setTimeout(()=>el.remove(),1300);
 }
 function leakEnemy(enemy) {
+  runStats.leaks++; // V13
   const lost=damage(DIFF.leakDamage,'Enemy got past you',true,true);
   ui.game.classList.remove('leak-flash');void ui.game.offsetWidth;ui.game.classList.add('leak-flash');
   if(lost) healthFeedback('−'+lost+' LEAK','leak');
@@ -1269,6 +1285,8 @@ function reset() {
   for (const h of hazards) h.hit=false;
   distance = lateral = jumpY = jumpVel = 0;
   recoilTimer = 0; shake=0; aimSmooth.x = aimSmooth.y = 0;
+  incomingWave=null;finalWaveState=0;waveSide=1; // V13
+  resetFinish();
   pressureTimer=DIFF.initialWaveDelay;
   trappedPit=null;
   pointer.set(0,0);
@@ -1297,14 +1315,16 @@ function setMode(next) {
   held.clear();
   ui.game.classList.toggle('active', mode === 'play');
   syncMusic();
-  ui.menu.hidden = mode === 'play';
+  ui.menu.hidden = mode === 'play' || mode === 'finish' || mode === 'results';
+  ui.results.hidden = mode !== 'results'; // V13
   warningCanvas.hidden=mode!=='play';
   ui.reticle.hidden = mode !== 'play';
-  ui.hud.hidden = mode === 'menu';
-  ui.levelbar.hidden = mode !== 'play';
-  ui.speedo.hidden = mode !== 'play';
+  ui.hud.hidden = mode === 'menu' || mode === 'results';
+  ui.levelbar.hidden = mode !== 'play' && mode !== 'finish';
+  ui.speedo.hidden = mode !== 'play' && mode !== 'finish';
   if (mode !== 'play') ui.notice.textContent = '';
-  if (mode === 'play') ui.start.blur();
+  if (mode === 'play' || mode === 'finish') ui.start.blur();
+  else if (mode === 'results') ui.resultsRetry.focus();
   else ui.start.focus();
 }
 let displayedItems;
@@ -1428,23 +1448,59 @@ function place(smoothing) {
   const aimLocal=actor.worldToLocal(aimWorld).sub(rifle.position).normalize();
   rifle.quaternion.setFromUnitVectors(vector(0,0,-1),aimLocal);
 }
+// V13: recurring waves. Each wave enters from one side, ~2 s after a warning.
+const WAVE_WARNING=2, ENTRANCE_TIME=1.1;
+let incomingWave=null, waveSide=1, finalWaveState=0;
+function spawnWave(drones, side, final=false){
+  const wave=Math.floor(elapsed/5), group='wave-'+wave+'-'+Math.floor(distance)+(final?'-final':'');
+  const count=drones+1; // last one is the crawler
+  for(let i=0;i<count;i++){
+    const beetleSlot=i===count-1, memberSide=beetleSlot?side:(i%2?-side:side);
+    const d=distance+DIFF.waveDistance+i*1.6;
+    const enemy=spawn({d,type:beetleSlot?'beetle':'moth',x:beetleSlot?side*2.4:memberSide*(i%3+1.5),
+      entrySide:memberSide,shooter:!beetleSlot && i<DIFF.waveShooters+(final?1:0),shotDelay:i*.22,firstShot:DIFF.firstShot,
+      groupId:group,drop:beetleSlot?DROP_CYCLE[dropCycle++%DROP_CYCLE.length]:undefined});
+    enemy.enter=0;
+    if(beetleSlot){const at=vector(center(d)+side*8.5,.6,-d);burst(at,colors.leaves,16);burst(at,colors.lightLeaves,10);}
+    targets.push(enemy);registerHealthGroup(enemy);
+  }
+  incomingWave=null;
+}
+function announceWave(side){
+  incomingWave={side,until:elapsed+WAVE_WARNING+.6};
+  waveSound(side);
+}
+function waveSound(side){
+  if(!audio || audio.state!=='running') return;
+  const t=audio.currentTime, pan=audio.createStereoPanner?audio.createStereoPanner():null, out=audio.createGain();
+  out.gain.value=.9; if(pan){pan.pan.value=side*.85;out.connect(pan).connect(audio.destination);} else out.connect(audio.destination);
+  // rotor hum: buzzy low saw with a fast tremolo, rising in pitch and volume
+  const osc=audio.createOscillator(),g=audio.createGain(),lfo=audio.createOscillator(),lg=audio.createGain();
+  osc.type='sawtooth';osc.frequency.setValueAtTime(70,t);osc.frequency.linearRampToValueAtTime(115,t+WAVE_WARNING);
+  lfo.frequency.value=22;lg.gain.value=.5;lfo.connect(lg).connect(g.gain);
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.05,t+WAVE_WARNING*.9);g.gain.linearRampToValueAtTime(0,t+WAVE_WARNING+.3);
+  osc.connect(g).connect(out);osc.start(t);lfo.start(t);osc.stop(t+WAVE_WARNING+.35);lfo.stop(t+WAVE_WARNING+.35);
+  // crawler: rustle and crunch of leaves (filtered noise bursts)
+  const len=Math.floor(audio.sampleRate*.12),buf=audio.createBuffer(1,len,audio.sampleRate),ch=buf.getChannelData(0);
+  for(let i=0;i<len;i++)ch[i]=(Math.random()*2-1)*(1-i/len);
+  for(let k=0;k<5;k++){const src=audio.createBufferSource(),f=audio.createBiquadFilter(),ng=audio.createGain(),at=t+.6+k*.28;
+    src.buffer=buf;f.type='bandpass';f.frequency.value=1800+k*300;f.Q.value=.8;ng.gain.value=.05+k*.02;
+    src.connect(f).connect(ng).connect(out);src.start(at);}
+}
 function updateTargets(dt) {
   if(distance>=DIFF.warmupDistance && distance<finish-DIFF.breatherDistance) pressureTimer-=dt;
   const nearby=targets.filter(e=>e.hp>0 && e.d-distance>-3 && e.d-distance<70).length;
-  if(distance>=DIFF.warmupDistance && distance<finish-DIFF.breatherDistance && pressureTimer<=0 && nearby<=DIFF.maxNearby){
+  const waveZone=distance>=DIFF.warmupDistance && distance<finish-DIFF.breatherDistance;
+  // V13: announce a wave ~2 s before it arrives (sound from its side + edge pointer).
+  if(waveZone && !incomingWave && pressureTimer<=WAVE_WARNING && nearby<=DIFF.maxNearby) announceWave(waveSide=-waveSide);
+  if(waveZone && pressureTimer<=0 && nearby<=DIFF.maxNearby){
     pressureTimer=DIFF.waveInterval;
-    const wave=Math.floor(elapsed/5);
-    const count=DIFF.waveMoths+1; // last one is the beetle
-    for(let i=0;i<count;i++){
-      const side=i%2?1:-1;
-      const beetleSlot=i===count-1;
-      const d=distance+DIFF.waveDistance+i*1.6;
-      targets.push(spawn({d,type:beetleSlot?'beetle':'moth',x:side*(i%3+1.5),
-        entrySide:side,shooter:!beetleSlot && i<DIFF.waveShooters,shotDelay:i*.22,firstShot:DIFF.firstShot,
-        groupId:'wave-'+wave+'-'+Math.floor(distance),drop:beetleSlot?DROP_CYCLE[dropCycle++%DROP_CYCLE.length]:undefined})); // V11: cycle through every power-up
-    }
-    for(const e of targets.filter(e=>e.groupId && !healthGroups.get(e.groupId)?.members.includes(e))) registerHealthGroup(e);
+    spawnWave(DIFF.waveMoths, incomingWave?.side ?? (waveSide=-waveSide));
   }
+  // V13: one final wave as the gate comes into view, then a clear run.
+  if(finalWaveState===0 && distance>=finish-DIFF.breatherDistance-12){finalWaveState=1;announceWave(waveSide=-waveSide);}
+  if(finalWaveState===1 && distance>=finish-DIFF.breatherDistance){finalWaveState=2;spawnWave(DIFF.waveMoths+DIFF.finalWaveExtra,incomingWave?.side ?? waveSide,true);}
+  if(incomingWave && elapsed>incomingWave.until) incomingWave=null;
   for (const enemy of targets) {
     if(distance<DIFF.warmupDistance && !enemy.training) {enemy.mesh.visible=false;stopChargeSound(enemy);continue;}
     // Zipper moths fly toward the runner, so they close fast.
@@ -1464,10 +1520,18 @@ function updateTargets(dt) {
     }
     const offset=enemy.training ? 0 : beetle ? enemy.x
       : enemy.x+(turret?0:Math.sin(beat)*1.6)+(enemy.entrySide ? enemy.entrySide*Math.max(0,enemy.range-15)*.17 : 0);
-    const y=beetle ? .53 : turret ? 1.0 : 3.0+Math.sin(beat)*.42;
-    enemy.mesh.position.set(center(enemy.d)+offset,y,-enemy.d);
+    let y=beetle ? .53 : turret ? 1.0 : 3.0+Math.sin(beat)*.42;
+    let drawX=offset;
+    if(enemy.enter!==undefined && enemy.enter<1){ // V13: entrances
+      enemy.enter=Math.min(1,enemy.enter+dt/ENTRANCE_TIME);
+      const e=1-(1-enemy.enter)**3;
+      if(beetle) drawX=T.MathUtils.lerp(enemy.entrySide*8.5,offset,e); // bursts out of the foliage at the path edge
+      else y+=(1-e)*11; // drops in from above the canopy
+    }
+    enemy.mesh.position.set(center(enemy.d)+drawX,y,-enemy.d);
     enemy.motion.forEach((wing,i)=>{wing.rotation.z=(i?1:-1)*Math.sin(elapsed*15)*.7;});
-    enemy.mesh.visible = enemy.hp > 0 && enemy.range > -3 && enemy.range < 85;
+    enemy.mesh.visible = enemy.hp > 0 && enemy.range > -3 && enemy.range < FADE_START;
+    enemy.art.material.opacity = T.MathUtils.clamp((FADE_START - enemy.range) / (FADE_START - FADE_END), 0, 1); // V13: fade in, no pop
     if (enemy.flash > 0) { enemy.flash = Math.max(0, enemy.flash - dt * 4); enemy.mesh.scale.setScalar(1 + enemy.flash * .18); }
     else enemy.mesh.scale.setScalar(1);
     // V8: hit flash tints the art warm; drones bank as they weave.
@@ -1531,6 +1595,7 @@ function strike(enemy, amount) {
     return;
   }
   enemy.mesh.visible=false;enemy.aimLine.visible=false;enemy.halo.visible=false;stopChargeSound(enemy);
+  if(!enemy.training) runStats.kills++; // V13
   spawnFx('vfx_explosion_small', enemy.mesh.position, enemy.type==='moth' ? 2.2 : 3, .4); // V9
   score+=enemy.type==='moth' ? 100 : 180;
   showKillPop(enemy.type==='moth' ? '+100' : '+180'); // v5: kill popup
@@ -1666,6 +1731,25 @@ function resolveSolids() {
         if (elapsed > bumpNotice) { message(o.h < 1 ? 'Blocked · jump over it' : o.h < 2 ? 'Blocked · go around or jump' : 'Blocked · go through the arch', 1.2); bumpNotice = elapsed + 1.5; tone(140, .06, .05); shake=Math.max(shake,.15); soldierAction('hit',1.4); }
       }
     } else lateral = o.x + (dx < 0 ? -1 : 1) * (o.hw + R);
+  }
+}
+function updateEffects(dt) {
+  for (let i=effects.length-1;i>=0;i--) {
+    const effect=effects[i];
+    if(effect.fx){ // V9: effect sprites grow and fade
+      const t = 1 - Math.max(0, effect.life) / effect.max;
+      effect.mesh.material.opacity = 1 - t * t;
+      effect.mesh.scale.setScalar(effect.size * (.65 + t * .55));
+    }
+    if(effect.velocity){
+      effect.velocity.y-=8*dt;
+      effect.mesh.position.addScaledVector(effect.velocity,dt);
+      effect.mesh.scale.multiplyScalar(Math.exp(-dt*3.8));
+    }
+    effect.life-=dt;
+    if (effects[i].life > 0) continue;
+    remove(effects[i]);
+    effects.splice(i,1);
   }
 }
 function update(dt) {
@@ -1817,23 +1901,7 @@ function update(dt) {
       pickups.splice(i,1);
     }
   }
-  for (let i=effects.length-1;i>=0;i--) {
-    const effect=effects[i];
-    if(effect.fx){ // V9: effect sprites grow and fade
-      const t = 1 - Math.max(0, effect.life) / effect.max;
-      effect.mesh.material.opacity = 1 - t * t;
-      effect.mesh.scale.setScalar(effect.size * (.65 + t * .55));
-    }
-    if(effect.velocity){
-      effect.velocity.y-=8*dt;
-      effect.mesh.position.addScaledVector(effect.velocity,dt);
-      effect.mesh.scale.multiplyScalar(Math.exp(-dt*3.8));
-    }
-    effect.life-=dt;
-    if (effects[i].life > 0) continue;
-    remove(effects[i]);
-    effects.splice(i,1);
-  }
+  updateEffects(dt); // V13: shared with the finish sequence
   for (const coin of coins) {
     const gap = coin.d-distance;
     coin.mesh.visible = !coin.collected && gap > -2 && gap < 55;
@@ -1849,7 +1917,8 @@ function update(dt) {
       tone(1040,.07,.025);
     }
   }
-  if (distance >= finish && mode === 'play') end(true);
+  updateFinishApproach();
+  if (distance >= finish && mode === 'play') startFinish(); // V13: celebration, then results
   hud();
 }
 
@@ -1951,6 +2020,102 @@ resize();
 ui.reticle.style.left = ui.reticle.style.top = '50%';
 place(1);
 applyQuality(ui.quality.value); // v5: High by default (4096 shadows)
+// ---- V13: finish line, celebration and results ----
+const runStats={kills:0,spawned:0,leaks:0};
+let finishT=0, finishCam=null, stretchShown=false, resultsTimer=null;
+const CONFETTI=[0xffcc63,0x6faf5a,0xff623e,0xf2d3a0,0x22d3ee].map(c=>new T.MeshBasicMaterial({color:c,side:T.DoubleSide}));
+function resetFinish(){
+  runStats.kills=runStats.spawned=runStats.leaks=0;
+  finishT=0;finishCam=null;stretchShown=false;clearTimeout(resultsTimer);
+  ui.stretchBanner.classList.remove('show');
+  for(const g of gateLanterns) g.scale.setScalar(2.6);
+}
+function updateFinishApproach(){
+  const toGate=finish-distance;
+  gateMat.opacity=T.MathUtils.clamp((180-toGate)/30,0,1); // gate (and its lanterns) appear from ~150 m
+  for(const g of gateLanterns){g.visible=gateMat.opacity>0;g.material.opacity=.85*gateMat.opacity;}
+  if(!stretchShown && toGate<=100){
+    stretchShown=true;
+    ui.stretchBanner.classList.remove('show');void ui.stretchBanner.offsetWidth;ui.stretchBanner.classList.add('show');
+    music.lift(1.12);tone(660,.12,.06);setTimeout(()=>tone(880,.18,.06),130);
+  }
+}
+function startFinish(){
+  mode='finish';finishT=0;
+  firing=pressShot=powerShot=false;held.clear();
+  ui.reticle.hidden=true;warningCanvas.hidden=true;ui.notice.textContent='';ui.stretchBanner.classList.remove('show');
+  // every enemy still alive vanishes; nothing can hurt the soldier now
+  for(const e of targets){stopChargeSound(e);if(e.hp>0){if(e.mesh.visible)spawnFx('vfx_explosion_small',e.mesh.position,1.6,.35);e.hp=0;e.mesh.visible=false;}e.aimLine.visible=false;e.halo.visible=false;}
+  for(const b of bolts)remove(b);bolts.length=0;
+  incomingWave=null;
+  // confetti and leaves burst from the banner
+  const top=finishGate.position.clone().add(vector(0,GATE_H*.32,0));
+  for(let i=0;i<90;i++){
+    const m=shape(scene,box,i%3?CONFETTI[i%CONFETTI.length]:colors.lightLeaves,top.x+(random()-.5)*7,top.y,top.z+(random()-.5),.12,.02,.08);
+    m.rotation.set(random()*6,random()*6,random()*6);
+    effects.push({mesh:m,life:1.6+random()*1.2,velocity:vector((random()-.5)*7,2+random()*5,2+random()*5)});
+  }
+  spawnFx('vfx_heal',top,4,.6);
+  if(musicEnabled && audio) music.play('win',()=>{if(mode==='results'&&musicEnabled)music.play('menu');});
+  tone(990,.25,.07);
+}
+function finishUpdate(dt){
+  finishT+=dt;
+  const slow=finishT<.6?.3:1, g=dt*slow; // 0.6 s of slow motion as he passes under the banner
+  const target=finishT<1.3?RUN_SPEED:0;
+  currentSpeed=T.MathUtils.lerp(currentSpeed,target,1-Math.exp(-g*(target?6:3.2)));
+  distance+=currentSpeed*g;
+  lateral=T.MathUtils.lerp(lateral,0,1-Math.exp(-g*2));
+  pointer.set(0,0);
+  for(const l of gateLanterns){const f=finishT<1.2?2.6+Math.sin(Math.min(1,finishT/1.2)*Math.PI)*3.2:2.6;l.scale.setScalar(f);}
+  updateEffects(g);
+  place(1-Math.exp(-g*9));
+  // camera swings round to the soldier's face: an arc around him, never through him
+  const s=T.MathUtils.smoothstep(finishT,.7,2.3);
+  if(s>0){
+    const ang=s*Math.PI, r=T.MathUtils.lerp(4.9,4.3,s), side=Math.sin(ang)*r, back=Math.cos(ang)*r;
+    actor.rotation.y=-Math.atan((center(distance+1)-center(distance-1))/2);
+    camera.position.set(actor.position.x+side*.9+1.05*(1-s),T.MathUtils.lerp(2.65,1.8,s)+Math.sin(ang)*.5,actor.position.z+back);
+    const look=actor.position.clone().add(vector(0,1.45,0));
+    const follow=vector(center(distance+18)+lateral*.22,1.5,-distance-18);
+    camera.lookAt(follow.lerp(look,Math.min(1,s*1.6)));
+  }
+  camera.updateMatrixWorld();
+  hud();
+  if(finishT>=2.9 && mode==='finish'){menuAngle=Math.PI;showResults();}
+}
+function starsFor(){return {clear:true,health:health>=50,fast:elapsed<180 && runStats.leaks<=3};}
+function showResults(){
+  const healthBonus=Math.round(health)*10, timeBonus=Math.max(0,Math.ceil(180-elapsed))*20;
+  const total=score+healthBonus+timeBonus, stars=starsFor(), count=[stars.clear,stars.health,stars.fast].filter(Boolean).length;
+  const best=recordRun({won:true,score:total,coins:coinCount,distance:Math.floor(finish),time:elapsed,difficulty:difficultyKey,stars:count});
+  setMode('results');
+  ui.resultsTitle.textContent='Jungle cleared · '+DIFF.label;
+  const rows=[
+    ['Time',formatTime(elapsed)],
+    ['Kills',runStats.kills+' / '+runStats.spawned],
+    ['Leaks',String(runStats.leaks)],
+    ['Health bonus',Math.round(health)+' × 10',healthBonus],
+    ['Time bonus',timeBonus?Math.ceil(180-elapsed)+' s under 3:00 × 20':'Over 3:00',timeBonus],
+    ['Total score','',total]];
+  ui.resultsRows.replaceChildren(...rows.map(([label,detail,points],i)=>{
+    const tr=document.createElement('tr');tr.style.setProperty('--i',i);
+    if(label==='Total score')tr.className='total';
+    tr.innerHTML='<th>'+label+'</th><td>'+detail+'</td><td class="pts">'+(points===undefined?'':'<span data-to="'+points+'">0</span>')+'</td>';
+    return tr;}));
+  const starInfo=[[stars.clear,'Cleared'],[stars.health,'50+ health'],[stars.fast,'Under 3:00 · ≤3 leaks']];
+  ui.resultsStars.replaceChildren(...starInfo.map(([got,label],i)=>{const el=document.createElement('div');el.className='star'+(got?' got':'');el.style.setProperty('--i',i);el.innerHTML='<b>★</b><small>'+label+'</small>';return el;}));
+  ui.resultsBest.textContent=best?'New best!':'';
+  // tally: rows appear one by one, points count up
+  const spans=[...ui.resultsRows.querySelectorAll('[data-to]')];
+  spans.forEach((sp,k)=>{const to=+sp.dataset.to,start=performance.now()+400+k*350;
+    const step=now=>{const t=Math.min(1,Math.max(0,(now-start)/600));sp.textContent=Math.round(to*t);if(t<1&&mode==='results')requestAnimationFrame(step);};requestAnimationFrame(step);});
+  resultsTimer=setTimeout(()=>{for(let k=0;k<count;k++)setTimeout(()=>tone(700+k*180,.15,.06),k*260);},1600);
+}
+ui.resultsRetry.onclick=()=>{ if(!audio && window.AudioContext) audio=new AudioContext(); audio?.resume().catch(()=>{});
+  levelTrack=LEVEL_TRACKS[runCount++ % LEVEL_TRACKS.length]; setMode('play'); reset(); };
+ui.resultsMenu.onclick=()=>{ setMode('menu'); ui.message.textContent='Jungle cleared · '+DIFF.label; ui.start.textContent='Run again'; };
+
 function setDifficulty(key) {
   difficultyKey = DIFFICULTIES[key] ? key : 'medium';
   DIFF = DIFFICULTIES[difficultyKey];
@@ -1974,6 +2139,14 @@ renderer.setAnimationLoop(now => {
     camera.position.set(actor.position.x + Math.sin(menuAngle) * 5.2, 2.6, actor.position.z + Math.cos(menuAngle) * 5.2);
     camera.lookAt(actor.position.x, 1.35, actor.position.z);
     camera.updateMatrixWorld();
+  } else if (mode === 'results') {
+    // V13: slow orbit around the soldier behind the results card
+    menuAngle += dt * .18;
+    camera.position.set(actor.position.x + Math.sin(menuAngle) * 5.4, 2.3, actor.position.z + Math.cos(menuAngle) * 5.4);
+    camera.lookAt(actor.position.x, 1.3, actor.position.z);
+    camera.updateMatrixWorld();
+  } else if (mode === 'finish' && dt > 0) {
+    finishUpdate(dt); // V13
   } else if (mode === 'play' && dt > 0) {
     update(dt);
     camera.fov=56;
@@ -2000,6 +2173,12 @@ if(new URLSearchParams(location.search).has('test')) window.gameTest={
   groupTest(leaked){const a={groupId:'test',hp:0,d:100,x:0},b={...a};registerHealthGroup(a);registerHealthGroup(b);healthGroups.get('test').failed=leaked;completeHealthGroup(b);return earnedDrops;},
   render(){place(1);scene.updateMatrixWorld(true);renderer.render(scene,camera);},
   menu(){setMode('menu');},
+  view(d){distance=d;lateral=0;jumpY=0;currentSpeed=0;updateTargets(0);updateFinishApproach();place(1);scene.updateMatrixWorld(true);renderer.render(scene,camera);drawWarningEdges();return gateMat.opacity;},
+  waveView(frames=18){held.clear();distance=300;lateral=0;currentSpeed=0;pressureTimer=0;for(let k=0;k<frames;k++)update(1/30);place(1);scene.updateMatrixWorld(true);renderer.render(scene,camera);drawWarningEdges();return targets.filter(e=>e.enter!==undefined).map(e=>({type:e.type,enter:+e.enter.toFixed(2),range:+e.range.toFixed(1),y:+e.mesh.position.y.toFixed(2)}));},
+  debugNear(){return targets.filter(e=>Math.abs(e.d-distance)<60).map(e=>({type:e.type,d:+e.d.toFixed(1),range:+e.range.toFixed(1),vis:e.mesh.visible,hp:e.hp,op:+e.art.material.opacity.toFixed(2),artVis:e.art.visible,pos:e.mesh.position.toArray().map(v=>+v.toFixed(1))}));},
+  warnView(){distance=300;lateral=0;elapsed=10;announceWave(1);place(1);scene.updateMatrixWorld(true);renderer.render(scene,camera);drawWarningEdges();return incomingWave;},
+  finishFrame(sec){distance=finish-.1;lateral=0;currentSpeed=6;update(1/30);const n=Math.round(sec*30);for(let i=0;i<n;i++)finishUpdate(1/30);scene.updateMatrixWorld(true);renderer.render(scene,camera);return {mode,finishT};},
+  finishRun(){distance=finish-.1;currentSpeed=6;update(1/30);for(let i=0;i<120;i++)finishUpdate(1/30);return {mode,results:ui.resultsRows.textContent,stars:ui.resultsStars.querySelectorAll('.got').length,stats:{...runStats}};},
   advance(d){distance=d;updateTargets(0);},
   healthDrop(d,lane,earned){return addHealthDrop(d,lane,earned);},
   rules(key){this.start(key);damage(17,'test',false,true);for(let i=0;i<300;i++)update(1/30);const noRegen=health;collectDrop('health');const capped=health;collectDrop('health');const fullHealthWaste=health;

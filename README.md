@@ -2,7 +2,7 @@
 
 [Play the game](https://pkumar1301.github.io/Arcade_Archer/)
 
-The current build is V12, with an animated soldier, difficulty settings, local player profiles, solid obstacles, visible power-up effects, an original synthesized soundtrack, and a 950 m jungle level, free mouse aiming, a 30 m rifle range, armored weak points, recurring enemy waves, and pits that require a directional jump to escape.
+The current build is V13, with an animated soldier, difficulty settings, local player profiles, solid obstacles, visible power-up effects, an original synthesized soundtrack, and a 950 m jungle level ending at a finish gate with an arcade results screen, free mouse aiming, a 70 m rifle range (anything fully visible can be shot), armored weak points, recurring enemy waves, and pits that require a directional jump to escape.
 
 ## Controls
 
@@ -13,7 +13,7 @@ The current build is V12, with an animated soldier, difficulty settings, local p
 - E or right click throws a grenade.
 - Esc pauses. M toggles music.
 
-Surviving enemies cost 8 health when they pass the player. Enemy volume includes the latest two reductions. See CHANGES_V12.md for the latest changes and CHANGES_V10.md for animation limitations.
+Surviving enemies cost health when they pass the player (3 / 6 / 10 by difficulty). See CHANGES_V13.md for the latest changes and CHANGES_V10.md for animation limitations.
 
 ## Local play
 
@@ -30,3 +30,5 @@ Three.js is bundled in vendor/ with its license. The included ground textures an
 V12 removes health regeneration. Green health drops restore up to 20 health. Incoming fire uses red closing rings and directional warnings; exposed weak points glow cyan. The Rapid fire pickup temporarily increases the firing rate.
 
 Automated checks and remaining playtest work are recorded in docs/V12-validation.md.
+
+V13 adds enemy entrances (drones drop from the canopy, crawlers burst from the foliage), a fade-in instead of pop-in, a sound and edge warning before each wave, a final wave and finish gate, and a results tally with up to three stars per difficulty. The jungle biome sprite pack for later levels is in art/jungle-biome/.

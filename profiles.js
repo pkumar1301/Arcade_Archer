@@ -45,7 +45,7 @@ export function saveSetting(key, value) {
 }
 
 // Returns true when the run set a new best distance or score for that difficulty.
-export function recordRun({ won, score, coins, distance, time, difficulty }) {
+export function recordRun({ won, score, coins, distance, time, difficulty, stars = 0 }) {
   const p = activeProfile();
   if (!p) return false;
   const s = p.stats;
@@ -53,11 +53,12 @@ export function recordRun({ won, score, coins, distance, time, difficulty }) {
   if (won) s.wins++;
   s.totalCoins += coins;
   const prev = s.best[difficulty] || { distance: 0, score: 0, time: null, cleared: false };
-  const better = distance > prev.distance || score > prev.score;
+  const better = distance > prev.distance || score > prev.score || stars > (prev.stars || 0);
   s.best[difficulty] = {
     distance: Math.max(prev.distance, distance),
     score: Math.max(prev.score, score),
     cleared: prev.cleared || won,
+    stars: Math.max(prev.stars || 0, stars), // V13: best stars per difficulty
     time: won ? (prev.time == null ? time : Math.min(prev.time, time)) : prev.time
   };
   p.lastPlayed = new Date().toISOString();
@@ -123,7 +124,8 @@ function render() {
     const b = p.stats.best[d];
     const label = d[0].toUpperCase() + d.slice(1);
     if (!b) return label + ' –';
-    return label + ' ' + (b.cleared ? '✓ ' + fmtTime(b.time) : b.distance + ' m') + ' · ' + b.score + ' pts';
+    const stars = b.stars ? ' ' + '★'.repeat(b.stars) + '☆'.repeat(3 - b.stars) : '';
+    return label + ' ' + (b.cleared ? '✓ ' + fmtTime(b.time) : b.distance + ' m') + stars + ' · ' + b.score + ' pts';
   });
   ui.profileStats.textContent = 'Best: ' + rows.join('   ') + '   ·   Runs ' + p.stats.runs + ' · Coins ' + p.stats.totalCoins;
 }
