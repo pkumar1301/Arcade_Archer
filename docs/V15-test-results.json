@@ -1,0 +1,1193 @@
+{
+ "checks": {
+  "All 30 levels can be finished (no stalls)": {
+   "pass": true,
+   "detail": {
+    "1": "finish 950",
+    "2": "finish 950",
+    "3": "finish 950",
+    "4": "finish 950",
+    "5": "finish 950",
+    "7": "finish 950",
+    "8": "finish 950",
+    "9": "finish 950",
+    "10": "finish 950",
+    "11": "finish 950",
+    "13": "finish 950",
+    "14": "finish 950",
+    "15": "finish 950",
+    "16": "finish 950",
+    "17": "finish 950",
+    "19": "finish 950",
+    "20": "finish 950",
+    "21": "finish 950",
+    "22": "finish 950",
+    "23": "finish 950",
+    "25": "finish 950",
+    "26": "finish 950",
+    "27": "finish 950",
+    "28": "finish 950",
+    "29": "finish 950",
+    "31": "finish 950",
+    "32": "finish 950",
+    "33": "finish 950",
+    "34": "finish 950",
+    "35": "finish 950"
+   }
+  },
+  "Each biome uses its own enemies and hazards": {
+   "pass": true,
+   "detail": {
+    "7": [
+     "log",
+     "thorn",
+     "quicksand",
+     "cover",
+     "ramp",
+     "fern",
+     "rock"
+    ],
+    "13": [
+     "log",
+     "thorn",
+     "thin_ice",
+     "cover",
+     "ice",
+     "drift",
+     "fern",
+     "rock"
+    ],
+    "19": [
+     "log",
+     "thorn",
+     "lava_pool",
+     "cover",
+     "vent",
+     "fern",
+     "rock"
+    ],
+    "26": [
+     "log",
+     "thorn",
+     "void_gap",
+     "cover",
+     "fence",
+     "airlock",
+     "fern",
+     "rock"
+    ],
+    "31": [
+     "log",
+     "thorn",
+     "pothole",
+     "cover",
+     "quicksand",
+     "portal",
+     "fern",
+     "rock"
+    ]
+   }
+  },
+  "Bot clears Easy on every new level": {
+   "pass": true,
+   "detail": {
+    "7": {
+     "mode": "finish",
+     "health": 94
+    },
+    "8": {
+     "mode": "finish",
+     "health": 53
+    },
+    "9": {
+     "mode": "finish",
+     "health": 53
+    },
+    "10": {
+     "mode": "finish",
+     "health": 43
+    },
+    "11": {
+     "mode": "finish",
+     "health": 88
+    },
+    "13": {
+     "mode": "finish",
+     "health": 78
+    },
+    "14": {
+     "mode": "finish",
+     "health": 44
+    },
+    "15": {
+     "mode": "finish",
+     "health": 62
+    },
+    "16": {
+     "mode": "finish",
+     "health": 47
+    },
+    "17": {
+     "mode": "finish",
+     "health": 82
+    },
+    "19": {
+     "mode": "finish",
+     "health": 84
+    },
+    "20": {
+     "mode": "finish",
+     "health": 32
+    },
+    "21": {
+     "mode": "finish",
+     "health": 52
+    },
+    "22": {
+     "mode": "finish",
+     "health": 11
+    },
+    "23": {
+     "mode": "finish",
+     "health": 48
+    },
+    "25": {
+     "mode": "finish",
+     "health": 48
+    },
+    "26": {
+     "mode": "finish",
+     "health": 58
+    },
+    "27": {
+     "mode": "finish",
+     "health": 44
+    },
+    "28": {
+     "mode": "finish",
+     "health": 75
+    },
+    "29": {
+     "mode": "finish",
+     "health": 39
+    },
+    "31": {
+     "mode": "finish",
+     "health": 78
+    },
+    "32": {
+     "mode": "finish",
+     "health": 80
+    },
+    "33": {
+     "mode": "finish",
+     "health": 64
+    },
+    "34": {
+     "mode": "finish",
+     "health": 36
+    },
+    "35": {
+     "mode": "finish",
+     "health": 47
+    }
+   }
+  },
+  "Every enemy kind spawns, shows and can be destroyed": {
+   "pass": true,
+   "detail": "28 kinds"
+  },
+  "All 16 weapons deal damage": {
+   "pass": true,
+   "detail": {
+    "rifle": 4.2,
+    "dual": 11.47,
+    "ripper": 22.57,
+    "triple": 8.95,
+    "scatter": 4.91,
+    "marksman": 54,
+    "lance": 20.1,
+    "torch": 6.75,
+    "rotary": 15.14,
+    "launcher": 6,
+    "arc": 2.62,
+    "seeker": 19.8,
+    "orb": 6.6,
+    "repulsor": 3.2,
+    "mine": 3,
+    "cannon": 21
+   }
+  },
+  "Every biome Level 3 has a set-piece that triggers": {
+   "pass": true,
+   "detail": {
+    "3": {
+     "type": "ambush",
+     "done": true,
+     "spawned": 8,
+     "chase": false,
+     "impacts": 0,
+     "nest": "crawler"
+    },
+    "9": {
+     "type": "ambush",
+     "done": true,
+     "spawned": 4,
+     "chase": false,
+     "impacts": 0,
+     "nest": ""
+    },
+    "15": {
+     "type": "chase",
+     "done": true,
+     "spawned": 2,
+     "chase": true,
+     "impacts": 0,
+     "nest": "frost_drone"
+    },
+    "21": {
+     "type": "nest",
+     "done": true,
+     "spawned": 0,
+     "chase": false,
+     "impacts": 5,
+     "nest": "flame_turret/flame_turret"
+    },
+    "27": {
+     "type": "chase",
+     "done": true,
+     "spawned": 0,
+     "chase": true,
+     "impacts": 3,
+     "nest": "shield_drone/laser_turret/security_drone"
+    },
+    "33": {
+     "type": "nest",
+     "done": true,
+     "spawned": 0,
+     "chase": false,
+     "impacts": 0,
+     "nest": "sentinel/elite_turret/sentinel/elite_turret"
+    }
+   }
+  },
+  "Soldier upgrades apply (armour, grenade belt, starting shield)": {
+   "pass": true,
+   "detail": {
+    "maxHealth": 130,
+    "health": 130,
+    "charges": 4,
+    "shield": 1
+   }
+  },
+  "Bosses 2-5: three phases, defeat, results": {
+   "pass": true,
+   "detail": {
+    "12": {
+     "mode": "results",
+     "t": 47,
+     "phases": [
+      1,
+      2,
+      3
+     ],
+     "title": "Dune Wyrm destroyed · Medium"
+    },
+    "18": {
+     "mode": "results",
+     "t": 37,
+     "phases": [
+      1,
+      2,
+      3
+     ],
+     "title": "Frost Titan destroyed · Medium"
+    },
+    "24": {
+     "mode": "results",
+     "t": 69,
+     "phases": [
+      1,
+      2,
+      3
+     ],
+     "title": "Magma Serpent destroyed · Medium"
+    },
+    "30": {
+     "mode": "results",
+     "t": 116,
+     "phases": [
+      1,
+      2,
+      3
+     ],
+     "title": "Void Manta destroyed · Medium"
+    }
+   }
+  },
+  "Boss weapons are unlocked free at tier 1": {
+   "pass": true,
+   "detail": {
+    "lance": 1,
+    "launcher": 1,
+    "orb": 1,
+    "cannon": 1
+   }
+  },
+  "Overmind: death sequence, 90s celebration, New Game+ unlocked": {
+   "pass": true,
+   "detail": {
+    "mode": "ending",
+    "phase": "party",
+    "n": 208,
+    "cls": "stage-1",
+    "ng": true,
+    "finished": true
+   }
+  },
+  "Quartermaster: four tabs, purchases spend coins": {
+   "pass": true,
+   "detail": {
+    "spent": 240,
+    "upgrades": {
+     "hollow": 1
+    },
+    "weapons": [
+     "rifle",
+     "dual"
+    ],
+    "cards": 16
+   }
+  },
+  "UI flow: title → six-zone map → level → pause": {
+   "pass": true,
+   "detail": {
+    "zones": [
+     false,
+     true,
+     true,
+     true,
+     true,
+     true
+    ],
+    "playing": "THE FOREST · LEVEL 1 / 5 · OVERGROWN TRAIL",
+    "paused": "Resume run"
+   }
+  },
+  "No page or console errors": {
+   "pass": true,
+   "detail": []
+  }
+ },
+ "data": {
+  "god": {
+   "1": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "drone",
+     "moth",
+     "turret",
+     "beetle",
+     "crawler"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "pothole",
+     "cover",
+     "fern",
+     "rock"
+    ],
+    "light": "sunrise"
+   },
+   "2": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "drone",
+     "moth",
+     "turret",
+     "beetle",
+     "crawler"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "pothole",
+     "cover",
+     "fern",
+     "rock"
+    ],
+    "light": "sunrise"
+   },
+   "3": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "drone",
+     "moth",
+     "buggy",
+     "beetle",
+     "crawler"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "cover",
+     "pothole",
+     "fern",
+     "rock"
+    ],
+    "light": "dusk"
+   },
+   "4": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "drone",
+     "moth",
+     "mushroom",
+     "bee",
+     "turret",
+     "mini"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "pothole",
+     "cover",
+     "fern",
+     "rock"
+    ],
+    "light": "dusk"
+   },
+   "5": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "drone",
+     "moth",
+     "buggy",
+     "turret",
+     "mushroom",
+     "bee",
+     "beetle",
+     "crawler",
+     "mini"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "pothole",
+     "cover",
+     "fern",
+     "rock"
+    ],
+    "light": "night"
+   },
+   "7": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "scarab",
+     "obelisk",
+     "dune_crawler"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "quicksand",
+     "cover",
+     "ramp",
+     "fern",
+     "rock"
+    ],
+    "light": "noon"
+   },
+   "8": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "scarab",
+     "raptor",
+     "obelisk",
+     "dune_crawler"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "quicksand",
+     "cover",
+     "ramp",
+     "fern",
+     "rock"
+    ],
+    "light": "noon"
+   },
+   "9": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "scarab",
+     "raptor",
+     "obelisk",
+     "dune_crawler"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "quicksand",
+     "cover",
+     "ramp",
+     "fern",
+     "rock"
+    ],
+    "light": "sunset"
+   },
+   "10": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "scarab",
+     "tortoise",
+     "obelisk",
+     "dune_crawler"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "quicksand",
+     "cover",
+     "fern",
+     "rock"
+    ],
+    "light": "sunset"
+   },
+   "11": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "scarab",
+     "raptor",
+     "obelisk",
+     "tortoise",
+     "dune_crawler",
+     "scarab_half"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "quicksand",
+     "cover",
+     "ramp",
+     "fern",
+     "rock"
+    ],
+    "light": "desertNight"
+   },
+   "13": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "frost_drone",
+     "cryo_turret",
+     "shell_crawler"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "thin_ice",
+     "cover",
+     "ice",
+     "drift",
+     "fern",
+     "rock"
+    ],
+    "light": "snow"
+   },
+   "14": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "frost_drone",
+     "stalker",
+     "cryo_turret",
+     "shell_crawler"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "thin_ice",
+     "cover",
+     "ice",
+     "icicle",
+     "fern",
+     "rock"
+    ],
+    "light": "snow"
+   },
+   "15": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "frost_drone",
+     "ram",
+     "cryo_turret",
+     "shell_crawler"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "thin_ice",
+     "cover",
+     "ice",
+     "drift",
+     "fern",
+     "rock"
+    ],
+    "light": "whiteout"
+   },
+   "16": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "frost_drone",
+     "stalker",
+     "cryo_turret",
+     "shell_crawler"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "thin_ice",
+     "cover",
+     "ice",
+     "icicle",
+     "fern",
+     "rock"
+    ],
+    "light": "cave"
+   },
+   "17": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "frost_drone",
+     "stalker",
+     "cryo_turret",
+     "ram",
+     "shell_crawler"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "thin_ice",
+     "cover",
+     "ice",
+     "icicle",
+     "fern",
+     "rock"
+    ],
+    "light": "aurora"
+   },
+   "19": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "ember_drone",
+     "flame_turret",
+     "magma_crawler"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "lava_pool",
+     "cover",
+     "vent",
+     "fern",
+     "rock"
+    ],
+    "light": "lava"
+   },
+   "20": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "ember_drone",
+     "lantern",
+     "flame_turret",
+     "magma_crawler"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "lava_pool",
+     "cover",
+     "vent",
+     "crust",
+     "fern",
+     "rock"
+    ],
+    "light": "lava"
+   },
+   "21": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "ember_drone",
+     "lantern",
+     "flame_turret",
+     "magma_crawler"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "lava_pool",
+     "cover",
+     "vent",
+     "bridge",
+     "fern",
+     "rock"
+    ],
+    "light": "lava"
+   },
+   "22": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "ember_drone",
+     "golem",
+     "flame_turret",
+     "lantern",
+     "magma_crawler"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "lava_pool",
+     "cover",
+     "vent",
+     "crust",
+     "fern",
+     "rock"
+    ],
+    "light": "furnace"
+   },
+   "23": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "ember_drone",
+     "lantern",
+     "flame_turret",
+     "golem",
+     "magma_crawler"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "lava_pool",
+     "cover",
+     "vent",
+     "crust",
+     "fern",
+     "rock"
+    ],
+    "light": "eruption"
+   },
+   "25": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "security_drone",
+     "laser_turret",
+     "crawler_bot"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "void_gap",
+     "cover",
+     "fern",
+     "rock"
+    ],
+    "light": "space"
+   },
+   "26": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "security_drone",
+     "wisp",
+     "laser_turret",
+     "crawler_bot"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "void_gap",
+     "cover",
+     "fence",
+     "airlock",
+     "fern",
+     "rock"
+    ],
+    "light": "space"
+   },
+   "27": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "security_drone",
+     "wisp",
+     "laser_turret",
+     "shield_drone",
+     "crawler_bot"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "void_gap",
+     "cover",
+     "fern",
+     "rock"
+    ],
+    "light": "asteroid"
+   },
+   "28": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "security_drone",
+     "shield_drone",
+     "laser_turret",
+     "crawler_bot"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "void_gap",
+     "cover",
+     "fence",
+     "fern",
+     "rock"
+    ],
+    "light": "tunnel"
+   },
+   "29": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "security_drone",
+     "wisp",
+     "laser_turret",
+     "shield_drone",
+     "crawler_bot"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "void_gap",
+     "cover",
+     "fence",
+     "airlock",
+     "fern",
+     "rock"
+    ],
+    "light": "alarm"
+   },
+   "31": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "elite_drone",
+     "elite_raptor",
+     "elite_turret",
+     "elite_crawler"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "pothole",
+     "cover",
+     "quicksand",
+     "portal",
+     "fern",
+     "rock"
+    ],
+    "light": "city"
+   },
+   "32": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "elite_drone",
+     "elite_stalker",
+     "elite_turret",
+     "elite_crawler"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "pothole",
+     "cover",
+     "ice",
+     "thin_ice",
+     "portal",
+     "fern",
+     "rock"
+    ],
+    "light": "cityCold"
+   },
+   "33": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "elite_drone",
+     "elite_turret",
+     "elite_golem",
+     "sentinel",
+     "elite_crawler"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "pothole",
+     "cover",
+     "vent",
+     "crust",
+     "portal",
+     "fern",
+     "rock"
+    ],
+    "light": "cityForge"
+   },
+   "34": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "elite_drone",
+     "sentinel",
+     "elite_turret",
+     "elite_raptor",
+     "elite_crawler",
+     "scarab_half"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "pothole",
+     "cover",
+     "void_gap",
+     "portal",
+     "fern",
+     "rock"
+    ],
+    "light": "citySpires"
+   },
+   "35": {
+    "mode": "finish",
+    "d": 950,
+    "stuck": 0,
+    "kinds": [
+     "elite_drone",
+     "sentinel",
+     "elite_turret",
+     "elite_stalker",
+     "elite_crawler",
+     "elite_golem",
+     "elite_raptor"
+    ],
+    "hazards": [
+     "log",
+     "thorn",
+     "pothole",
+     "cover",
+     "quicksand",
+     "ice",
+     "vent",
+     "void_gap",
+     "fence",
+     "portal",
+     "fern",
+     "rock"
+    ],
+    "light": "cityNight"
+   }
+  },
+  "easy": {
+   "7": {
+    "mode": "finish",
+    "health": 94
+   },
+   "8": {
+    "mode": "finish",
+    "health": 53
+   },
+   "9": {
+    "mode": "finish",
+    "health": 53
+   },
+   "10": {
+    "mode": "finish",
+    "health": 43
+   },
+   "11": {
+    "mode": "finish",
+    "health": 88
+   },
+   "13": {
+    "mode": "finish",
+    "health": 78
+   },
+   "14": {
+    "mode": "finish",
+    "health": 44
+   },
+   "15": {
+    "mode": "finish",
+    "health": 62
+   },
+   "16": {
+    "mode": "finish",
+    "health": 47
+   },
+   "17": {
+    "mode": "finish",
+    "health": 82
+   },
+   "19": {
+    "mode": "finish",
+    "health": 84
+   },
+   "20": {
+    "mode": "finish",
+    "health": 32
+   },
+   "21": {
+    "mode": "finish",
+    "health": 52
+   },
+   "22": {
+    "mode": "finish",
+    "health": 11
+   },
+   "23": {
+    "mode": "finish",
+    "health": 48
+   },
+   "25": {
+    "mode": "finish",
+    "health": 48
+   },
+   "26": {
+    "mode": "finish",
+    "health": 58
+   },
+   "27": {
+    "mode": "finish",
+    "health": 44
+   },
+   "28": {
+    "mode": "finish",
+    "health": 75
+   },
+   "29": {
+    "mode": "finish",
+    "health": 39
+   },
+   "31": {
+    "mode": "finish",
+    "health": 78
+   },
+   "32": {
+    "mode": "finish",
+    "health": 80
+   },
+   "33": {
+    "mode": "finish",
+    "health": 64
+   },
+   "34": {
+    "mode": "finish",
+    "health": 36
+   },
+   "35": {
+    "mode": "finish",
+    "health": 47
+   }
+  },
+  "bosses": {
+   "12": {
+    "mode": "results",
+    "t": 47,
+    "phases": [
+     1,
+     2,
+     3
+    ],
+    "title": "Dune Wyrm destroyed · Medium"
+   },
+   "18": {
+    "mode": "results",
+    "t": 37,
+    "phases": [
+     1,
+     2,
+     3
+    ],
+    "title": "Frost Titan destroyed · Medium"
+   },
+   "24": {
+    "mode": "results",
+    "t": 69,
+    "phases": [
+     1,
+     2,
+     3
+    ],
+    "title": "Magma Serpent destroyed · Medium"
+   },
+   "30": {
+    "mode": "results",
+    "t": 116,
+    "phases": [
+     1,
+     2,
+     3
+    ],
+    "title": "Void Manta destroyed · Medium"
+   }
+  }
+ }
+}

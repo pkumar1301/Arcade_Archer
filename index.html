@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Jungle Soldier | Zone 1 — The Forest</title>
-<link rel="stylesheet" href="style.css?v=14">
+<title>Jungle Soldier | The Full Campaign</title>
+<link rel="stylesheet" href="style.css?v=15">
 </head>
 <body>
 <main id="game">
 <div id="view"></div>
 <div id="vignette" aria-hidden="true"></div>
 <audio id="music" src="art/canopy-loop.wav" loop preload="none"></audio>
-<div id="loader"><div class="loadbar"><i></i></div><p>LOADING JUNGLE · PBR TEXTURES · DUSK HDRI</p></div>
+<div id="loader"><div class="loadbar"><i></i></div><p>LOADING THE CAMPAIGN · 6 ZONES · 36 STAGES</p></div>
 <header id="hud" hidden>
 <div class="hud-panel left"><small>SCORE</small><strong id="score">0000</strong><div id="health" role="meter" aria-label="Health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><i></i></div><span id="shield"></span><div id="activeItems"></div><div id="weaponChip" class="power-chip" hidden></div></div>
 <div class="hud-panel right"><small>TIME</small><strong id="timer">00:00.000</strong><small id="coinCount"></small></div>
@@ -22,6 +22,8 @@
 <div id="reticle" hidden></div>
 <div id="killpop" aria-hidden="true"></div>
 <div id="stretchBanner" aria-live="polite">FINAL STRETCH</div>
+<div id="taunt" hidden aria-live="assertive"></div>
+<div id="flash" aria-hidden="true"></div>
 <section id="results" hidden aria-labelledby="resultsTitle">
 <p class="eyebrow">MISSION COMPLETE</p>
 <h2 id="resultsTitle">Jungle cleared</h2>
@@ -33,17 +35,39 @@
 <div id="notice" aria-live="polite"></div>
 <div id="powerbar" aria-live="polite"></div>
 <section id="levelSelect" hidden aria-labelledby="mapTitle">
-<div class="map-head"><div><p class="eyebrow">ZONE 1 · THE FOREST</p><h2 id="mapTitle">Jungle trail</h2></div>
+<div class="map-head"><div><p class="eyebrow" id="mapEyebrow">ZONE 1 · THE FOREST</p><h2 id="mapTitle">The Forest</h2></div>
 <label>Difficulty <select id="mapDifficulty"><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></label>
-<span id="mapCoins"></span><button type="button" id="mapBack" class="ghost">Menu</button></div>
-<div class="map-frame"><img src="art/jungle-trail-map.webp" alt="Jungle trail map from the Overgrown Trail to the temple"><div id="mapStops"></div></div>
+<label id="mapNg" hidden><input type="checkbox" id="mapNgToggle"> New Game+</label>
+<span id="mapCoins"></span><button type="button" id="mapQuartermaster" class="ghost">Quartermaster</button><button type="button" id="mapBack" class="ghost">Menu</button></div>
+<div id="mapZones" class="zone-tabs" role="tablist" aria-label="Zones"></div>
+<div class="map-frame" id="mapFrame"><img src="art/jungle-trail-map.webp" alt="Jungle trail map from the Overgrown Trail to the temple"><svg id="mapPath" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg><div id="mapStops"></div></div>
 <p id="mapInfo" aria-live="polite"></p>
+</section>
+<section id="quartermaster" hidden aria-labelledby="qmTitle">
+<div class="qm-panel">
+<div class="qm-head"><div><p class="eyebrow">SUPPLY TENT</p><h2 id="qmTitle">Quartermaster</h2></div><span id="qmCoins"></span></div>
+<div id="qmTabs" class="qm-tabs" role="tablist"><button type="button" data-tab="armoury">Armoury</button><button type="button" data-tab="upgrades">Weapon upgrades</button><button type="button" data-tab="soldier">Soldier upgrades</button><button type="button" data-tab="loadout">Loadout</button></div>
+<div id="qmList" class="qm-list"></div>
+<p id="qmNote" aria-live="polite"></p>
+<div class="qm-actions"><button type="button" id="qmDeploy">Deploy</button><button type="button" id="qmMap" class="ghost">Level map</button></div>
+</div>
+</section>
+<section id="ending" hidden aria-live="polite">
+<div id="endFx" aria-hidden="true"></div>
+<div class="end-card">
+<h2 class="chrome">MISSION COMPLETE!</h2>
+<div id="endTally" class="end-tally"></div>
+<div class="end-rank">RANK <b id="endRank">S</b></div>
+</div>
+<h2 class="congrats">CONGRATULATIONS!</h2>
+<div class="end-credits"><p class="eyebrow">STARRING</p><div id="endCast"></div></div>
+<div class="end-final"><h2 class="chrome" id="endNg">NEW GAME+ UNLOCKED</h2><p>Created by Prashant Kumar · Built with Claude and Codex · Thanks for playing Jungle Soldier</p><button type="button" id="endClose">Title screen</button></div>
 </section>
 <section id="menu">
 <div class="menu-main">
-<p class="eyebrow">ZONE 1 · THE FOREST · 5 LEVELS + BOSS · V14</p>
+<p class="eyebrow">6 ZONES · 36 STAGES · FOREST TO THE ALIEN CITY · V15</p>
 <h1>Jungle<br>Soldier</h1>
-<p id="message">Hold the line in the forest. Move the mouse to aim. Hold left click to fire.</p>
+<p id="message">Trace the alien signal from the jungle to the stars. Move the mouse to aim. Hold left click to fire.</p>
 <div class="stats" aria-label="Soldier stats">
 <div><small>FIRE RATE</small><strong>8 / s</strong></div>
 <div><small>DAMAGE</small><strong>1 / shot</strong></div>
@@ -78,11 +102,11 @@
 <li><span>Aim</span><span>Mouse</span></li>
 <li><span>Fire rifle</span><span>Hold left click</span></li>
 <li><span>Grenade</span><span><kbd>E</kbd> / right click</span></li>
-<li><span>Swap weapon</span><span><kbd>Q</kbd> (after the boss)</span></li>
+<li><span>Swap weapon</span><span><kbd>Q</kbd> (primary / secondary)</span></li>
 <li><span>Pause</span><span><kbd>Esc</kbd></span></li>
 </ul>
 </section>
 </main>
-<script type="module" src="game.js?v=14"></script>
+<script type="module" src="game.js?v=15"></script>
 </body>
 </html>

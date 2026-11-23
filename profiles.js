@@ -8,9 +8,16 @@ const KEY = 'jungleSoldier.save.v1';
 const DIFFS = ['easy', 'medium', 'hard'];
 // V14: Forest campaign progress, kept per difficulty: unlocked levels, best stars
 // and best score per level, banked coins and unlocked weapons. Level 6 is the boss.
-const LEVEL_COUNT = 6, KNOWN_WEAPONS = ['triple'];
+// V15: the whole campaign (36 stages), weapons bought or won, weapon tiers, soldier upgrades,
+// the loadout, uniforms and New Game+ are kept per difficulty with the coins that pay for them.
+const LEVEL_COUNT = 36;
+const KNOWN_WEAPONS = ['rifle', 'dual', 'ripper', 'triple', 'scatter', 'marksman', 'lance', 'torch', 'rotary', 'launcher', 'arc', 'seeker', 'orb', 'repulsor', 'mine', 'cannon'];
+const BOSS_WEAPONS = ['triple', 'lance', 'launcher', 'orb', 'cannon'];
+const KNOWN_UPGRADES = ['hollow', 'trigger', 'barrel', 'weak', 'armour', 'feet', 'belt', 'blast', 'powerup', 'magnet', 'medic', 'startShield'];
+const KNOWN_UNIFORMS = ['jungle', 'desert', 'arctic', 'ember', 'void', 'royal'];
 const guestProgress = {}; // guests keep progress for this browser session only
-const blankProgress = () => ({ unlocked: 1, levels: {}, coins: 0, weapons: [] });
+const blankProgress = () => ({ unlocked: 1, levels: {}, coins: 0, weapons: ['rifle'], tiers: {}, upgrades: {}, loadout: { primary: 'rifle', secondary: null },
+  uniforms: ['jungle'], uniform: 'jungle', finished: false, ng: false, ngOn: false });
 // Older saves (V7-V13) only know Level 1: a cleared run unlocks Level 2 and keeps its stars and score.
 function migrateProgress(best) {
   const pr = blankProgress();
@@ -29,7 +36,16 @@ function cleanProgress(raw) {
     if (l) pr.levels[id] = { stars: Math.max(0, Math.min(3, Math.floor(+l.stars || 0))), score: Math.max(0, Math.floor(+l.score || 0)), time: l.time == null ? null : +l.time };
   }
   pr.coins = Math.max(0, Math.floor(+raw.coins || 0));
-  pr.weapons = KNOWN_WEAPONS.filter(w => Array.isArray(raw.weapons) && raw.weapons.includes(w));
+  pr.weapons = KNOWN_WEAPONS.filter(w => w === 'rifle' || (Array.isArray(raw.weapons) && raw.weapons.includes(w)));
+  for (const w of pr.weapons) { const t = Math.floor(+raw.tiers?.[w] || 0); if (t > 0) pr.tiers[w] = Math.min(3, t); }
+  for (const w of BOSS_WEAPONS) if (pr.weapons.includes(w)) pr.tiers[w] = Math.max(1, pr.tiers[w] || 0); // won from a boss: tier 1 is free (V14 saves with the Triple Shot too)
+  for (const u of KNOWN_UPGRADES) { const n = Math.floor(+raw.upgrades?.[u] || 0); if (n > 0) pr.upgrades[u] = Math.min(3, n); }
+  const lo = raw.loadout || {};
+  pr.loadout = { primary: pr.weapons.includes(lo.primary) ? lo.primary : 'rifle', secondary: pr.weapons.includes(lo.secondary) && lo.secondary !== lo.primary ? lo.secondary : null };
+  if (!raw.loadout && pr.weapons.includes('triple')) pr.loadout.secondary = 'triple'; // V14 saves: the Triple Shot was the Q weapon
+  pr.uniforms = KNOWN_UNIFORMS.filter(u => u === 'jungle' || (Array.isArray(raw.uniforms) && raw.uniforms.includes(u)));
+  pr.uniform = pr.uniforms.includes(raw.uniform) ? raw.uniform : 'jungle';
+  pr.finished = raw.finished === true; pr.ng = raw.ng === true; pr.ngOn = pr.ng && raw.ngOn === true;
   return pr;
 }
 function ensureProgress(p) {
@@ -44,6 +60,7 @@ export function progressFor(difficulty) {
   return (p.progress && p.progress[d]) || ensureProgress(p)[d];
 }
 // Records a cleared level. Returns true for a new best (stars or score) on that level.
+export function saveProgress() { if (activeProfile()) persist(); render(); } // V15: Quartermaster purchases and loadout changes
 export function recordLevel({ difficulty, level, score = 0, stars = 0, time = null, coins = 0, weapon = null }) {
   const pr = progressFor(difficulty);
   const prev = pr.levels[level] || { stars: 0, score: 0, time: null };
@@ -51,7 +68,8 @@ export function recordLevel({ difficulty, level, score = 0, stars = 0, time = nu
   pr.levels[level] = { stars: Math.max(prev.stars, stars), score: Math.max(prev.score, score), time: prev.time == null ? time : (time == null ? prev.time : Math.min(prev.time, time)) };
   pr.unlocked = Math.min(LEVEL_COUNT, Math.max(pr.unlocked, level + 1));
   pr.coins += Math.max(0, Math.floor(coins));
-  if (weapon && KNOWN_WEAPONS.includes(weapon) && !pr.weapons.includes(weapon)) pr.weapons.push(weapon);
+  if (weapon && KNOWN_WEAPONS.includes(weapon)) { if (!pr.weapons.includes(weapon)) pr.weapons.push(weapon); pr.tiers[weapon] = Math.max(1, pr.tiers[weapon] || 0); } // boss weapons are free at tier 1
+  if (level === LEVEL_COUNT) { pr.finished = true; pr.ng = true; } // beating the Overmind unlocks New Game+
   if (activeProfile()) persist();
   render();
   return better;
@@ -128,12 +146,12 @@ function checksum(text) {
 }
 // V14: JS2 codes add campaign progress. JS1 codes (V7-V13) still load and are migrated.
 function exportCode(p) {
-  const json = JSON.stringify({ v: 2, name: p.name, settings: p.settings, stats: p.stats, progress: ensureProgress(p), created: p.created });
+  const json = JSON.stringify({ v: 3, name: p.name, settings: p.settings, stats: p.stats, progress: ensureProgress(p), created: p.created });
   const body = btoa(unescape(encodeURIComponent(json)));
-  return 'JS2-' + body + '-' + checksum(body);
+  return 'JS3-' + body + '-' + checksum(body); // V15: JS3 carries the whole campaign
 }
 function importCode(code) {
-  const m = String(code).trim().match(/^JS([12])-([A-Za-z0-9+/=]+)-([a-z0-9]{1,4})$/);
+  const m = String(code).trim().match(/^JS([123])-([A-Za-z0-9+/=]+)-([a-z0-9]{1,4})$/);
   if (!m || checksum(m[2]) !== m[3]) throw new Error('That save code is incomplete or mistyped.');
   const data = JSON.parse(decodeURIComponent(escape(atob(m[2]))));
   const p = blankProfile(cleanName(data.name) || 'Soldier');
@@ -148,7 +166,7 @@ function importCode(code) {
       stars: Math.max(0, Math.min(3, Math.floor(+st.best[d].stars || 0)))
     }]))
   };
-  p.progress = m[1] === '2' && data.progress
+  p.progress = m[1] !== '1' && data.progress
     ? Object.fromEntries(DIFFS.map(d => [d, cleanProgress(data.progress[d])]))
     : Object.fromEntries(DIFFS.map(d => [d, migrateProgress(p.stats.best[d])]));
   // Replace an existing profile with the same name instead of duplicating it.
@@ -183,10 +201,11 @@ function render() {
     const pr = p.progress[d];
     const label = d[0].toUpperCase() + d.slice(1);
     const stars = Object.values(pr.levels).reduce((n, l) => n + l.stars, 0);
-    const open = pr.unlocked >= LEVEL_COUNT ? 'Boss open' : 'Level ' + pr.unlocked + ' open';
-    return label + ' · ' + open + ' · ★' + stars + ' · ' + pr.coins + ' coins' + (pr.weapons.includes('triple') ? ' · Triple Shot' : '');
+    const zone = ['Forest', 'Desert', 'Tundra', 'Volcano', 'Space', 'Alien City'][Math.floor((pr.unlocked - 1) / 6)];
+    const open = pr.finished ? 'Campaign complete' + (pr.ng ? ' · NG+' : '') : zone + ' ' + (pr.unlocked % 6 === 0 ? 'boss' : 'L' + (((pr.unlocked - 1) % 6) + 1)) + ' open';
+    return label + ' · ' + open + ' · ★' + stars + ' · ' + pr.coins + ' coins · ' + pr.weapons.length + ' weapons';
   });
-  ui.profileStats.textContent = 'Forest: ' + rows.join('   ') + '   ·   Runs ' + p.stats.runs;
+  ui.profileStats.textContent = rows.join('   ') + '   ·   Runs ' + p.stats.runs;
 }
 function flash(text) {
   ui.profileNote.textContent = text;

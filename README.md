@@ -2,9 +2,7 @@
 
 [Play the game](https://pkumar1301.github.io/Arcade_Archer/)
 
-The current build is V14: the whole Forest biome. Five 950 m levels (Overgrown Trail, Temple Approach, Buggy Run, Hive Grove, Night of the Ancients) and the Beetle Tank boss, chosen from a level-select map along a jungle trail. Clearing a level unlocks the next; stars, scores, coins and weapons are saved per difficulty. Beating the Beetle Tank unlocks the Triple Shot.
-
-The game has an animated soldier, difficulty settings, local player profiles, solid obstacles, visible power-up effects, an original synthesized soundtrack, finish gates with an arcade results screen, free mouse aiming, a 70 m rifle range (anything fully visible can be shot), armored weak points, recurring enemy waves, and pits that require a directional jump to escape.
+The current build is V15: the complete campaign. Six zones of five levels and a boss (36 stages): the Forest, Sunken Dunes, Frozen Reach, Ashen Caldera, Dead Orbit and the Hive Capital, ending with the Overmind, a 90s celebration, cast-roll credits and New Game+. Between levels the Quartermaster sells 16 weapons, weapon tiers, 12 soldier upgrades, gear and uniforms. See CHANGES_V15.md.
 
 ## Controls
 
@@ -13,7 +11,7 @@ The game has an animated soldier, difficulty settings, local player profiles, so
 - Space jumps. Use Space with A/D to escape a pit.
 - Move the mouse to aim and hold left click to fire.
 - E or right click throws a grenade.
-- Q swaps between the rifle and the Triple Shot (after the boss).
+- Q swaps between the primary and secondary weapon (set them in the Quartermaster's Loadout tab). Hold fire to charge the Light Cannon.
 - In the boss arena, S steps back.
 - Esc pauses. M toggles music.
 
@@ -33,7 +31,7 @@ Three.js is bundled in vendor/ with its license. The included ground textures an
 
 V12 removes health regeneration. Green health drops restore up to 20 health. Incoming fire uses red closing rings and directional warnings; exposed weak points glow cyan. The Rapid fire pickup temporarily increases the firing rate.
 
-Automated checks and remaining playtest work are recorded in docs/V12-validation.md.
+Automated checks are in tools/test_v15.mjs and docs/V15-validation.md (earlier versions: docs/V12 to V14).
 
 V13 adds enemy entrances (drones drop from the canopy, crawlers burst from the foliage), a fade-in instead of pop-in, a sound and edge warning before each wave, a final wave and finish gate, and a results tally with up to three stars per difficulty. The jungle biome sprite pack for later levels is in art/jungle-biome/.
 
