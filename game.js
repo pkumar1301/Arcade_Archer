@@ -318,7 +318,7 @@ function addGlow(parent, x, y, z, color, scale, opacity=.8) {
 const spriteLoader = new T.TextureLoader();
 let envTracking = true, envCourse = false, envBiome = true; const envSprites = []; // V14: scenery sprites, tinted per lighting preset
 const spriteTextures = {};
-const BIOME_DIRS = new Set(['forest', 'desert', 'tundra', 'volcano', 'space', 'city']);
+const BIOME_DIRS = new Set(['forest', 'desert', 'tundra', 'volcano', 'space', 'city', 'drone']); // V16: the attack drone
 function artUrl(name) { // V15: 'desert/x' -> art/biomes/desert/x.webp, 'sprites/x' -> art/sprites/x.png
   const [dir, rest] = name.split('/');
   if (rest && BIOME_DIRS.has(dir)) return 'art/biomes/' + name + (/^(sky|arena|path|side|blend|ice|crust|dawn|asteroid)$/.test(rest) ? '.jpg' : '.webp');
@@ -652,7 +652,8 @@ function updatePowerFx(t) {
   const on = mode === 'play' || mode === 'pause';
   shieldBubble.visible = on && shield > 0;
   shieldBubble.material.opacity = .45 + Math.sin(t * 4) * .15;
-  autoDrone.visible = on && autoTime > 0;
+  autoDrone.visible = false; // V16: real drones fly beside the soldier now
+  shieldBubble.material.opacity *= shield === 1 ? .6 : 1;
   autoDrone.position.set(Math.cos(t * 3) * .75, 2.15 + Math.sin(t * 6) * .08, Math.sin(t * 3) * .75);
   heavyGlow.material.opacity = on && heavy > 0 ? .55 + Math.sin(t * 10) * .2 : 0;
   rapidRing.visible = on && rapid > 0;
@@ -892,7 +893,7 @@ function buildCourse(level) {
   hazards.length = 0; solids.length = 0; solids.push(...gatePosts); softZones.length = 0; shotBlockers.length = 0;
   if (courseSeedL1 === null) courseSeedL1 = seed; // first build at load is L1
   seed = level.id === 1 ? courseSeedL1 : 9000 + level.id * 131;
-  hazardCourse = level.boss ? [] : courseHazards(level);
+  hazardCourse = level.boss ? [] : layoutFilter(level, courseHazards(level)); // V16: forks and bridges clear their zone
 const biomeSkin = BIOMES[level.biome || 'forest'] || BIOMES.forest, forestSkin = !level.biome || level.biome === 'forest';
 for(const [d,kind,x,extra,extra2] of hazardCourse) {
   let mesh;
@@ -942,7 +943,7 @@ for(const [d,kind,x,extra,extra2] of hazardCourse) {
 // V11: rock piles (solid, jumpable) and fern clumps (slow you) in the path.
 if (!level.boss) {
   const lanes = [-3.8, -1.4, 1.4, 3.8];
-  const clear = (d, x) => !hazards.some(h => Math.abs(h.d - d) < 6 && Math.abs(h.x - x) < 3.2)
+  const clear = (d, x) => !hazards.some(h => Math.abs(h.d - d) < 6 && Math.abs(h.x - x) < 3.2) && layoutLane(d, x) === x
     && Math.abs(((d + 30) % 60) - 30) > 4 && d > 20 && d < finish - 15;
   for (let d = 18, i = 0; d < finish; d += 21, i++) {
     const x = lanes[(i * 3 + (i >> 1)) % 4];
@@ -974,6 +975,7 @@ if (!level.boss) {
   if (level.boss && level.boss !== 'beetle') buildArena2(level); else if (arena2.group) arena2.group.visible = false; // V15
   finishGate.visible = finishLine.visible = !level.boss;
   for (const g of gateLanterns) g.visible = !level.boss;
+  buildLayout(level); // V16: canyons, forks, bridges, gates and generators
   rebuildFloor();
   buildCoinLines();
   envTracking = envCourse = false;
@@ -1085,13 +1087,13 @@ const enemyMaterials={
   turret:satin(0x3a4048), petals:satin(0x5a6b3a)
 };
 const iconPositions={dual:'0',level:'1',heavy:'1',auto:'2',charge:'4',reload:'5',shield:'6',shieldOffer:'6',magnet:'3'};
-const ICON_ART={dual:'icon_dual',level:'icon_power2',heavy:'icon_power2',auto:'icon_auto',
+const ICON_ART={dual:'icon_dual',level:'icon_power2',heavy:'icon_power2',auto:'drone/front',
   charge:'icon_grenade',reload:'icon_reload',shield:'icon_shield',shieldOffer:'icon_shield',magnet:'icon_magnet'};
 function itemIcon(key) {
   const icon=document.createElement('span');
   icon.className='item-icon';
   icon.dataset.tile=iconPositions[key];
-  if(ICON_ART[key]) icon.style.backgroundImage='url(art/sprites/'+ICON_ART[key]+'.png)'; // V8
+  if(ICON_ART[key]) icon.style.backgroundImage='url('+artUrl(ICON_ART[key])+')'; // V8; V16: biome art paths too
   icon.setAttribute('aria-hidden','true');
   return icon;
 }
@@ -1129,6 +1131,7 @@ const movementKeys = new Set([
 // unless W/Up is held.
 let mode = 'menu', distance = 0, lateral = 0, jumpY = 0, jumpVel = 0, grounded = true;
 let hz = {sink: 0, gravity: 20, onIce: false, markers: []}; // V15: biome hazard state (filled in the biome courses section)
+const drones = [], lobs = []; let lay = {type: 'trail', ground: [0, 0]}; // V16: attack drones, spitter shots, level layout state
 let rollTime = 0, rollDir = 0, rollCooldown = 0, rollInvuln = 0, slowTimer = 0;
 let recoilTimer = 0; // v4: rifle recoil after firing
 const aimSmooth = {x: 0, y: 0}; // v4: smoothed mouse-aim offset, -1..1
@@ -1137,12 +1140,13 @@ let health = 100, maxHealth = 100, reviveUsed = false, score = 0, coinCount = 0;
 let shield = 0, recovery = 0, notice = 0, cooldown = 0, firing = false, elapsed = 0;
 let resumed = false, audio;
 let wallet, level, dual, rapid, heavy, autoTime, autoCooldown, charges, pressShot, powerShot;
+let heavyMax = 1, rapidMax = 1, magnetMax = 1; const SHIELD_HITS = 2; // V16
 const lastTap = {};
 const DROP_CYCLE = ['shield','heavy','reload','auto','charge','magnet']; // V11; V15: the coin magnet joins the cycle
 let dropCycle = 0;
-const DROP_HELP = {health:'Health +20 · unused health is lost',shield:'Shield · blocks the next hit', heavy:'Power bolts · next 8 shots do double damage',
-  reload:'Rapid fire · next 12 shots fire faster', auto:'Auto attack · fires at targets for 15 s', charge:'Grenade +1 · press E or right click', magnet:'Coin magnet · pulls in coins for 10 s'};
-const dropNames = {health:'Health',shield:'Shield',auto:'Auto attack',heavy:'Power bolts',
+const DROP_HELP = {health:'Health +20 · unused health is lost',shield:'Shield · blocks the next 2 hits · lasts the whole level', heavy:'Power bolts · double damage for 15 s',
+  reload:'Rapid fire · 50% faster fire for 15 s', auto:'Attack drone · fights beside you for the whole level', charge:'Grenade +1 · press E or right click', magnet:'Coin magnet · pulls in coins for 20 s'}; // V16
+const dropNames = {health:'Health',shield:'Shield',auto:'Attack drone',heavy:'Power bolts',
   reload:'Rapid fire',charge:'Power attack charge',magnet:'Coin magnet'};
 const dropColors = Object.fromEntries(Object.entries({
   shield:0x68dfef,auto:0xbb9dff,heavy:0xff665f,reload:0x82e584,charge:0xffffff,magnet:0xffcc40
@@ -1150,12 +1154,12 @@ const dropColors = Object.fromEntries(Object.entries({
 function collectDrop(key) {
   switch (key) {
     case 'health': { const gain=Math.min(DIFF.healAmount,maxHealth-health); health+=gain; healthFeedback('+'+gain,'heal'); break; }
-    case 'shield': shield=1; break;
-    case 'auto': autoTime=15*powerMul(); break; // V15: Power-up time upgrade
-    case 'heavy': heavy=Math.round(8*powerMul()); break;
-    case 'reload': rapid=Math.round(12*powerMul()); break;
-    case 'charge': charges=Math.min(maxCharges(),charges+1); break;
-    case 'magnet': magnetTime=10*powerMul(); break;
+    case 'shield': shield=SHIELD_HITS; break; // V16: 2 hits, lasts the whole level
+    case 'auto': { const r=addDrone(); if(r!=='new'){ message(r==='repaired'?'Attack drone repaired':'Drones at full strength · pickup ignored',2.2); ui.notice.prepend(itemIcon(key)); tone(r==='repaired'?880:300,.18); return; } break; } // V16
+    case 'heavy': heavy=heavyMax=15*powerMul(); break; // V16: timed; the Power-up time upgrade extends it
+    case 'reload': rapid=rapidMax=15*powerMul(); break; // V16: timed
+    case 'charge': if(charges>=maxCharges()){ message('Grenades full · '+charges+' / '+maxCharges(),2); tone(300,.15); return; } charges=Math.min(maxCharges(),charges+1); message('Grenade +1 · '+charges+' / '+maxCharges()+' · press E or right click',3); ui.notice.prepend(itemIcon(key)); tone(880,.22); return; // V16: stacks to 3
+    case 'magnet': magnetTime=magnetMax=20*powerMul(); break; // V16: 20 s
   }
   message(DROP_HELP[key] || dropNames[key]+' collected', 3.5);
   spawnFx(key==='shield' ? 'vfx_shield' : 'vfx_heal', actor.position.clone().add(vector(0,1,0)), 2.2, .5); // V9
@@ -1338,7 +1342,7 @@ function spawn(config) {
   if(!config.training && !config.minor) runStats.spawned++; // V14: mini-drones and mushrooms are not counted
   const K=ENEMY_KINDS[config.kind]; // V15: biome kinds carry their own HP; New Game+ toughens everything
   const hp=((K && config.type!=='mini' ? K.hp : null) ?? {moth:2,buggy:BUGGY.hp,bee:BEE.hp,mini:MINI.hp,mushroom:MUSHROOM.hp}[config.type] ?? 6) * (config.training ? 1 : ngHp());
-  if(K && ['raptor','stalker','ram','golem','sentinel','tortoise'].includes(K.type)) { halo.position.y=1.4; targetRing.position.y=1.3; }
+  if(K && ['raptor','stalker','ram','golem','sentinel','tortoise','rusher','spitter','generator'].includes(K.type)) { halo.position.y=1.4; targetRing.position.y=1.3; } // V16
   return {...config,mesh,body,halo,fireCore,aimLine,targetRing,shell,motion,weakPoint,weakGlow,art,artName:K?.art,parts,hp,maxHp:hp,shot:-(config.shotDelay ?? 0)+(config.firstShot ?? 0),range:0,flash:0,stun:0,
     shellHp:K?.shell||0,armour:K?.armour||0};
 }
@@ -1428,7 +1432,8 @@ function reset() {
   if(!lvl.boss){
   targets.push(spawn({d:DIFF.tutorialDistance,type:'moth',kind:roleKind('moth'),x:0,training:true,shooter:false}));
   targets.push(...levelEncounters(lvl).map((e,i)=>{const t=spawn({...e, shooter: e.type==='moth' && ((i*0.618)%1) < DIFF.encounterShooters, firstShot: DIFF.firstShot});if(e.type==='buggy')t.state='wait';return t;}));
-  if(lvl.waves.crawler) for(const d of (difficultyKey==='easy'?[520]:[180,520,840])) for(let i=0;i<3;i++) targets.push(spawn({d:d+i*2,type:'beetle',kind:roleKind('beetle'),x:(i-1)*1.5,groupId:'pack-'+d}));
+  if(lvl.waves.crawler) for(const d of (difficultyKey==='easy'?[520]:[180,520,840])) for(let i=0;i<3;i++) targets.push(spawn({d:d+i*2,type:'beetle',kind:roleKind('beetle'),x:layoutLane(d,(i-1)*1.5),groupId:'pack-'+d}));
+  targets.push(...layoutTargets(lvl)); // V16: siege generators
   }
   dropCycle=0; earnedDrops=0; healthGroups.clear(); logPrompts.clear(); bumpNotice=0;
   leakWarned=Boolean(activeProfile()?.settings?.leakWarningSeen);
@@ -1444,6 +1449,7 @@ function reset() {
       coins.push({mesh,d,lane,collected:false});
     }
   }
+  for (const c of coins) { const fix = layoutLane(c.d, c.lane); if (fix !== c.lane) { c.lane = fix; c.mesh.position.x = center(c.d) + fix; } } // V16: no coins over chasms or water
   for (const h of hazards) h.hit=false;
   distance = lateral = jumpY = jumpVel = 0;
   recoilTimer = 0; shake=0; aimSmooth.x = aimSmooth.y = 0;
@@ -1457,7 +1463,7 @@ function reset() {
   currentSpeed = 0;
   score = coinCount = shield = recovery = cooldown = elapsed = 0;
   maxHealth = 100 + 10 * up('armour'); health = maxHealth; reviveUsed = false; damageEvents.length=0;hitDirections.length=0; // V15: Armour upgrade
-  wallet=rapid=heavy=autoTime=autoCooldown=magnetTime=0; spin=0; beamCharge=0;
+  wallet=rapid=heavy=autoTime=autoCooldown=magnetTime=0; spin=0; beamCharge=0; heavyMax=rapidMax=magnetMax=1; clearDrones(); resetLayout(); // V16
   for (const sh of shots) remove(sh); shots.length = 0;
   charges=Math.min(maxCharges(), DIFF.startCharges + up('belt')); // V7: per difficulty; V15: Grenade belt
   if (up('startShield')) shield = 1;
@@ -1470,7 +1476,7 @@ function reset() {
   ui.levelLabel.textContent=lvl.boss?B.name.toUpperCase()+' BOSS · '+lvl.name.toUpperCase():B.name.toUpperCase()+' · LEVEL '+local+' / 5 · '+lvl.name.toUpperCase();
   stopBoss2();
   if(lvl.boss==='beetle'){ distance=ARENA_D; startBoss(); } else if(lvl.boss){ stopBoss(); distance=ARENA_D; startBoss2(lvl.boss); } else { stopBoss();
-  message(lvl.id===1?'W to run · S to stop · Space to jump · Hold left click to fire.':lvl.name+' · '+lvl.idea, lvl.id===1?3:4.5); }
+  message(lvl.id===1?'W to run · S to stop · Space to jump · Hold left click to fire.':lvl.name+' · '+lvl.idea+layoutTag(lvl), lvl.id===1?3:4.5); }
   place(1);
   updateTargets(0);
   resetSoldier(); // V10
@@ -1510,17 +1516,19 @@ function formatTime(t) {
 }
 function powerHud() { // V11: what is active, and for how long
   const chips = [];
-  if (shield > 0) chips.push(['icon_shield', 'SHIELD', 'next hit']);
-  if (heavy > 0) chips.push(['icon_power2', 'POWER BOLTS', heavy + ' shots']);
-  if (rapid > 0) chips.push(['icon_reload', 'RAPID FIRE', rapid + ' shots']);
-  if (autoTime > 0) chips.push(['icon_auto', 'AUTO ATTACK', Math.ceil(autoTime) + ' s']);
-  if (magnetTime > 0) chips.push(['icon_magnet', 'COIN MAGNET', Math.ceil(magnetTime) + ' s']);
-  const sig = chips.map(c => c.join(':')).join('|');
+  // V16: whole-level power-ups show what is left; timed ones show a countdown ring
+  if (shield > 0) chips.push(['sprites/icon_shield', 'SHIELD', shield + (shield > 1 ? ' hits' : ' hit'), null]);
+  drones.forEach((dr, i) => chips.push(['drone/front', 'DRONE ' + (i + 1), Math.ceil(dr.hp / dr.max * 100) + '%', dr.hp / dr.max, 'hp']));
+  if (heavy > 0) chips.push(['sprites/icon_power2', 'POWER BOLTS', Math.ceil(heavy) + ' s', heavy / heavyMax]);
+  if (rapid > 0) chips.push(['sprites/icon_reload', 'RAPID FIRE', Math.ceil(rapid) + ' s', rapid / rapidMax]);
+  if (magnetTime > 0) chips.push(['sprites/icon_magnet', 'COIN MAGNET', Math.ceil(magnetTime) + ' s', magnetTime / magnetMax]);
+  const sig = chips.map(c => c[1] + c[2] + (c[3] === null ? '' : Math.round(c[3] * 40))).join('|');
   if (sig === powerHud.sig) return;
   powerHud.sig = sig;
-  ui.powerbar.replaceChildren(...chips.map(([icon, name, left]) => {
-    const el = document.createElement('div'); el.className = 'power-chip';
-    el.innerHTML = '<span style="background-image:url(art/sprites/' + icon + '.png)"></span><b>' + name + '</b><small>' + left + '</small>';
+  ui.powerbar.replaceChildren(...chips.map(([icon, name, left, frac, kind]) => {
+    const el = document.createElement('div'); el.className = 'power-chip' + (frac === null ? '' : kind === 'hp' ? ' hp' : ' timed');
+    if (frac !== null) el.style.setProperty('--p', Math.max(0, Math.min(1, frac)));
+    el.innerHTML = '<span style="background-image:url(' + artUrl(icon) + ')"></span><b>' + name + '</b><small>' + left + '</small>';
     return el;
   }));
 }
@@ -1539,7 +1547,7 @@ function hud() {
   ui.progress.style.width = (currentLevel.boss ? Math.max(0, 100 - ((boss2.active ? boss2 : boss).hp / ((boss2.active ? boss2 : boss).max || 1)) * 100) : Math.min(100, distance / finish * 100)) + '%';
   const activeItems=[
     dual&&'dual',shield&&'shield',rapid>0&&'reload',heavy>0&&'heavy',
-    autoTime>0&&'auto',charges>0&&'charge'
+    drones.length>0&&'auto',charges>0&&'charge'
   ].filter(Boolean);
   const signature=activeItems.join(',');
   if(signature!==displayedItems){
@@ -1548,8 +1556,8 @@ function hud() {
   }
   ui.shield.textContent = [
 
-    dual && 'DUAL', shield>0 && 'SHIELD', rapid>0 && 'RAPID '+rapid,
-    heavy>0 && 'POWER BOLTS '+heavy, autoTime>0 && 'AUTO '+Math.ceil(autoTime)+'s',
+    dual && 'DUAL', shield>0 && 'SHIELD '+shield, rapid>0 && 'RAPID '+Math.ceil(rapid)+'s',
+    heavy>0 && 'POWER BOLTS '+Math.ceil(heavy)+'s', drones.length>0 && 'DRONES '+drones.length,
     'CHARGES '+charges
   ].filter(Boolean).join(' · ');
 }
@@ -1574,15 +1582,16 @@ function damage(amount, cause, bypassRecovery=false, flat=false) {
   if ((!bypassRecovery && recovery > 0) || rollInvuln > 0 || mode !== 'play') return 0;
   recovery = .75;
   if (shield > 0) {
-    shield = 0;
-    message('Shield absorbed the hit');
-    tone(480);
+    shield--; // V16: the shield blocks 2 hits
+    message(shield ? 'Shield absorbed the hit · 1 more' : 'Shield absorbed the hit · shield gone');
+    tone(480); spawnFx('vfx_shield', actor.position.clone().add(vector(0,1,0)), 2.6, .3);
     return 0;
   }
   if (!flat) amount = Math.max(1, Math.round(amount * DIFF.hazardScale));
 
   if(new URLSearchParams(location.search).has('test')) damageEvents.push({amount,cause,distance});
   health = Math.max(0, health - amount);
+  hurtDrones(amount); // V16: attack drones are hit with you
   if (!health && up('medic') && !reviveUsed) { reviveUsed = true; health = Math.round(maxHealth * .3); message('FIELD MEDIC · revived at 30% health', 2.5); spawnFx('vfx_heal', actor.position.clone().add(vector(0, 1, 0)), 3, .6); tone(880, .3, .08); return amount; } // V15
   shake = Math.max(shake, .22); // v5: damage shake
   message(cause + ' · −' + amount + ' health');
@@ -1948,7 +1957,7 @@ function strike(enemy, amount, opts = {}) {
   if (enemy.hp>0) {
     const hitText={buggy:'Armored · shoot the glowing seed pods',bee:'Hit · the glowing belly takes double',mini:'Hit',raptor:'Armored · hit the core mid-pounce',stalker:'Armored · hit it mid-leap',
       ram:'Armored · shoot the rear vent as it runs away',golem:enemy.armour>0?'Chipping the chest armour':'Hit',tortoise:'Hit · the back cannon takes double',lantern:'Hit · the lantern takes double',sentinel:'Armored · the core opens after it teleports',wisp:'Hit',shielder:'Hit'}[enemy.type]; // V14, V15
-    message(hitText || (enemy.type==='moth'?'Hit':enemy.vulnerable?'Core exposed':'Armored · aim for the glowing core'),.75);
+    if(!opts.quiet) message(hitText || (enemy.type==='moth'||enemy.type==='rusher'||enemy.type==='spitter'?'Hit':enemy.type==='generator'?'Generator hit · '+Math.ceil(enemy.hp/enemy.maxHp*100)+'%':enemy.vulnerable?'Core exposed':'Armored · aim for the glowing core'),.75); // V16: drone hits stay quiet
     return;
   }
   enemy.mesh.visible=false;enemy.aimLine.visible=false;enemy.halo.visible=false;stopChargeSound(enemy);
@@ -1960,7 +1969,7 @@ function strike(enemy, amount, opts = {}) {
   if (K.explode) { const at = enemy.mesh.position.clone(); spawnFx('volcano/fx_2', at, 4.4, .5); shake = Math.max(shake, .15); // V15: ember drones explode
     if (vector(center(distance) + lateral, .9, -distance).distanceTo(at) < K.explode + .3) { const lost = damage(UNIQUE.explode[difficultyKey], 'Ember drone blast', true, true); if (lost) healthFeedback('−' + lost + ' BLAST', 'leak'); }
     for (const o of targets) if (o !== enemy && o.hp > 0 && o.mesh.position.distanceTo(at) < K.explode + 1) setTimeout(() => strike(o, 2), 60); }
-  const points={moth:100,buggy:220,bee:250,mini:25,raptor:260,tortoise:320,stalker:240,ram:300,lantern:260,golem:420,wisp:200,shielder:240,sentinel:380}[enemy.type] ?? 180; // V14, V15
+  const points={moth:100,buggy:220,bee:250,mini:25,raptor:260,tortoise:320,stalker:240,ram:300,lantern:260,golem:420,wisp:200,shielder:240,sentinel:380,rusher:160,spitter:180,generator:300}[enemy.type] ?? 180; // V14, V15, V16
   spawnFx('vfx_explosion_small', enemy.mesh.position.clone().add(vector(0,enemy.type==='buggy'?1.2:0,0)), enemy.type==='moth' ? 2.2 : enemy.type==='mini' ? 1.4 : 3, .4); // V9
   score+=points;
   showKillPop('+'+points); // v5: kill popup
@@ -1970,7 +1979,7 @@ function strike(enemy, amount, opts = {}) {
   // Drops land on the ground ahead, on the enemy's lateral line.
   const d=enemy.d+13, lane=enemy.x;
   if (d>=finish) return;
-  const mesh=makeSprite(ICON_ART[enemy.drop]||'icon_power2',.95,{tint:0xffffff}); // V8: icon art
+  const mesh=makeSprite(ICON_ART[enemy.drop]||'icon_power2',enemy.drop==='auto'?1.3:.95,{tint:0xffffff}); // V8: icon art; V16: the drone pickup is the drone itself
   mesh.position.set(center(d)+lane,0.7,-d); scene.add(mesh);
   pickups.push({mesh,d,lane,y:0,key:enemy.drop});
   message(dropNames[enemy.drop]+' ahead · '+(lane<0?'left':lane>0?'right':'center'));
@@ -2036,14 +2045,12 @@ function shoot(dt) { // V15: every weapon of the loadout (hitscan, flame, rocket
       const power = beamCharge / st.charge, dmg = st.dmg * (.35 + .65 * power) * dmgMul() * (heavy > 0 ? 2 : 1);
       fireBullet(direction, origin, dmg, true, {range: st.range, pierce: 99, beam: true, wide: st.wide, pitch: 220, weakBonus: 1});
       if (st.jump) { const t2 = nearestTarget(actor.position.clone().addScaledVector(direction, 25), 40); if (t2) fireBullet(t2.mesh.position.clone().sub(origin).normalize(), origin, dmg * .6, false, {range: st.range, pierce: 3, beam: true, quiet: true}); }
-      beamCharge = 0; shoot.full = false; cooldown = st.cooldown; chargeGlow.material.opacity = 0; heavy = Math.max(0, heavy - 1); shake = Math.max(shake, .08);
+      beamCharge = 0; shoot.full = false; cooldown = st.cooldown * (rapid > 0 ? 1 / 1.5 : 1); chargeGlow.material.opacity = 0; shake = Math.max(shake, .08);
     } else if (!firing) chargeGlow.material.opacity = 0;
   } else if (trigger && cooldown <= 0) {
     if (w.spinUp) spin = Math.min(1, spin + dt / st.spinUp + .05);
-    cooldown = (rapid > 0 ? .6 : 1) * (w.spinUp ? T.MathUtils.lerp(.16, st.cooldown, spin) : st.cooldown);
-    rapid = Math.max(0, rapid - 1);
-    const dmg = st.dmg * (heavy > 0 ? 2 : 1) * dmgMul();
-    heavy = Math.max(0, heavy - 1);
+    cooldown = (rapid > 0 ? 1 / 1.5 : 1) * (w.spinUp ? T.MathUtils.lerp(.16, st.cooldown, spin) : st.cooldown); // V16: rapid fire is +50% fire rate for 15 s
+    const dmg = st.dmg * (heavy > 0 ? 2 : 1) * dmgMul(); // V16: power bolts are 2x damage for 15 s
     shotCount++;
     const opt = {range: st.range, pierce: st.pierce, chain: st.chain, weakBonus: st.weakBonus, color: w.chain ? arcMat : undefined, pitch: {dual: 520, ripper: 600, scatter: 160, marksman: 240, rotary: 650, lance: 300, arc: 900}[weapon]};
     if (w.kind === 'hitscan') {
@@ -2066,14 +2073,7 @@ function shoot(dt) { // V15: every weapon of the loadout (hitscan, flame, rocket
   }
   if (!firing && w.spinUp) spin = Math.max(0, spin - dt * .8);
   pressShot = false;
-  if (autoTime > 0 && autoCooldown <= 0) {
-    const target = candidates.find(e => e.hp > 0 && e.range < 36 && e.type !== 'mushroom');
-    if (target) {
-      autoCooldown = .85;
-      // v4: auto-attack fires a real bullet straight at the target.
-      fireBullet(target.mesh.position.clone().sub(origin).normalize(), origin, dmgMul(), false, {quiet: true});
-    }
-  }
+  // V16: the old invisible auto attack is replaced by the attack drones (updateDrones)
 }
 function boltBlocked(pos) { // V14
   const d = -pos.z, lat = pos.x - center(d);
@@ -2106,7 +2106,7 @@ function resolveSolids() {
       distance = o.d + (dd < 0 ? -1 : 1) * (o.hd + R);
       if (dd < 0) {
         currentSpeed = 0;
-        if (o.door) { if (elapsed > bumpNotice) { message('Airlock closed · wait for green', 1.2); bumpNotice = elapsed + 1.5; } continue; }
+        if (o.door) { if (elapsed > bumpNotice) { message(o.msg || 'Airlock closed · wait for green', 1.2); bumpNotice = elapsed + 1.5; } continue; }
         if (elapsed > bumpNotice) { message(o.h < 1 ? 'Blocked · jump over it' : o.h < 2 ? 'Blocked · go around or jump' : 'Blocked · go through the arch', 1.2); bumpNotice = elapsed + 1.5; tone(140, .06, .05); shake=Math.max(shake,.15); soldierAction('hit',1.4); }
       }
     } else lateral = o.x + (dx < 0 ? -1 : 1) * (o.hw + R);
@@ -2144,6 +2144,7 @@ function update(dt) {
   { const z = jumpY < .4 && softZones.find(z => Math.abs(z.d - distance) < z.hd && Math.abs(z.x - lateral) < z.hw); if (z) targetSpeed *= 1 - (z.slow ?? .2); } // V11: ferns; V15: snowdrifts slow 40%
   targetSpeed *= runSpeedMul(); // V15: Quick feet upgrade, Rotary Gun weight, quicksand, dune ramps
   if (hz.sink > 0) targetSpeed *= 1 - .7 * Math.min(1, hz.sink * 2);
+  if (hz.goo) targetSpeed *= .5; // V16: hive goo
   if (hz.rampBoost > 0) { hz.rampBoost -= dt; targetSpeed = Math.max(targetSpeed, RUN_SPEED * 1.3); }
   const spored = sporeClouds.length > 0 && inSporeCloud(); // V14: walking through a spore cloud slows you by 40%
   if (spored) targetSpeed *= 1 - MUSHROOM.soldierSlow;
@@ -2237,6 +2238,8 @@ function update(dt) {
   recovery -= dt;
   recoilTimer = Math.max(0, recoilTimer - dt); // v3
   autoTime-=dt;
+  heavy = Math.max(0, heavy - dt); rapid = Math.max(0, rapid - dt); // V16: timed power-ups
+  updateDrones(dt); updateLayout(dt, previousDistance); updateGroundDirector(dt); updateLobs(dt); // V16
   notice -= dt;
   if (notice <= 0) ui.notice.textContent = '';
   place(1 - Math.exp(-dt*9));
@@ -2965,7 +2968,7 @@ function renderMap() {
     b.setAttribute('aria-label', (level.boss ? 'Boss: ' : 'Level ' + level.id + ': ') + level.name + (open ? ', ' + (best ? best.stars + ' of 3 stars' : 'not cleared') : ', locked'));
     b.innerHTML = '<i>' + (open ? (level.boss ? '☠' : level.id) : '🔒') + '</i><span><b>' + (level.boss ? 'Boss · ' : '') + level.name + '</b><small>' + (open ? stars(best?.stars || 0) : 'Locked') + '</small></span>';
     b.onclick = () => startLevel(level.id);
-    b.onmouseenter = b.onfocus = () => { ui.mapInfo.textContent = level.idea + (best ? ' · Best ' + best.score + ' pts' : ''); };
+    b.onmouseenter = b.onfocus = () => { ui.mapInfo.textContent = level.idea + layoutTag(level) + (best ? ' · Best ' + best.score + ' pts' : ''); };
     return b;
   }));
   ui.mapInfo.textContent = 'Pick a stop on the trail. Clearing a level on any difficulty unlocks the next.';
@@ -3446,6 +3449,377 @@ function updateBiomeHazards(dt, prevD) {
 }
 
 // ======================================================================
+// V16: ATTACK DRONES, GROUND ENEMIES AND LEVEL LAYOUTS
+// ======================================================================
+// ---- Attack drones: up to 2 fly beside you for the whole level. Each fires at the rifle's
+// base rate for 60% of its base damage (no upgrades), takes the same damage you do, and is
+// repaired by another drone pickup (a pickup is ignored when both are at full health).
+const DRONE = {max: 2, hp: 60, dmgFrac: .6, range: 42};
+const droneTracerMat = new T.MeshBasicMaterial({color: 0x5ff6ff, transparent: true, opacity: .95, blending: T.AdditiveBlending, depthWrite: false, fog: false});
+function addDrone() {
+  if (drones.length < DRONE.max) {
+    const sp = makeSprite('drone/three_quarter', .85, {own: true, tint: 0xffffff}); sp.material.fog = false; scene.add(sp);
+    const side = drones.some(d => d.side === 1) ? -1 : 1;
+    sp.position.copy(actor.position).add(vector(0, 2.6, 0));
+    drones.push({sp, side, hp: DRONE.hp, max: DRONE.hp, cd: .25 + drones.length * .06, art: 'drone/three_quarter', bob: Math.random() * 6, flash: 0, shots: 0});
+    spawnFx('drone/spark', sp.position.clone(), 1.8, .3);
+    return 'new';
+  }
+  const hurt = drones.filter(d => d.hp < d.max).sort((a, b) => a.hp - b.hp)[0];
+  if (hurt) { hurt.hp = hurt.max; spawnFx('vfx_heal', hurt.sp.position.clone(), 1.6, .4); return 'repaired'; }
+  return 'full';
+}
+function clearDrones() { for (const d of drones) scene.remove(d.sp); drones.length = 0; }
+function hurtDrones(amount) {
+  for (let i = drones.length - 1; i >= 0; i--) {
+    const d = drones[i]; d.hp -= amount; d.flash = .35;
+    if (d.hp <= 0) { spawnFx('vfx_explosion_small', d.sp.position.clone(), 2.4, .4); burst(d.sp.position, colors.danger, 10); scene.remove(d.sp); drones.splice(i, 1); message('Attack drone destroyed', 1.6); tone(140, .3, .08); }
+  }
+}
+function aimPointOf(e) { return e.body ? e.body.getWorldPosition(vector(0, 0, 0)) : e.mesh.position.clone().add(vector(0, 1, 0)); }
+function droneTarget() {
+  let best = null, score = 1e9;
+  for (const e of targets) {
+    if (e.hp <= 0 || !e.mesh.visible || e.type === 'mushroom' || e.shielded || e.training) continue;
+    const r = e.range, melee = e.type === 'rusher';
+    if (r > DRONE.range || r < (melee ? -6 : 1.5)) continue;
+    const s = Math.abs(r) + Math.abs(e.x - lateral) * .4 - (melee ? 12 : 0) - (e.type === 'generator' ? 4 : 0); // rushers first: they are the drones' job
+    if (s < score) { score = s; best = e; }
+  }
+  return best;
+}
+function updateDrones(dt) {
+  if (!drones.length) return;
+  const right = vector(1, 0, 0).applyQuaternion(camera.quaternion); right.y = 0; right.normalize();
+  const back = vector(0, 0, 1).applyQuaternion(camera.quaternion); back.y = 0; back.normalize();
+  for (const d of drones) {
+    d.bob += dt;
+    const goal = actor.position.clone().addScaledVector(right, d.side > 0 ? 3.3 : -1.35).addScaledVector(back, d.side > 0 ? 1.2 : .3).add(vector(0, (d.side > 0 ? 3.0 : 2.5) + Math.sin(d.bob * 3) * .1, 0));
+    d.sp.position.lerp(goal, 1 - Math.exp(-dt * 7));
+    const art = d.hp < d.max * .5 ? 'drone/damaged' : 'drone/three_quarter';
+    if (art !== d.art) { d.art = art; d.sp.material.map = spriteTexture(art); d.sp.material.needsUpdate = true; }
+    d.flash = Math.max(0, d.flash - dt); d.sp.material.color.setRGB(1, 1 - d.flash * 1.8, 1 - d.flash * 1.8);
+    d.sp.visible = mode === 'play' || mode === 'pause' || mode === 'finish';
+    d.cd -= dt;
+    if (mode !== 'play' || d.cd > 0) continue;
+    const e = droneTarget(); let to = null;
+    if (e) to = aimPointOf(e);
+    else if (boss2.active && boss2.hp > 0 && boss2Pos().distanceTo(actor.position) < 60) to = boss2Pos().add(vector(0, (boss2.H || 4) * .45, 0));
+    else if (boss.active && boss.hp > 0) to = bossPos().add(vector(0, 1.6, 0));
+    if (!to) { d.cd = .1; continue; }
+    d.cd = Math.max(d.cd, -ARMS.rifle.cooldown) + ARMS.rifle.cooldown; // same rate as the rifle without upgrades
+    const dmg = ARMS.rifle.dmg * DRONE.dmgFrac, from = d.sp.position.clone().add(vector(0, -.28, 0));
+    if (e) strike(e, dmg, {quiet: true});
+    else if (boss2.active) boss2Hit({boss2: true, kind: 'auto', at: to}, dmg, {});
+    else bossHit({kind: 'armour'}, dmg);
+    const m = beam(scene, from, to, .022, droneTracerMat); effects.push({mesh: m, life: .06});
+    spawnFx('drone/muzzle', from, .75, .06); spawnFx('drone/spark', to, .95, .1);
+    if (++d.shots % 3 === 0) tone(1250 + d.side * 80, .03, .012);
+  }
+}
+
+// ---- Ground enemies: rushers (melee) and spitters (ranged walkers), one pair per biome.
+const groundKind = role => (currentLevel.biome || 'forest') + '_' + role;
+const aliveOf = type => targets.filter(e => e.type === type && e.hp > 0 && !e.escaped).length;
+function spawnGround(role, opt = {}) {
+  const kind = groundKind(role); if (!ENEMY_KINDS[kind]) return null;
+  const d = opt.d ?? distance + (role === 'rusher' ? 34 + Math.random() * 6 : 40 + Math.random() * 6);
+  let x = opt.x ?? [-3, -1.2, 1.2, 3][Math.floor(Math.random() * 4)];
+  if (opt.x === undefined) x = layoutLane(d, x);
+  lay.drops = (lay.drops || 0) + 1;
+  const e = spawnKind(kind, {d, x, drop: opt.drop ?? (lay.drops % 3 === 0 ? DROP_CYCLE[dropCycle++ % DROP_CYCLE.length] : undefined), perch: opt.perch, minorGround: true});
+  e.enter = 0; targets.push(e);
+  if (!lay.told?.[kind]) { (lay.told ||= {})[kind] = true; const K = ENEMY_KINDS[kind]; message(K.name + ' · ' + K.how, 2.6); }
+  return e;
+}
+function updateGroundDirector(dt) {
+  if (mode !== 'play' || currentLevel.boss || !lay.ground || lay.holding) return;
+  if (distance < DIFF.warmupDistance + 10 || distance > finish - DIFF.breatherDistance - 20) return;
+  const mul = DIFF.featureKeep < 1 ? 1.45 : difficultyKey === 'hard' ? .8 : 1, [rEvery, sEvery] = lay.ground;
+  const maxR = DIFF.featureKeep < 1 ? 1 : 2, maxS = DIFF.featureKeep < 1 ? 1 : 2;
+  if (rEvery && distance >= lay.nextR) { lay.nextR = distance + rEvery * mul; if (aliveOf('rusher') < maxR) spawnGround('rusher'); }
+  if (sEvery && distance >= lay.nextS) { lay.nextS = distance + sEvery * mul; if (aliveOf('spitter') < maxS) spawnGround('spitter'); }
+}
+Object.assign(SPECIAL_UPDATE, {
+  // Rusher: runs at you, rears up for 0.6 s (the strike pose), then strikes. Keeps attacking until killed or outrun.
+  rusher(e, dt, st) {
+    e.lastDt = dt; const K = kindDef(e); e.state ||= 'run';
+    const ease = DIFF.featureKeep < 1 ? .9 : 1, spd = (K.speed || 5) * ease, reach = K.reach || 2.4;
+    if (e.hp > 0 && !st && mode === 'play') {
+      const gap = e.d - distance;
+      if (e.state === 'run' || e.state === 'recover') {
+        if (e.state === 'recover') { e.t -= dt; if (e.t <= 0) e.state = 'run'; }
+        const goal = gap > -.6 ? distance + reach * .7 : distance - reach * .6; // in front: meet you; behind: chase you
+        e.d += T.MathUtils.clamp(goal - e.d, -spd * dt, spd * dt);
+        if (Math.abs(gap) < 16) e.x += T.MathUtils.clamp(lateral - e.x, -3.2 * dt, 3.2 * dt);
+        if (K.scorch && Math.floor(e.d / 1.4) !== e.lastTrail) { e.lastTrail = Math.floor(e.d / 1.4); if (gap < 25) addTrail('lava', e.d, e.x, 2.5, .7); }
+        if (K.leap && !e.leapt && gap > 3 && gap < K.leap && e.state === 'run') { e.leapt = true; e.state = 'leap'; e.t = 0; e.from = {d: e.d, x: e.x}; tone(620, .1, .04); }
+        if (e.state === 'run' && Math.abs(e.d - distance) < reach && Math.abs(lateral - e.x) < 1.4) { e.state = 'windup'; e.t = 0; setArt(e, K.strikeArt); tone(240, .12, .05); }
+        if (gap < -10) { escaped(e); message('Outran the ' + K.name.toLowerCase(), 1); return; }
+      } else if (e.state === 'leap') {
+        e.t += dt / .45; const k = Math.min(1, e.t);
+        e.d = T.MathUtils.lerp(e.from.d, distance + reach * .6, k); e.x = T.MathUtils.lerp(e.from.x, lateral, k);
+        if (k >= 1) { e.state = 'windup'; e.t = .15; setArt(e, K.strikeArt); }
+      } else if (e.state === 'windup') {
+        e.t += dt;
+        if (e.t >= .6) { // the strike
+          const hit = Math.abs(e.d - distance) < reach + .2 && Math.abs(lateral - e.x) < 1.5 && rollInvuln <= 0 && jumpY < 1.4;
+          if (hit) { const lost = damage(Math.round(UNIQUE.melee[difficultyKey] * (K.heavy || 1)), K.name, false, true);
+            if (lost) { healthFeedback('−' + lost + ' ' + K.name.split(' ').pop().toUpperCase(), 'leak'); shake = Math.max(shake, .25);
+              if (K.chill) { slowTimer = Math.max(slowTimer, K.chill); message('Numbed by the frost claws', 1); }
+              if (K.shock) { slowTimer = Math.max(slowTimer, K.shock); spawnFx('space/fx_4', actor.position.clone().add(vector(0, 1, 0)), 2, .3); message('Shocked · slowed', 1); } } }
+          else message('Dodged the ' + K.name.toLowerCase(), .7);
+          spawnFx('vfx_spark', vector(center(e.d) + e.x, 1.2, -e.d + .6), 1.8, .15);
+          if (K.double && !e.second) { e.second = true; e.t = .3; } // the hive soldier slashes twice
+          else { e.second = false; e.state = 'recover'; e.t = .9; setArt(e, K.art); }
+        }
+      }
+    }
+    e.range = e.d - distance;
+    const y = e.state === 'leap' ? Math.sin(Math.min(1, e.t) * Math.PI) * 1.8 : e.state === 'run' ? Math.abs(Math.sin(elapsed * 11 + e.d)) * .1 : 0;
+    placeE(e, y); enemyFade(e); weakAt(e, 0, 1.1, .5); showWeak(e, e.state === 'windup' && e.range > 0);
+    if (e.state === 'windup' && e.mesh.visible) e.art.material.color.setRGB(1, .55 + .3 * Math.sin(elapsed * 40), .5);
+  },
+  // Spitter: walks in, stops 12-15 m away, lobs a slow shot onto a marked spot, then keeps pace with you.
+  spitter(e, dt, st) {
+    e.lastDt = dt; const K = kindDef(e); e.keep ??= 12 + Math.random() * 3;
+    if (e.hp > 0 && !st && mode === 'play') {
+      if (!e.perch) {
+        const goal = distance + e.keep; e.d += T.MathUtils.clamp(goal - e.d, -4.5 * dt, 6.8 * dt);
+        e.moveT = (e.moveT ?? 3) - dt; if (e.moveT <= 0) { e.moveT = 3.5 + Math.random() * 2; e.laneX = layoutLane(e.d, T.MathUtils.clamp(lateral + (Math.random() - .5) * 6, -4.2, 4.2)); }
+        if (e.laneX !== undefined) e.x += T.MathUtils.clamp(e.laneX - e.x, -2.2 * dt, 2.2 * dt);
+        if (distance > finish - 45) { escaped(e); return; }
+      } else if (e.d - distance < -4) { escaped(e); return; }
+      const r = e.d - distance, inRange = r > 5 && r < 26;
+      e.fireT = (e.fireT ?? 1.8 + Math.random()) - dt;
+      if (e.fireT < .55 && inRange) setArt(e, K.fireArt);
+      if (e.fireT <= 0) { if (inRange) lobFrom(e); e.fireT = DIFF.featureKeep < 1 ? 4.4 : difficultyKey === 'hard' ? 3 : 3.5; setArt(e, K.art); }
+    }
+    e.range = e.d - distance;
+    placeE(e, e.perch ? e.perch : Math.abs(Math.sin(elapsed * 7 + e.d)) * .06); enemyFade(e);
+    weakAt(e, 0, (e.perch ? 0 : 0) + 1.0, .5); showWeak(e, (e.fireT ?? 9) < .55 && e.range > 0);
+  },
+  // Siege generator: fixed; destroyed ones stay as wrecks (see updateLayout).
+  generator(e, dt) { e.lastDt = dt; e.range = e.d - distance; placeE(e, 0); enemyFade(e); e.mesh.visible = e.hp > 0 && e.range > -3 && e.range < 140; e.art.material.opacity = 1; }
+});
+// Spitter shots: a slow arc onto a ring marked on the ground, then a splash with the biome's effect.
+const lobRingGeo = new T.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+function lobFrom(e) {
+  const K = kindDef(e), fx = K.fx, flight = 1.35;
+  const tD = distance + Math.min(8, currentSpeed * flight * .9), tX = T.MathUtils.clamp(lateral + (Math.random() - .5) * .8, -CORRIDOR_HALF, CORRIDOR_HALF);
+  const to = vector(center(tD) + tX, 0, -tD), from = e.mesh.position.clone().add(vector(0, (e.perch ? 0 : 0) + 1.3, 0));
+  const radius = K.splash === 'plasma' ? 2.1 : 1.5;
+  const ring = new T.Mesh(lobRingGeo, new T.MeshBasicMaterial({map: spriteTexture(fx + '/g_ring'), transparent: true, depthWrite: false, fog: false, blending: T.AdditiveBlending}));
+  ring.position.set(to.x, .07, to.z); ring.scale.setScalar(radius * 2.1); ring.renderOrder = 4; scene.add(ring);
+  const shot = makeFx(fx + '/g_shot', 1.1); shot.material.fog = false; shot.position.copy(from); scene.add(shot);
+  lobs.push({from, to, ring, shot, t: 0, flight, radius, K, fx, cause: K.name});
+  spawnFx(fx + '/g_hit', from, 1.2, .15); tone(210, .14, .04);
+}
+function clearLobs() { for (const l of lobs) { scene.remove(l.ring); scene.remove(l.shot); } lobs.length = 0; ui.game.classList.remove('dusted'); }
+function updateLobs(dt) {
+  if (hz.dust > 0) { hz.dust -= dt; if (hz.dust <= 0) ui.game.classList.remove('dusted'); }
+  for (let i = lobs.length - 1; i >= 0; i--) {
+    const l = lobs[i]; l.t += dt; const k = Math.min(1, l.t / l.flight);
+    l.shot.position.lerpVectors(l.from, l.to, k); l.shot.position.y = T.MathUtils.lerp(l.from.y, .4, k) + Math.sin(k * Math.PI) * 4.2;
+    l.ring.material.opacity = .45 + .45 * Math.sin(elapsed * 14) ** 2; l.ring.rotation.y += dt * 1.5;
+    if (k < 1) continue;
+    scene.remove(l.shot); scene.remove(l.ring); lobs.splice(i, 1);
+    spawnFx(l.fx + '/g_hit', l.to.clone().setY(.7), l.radius * 2.2, .45); shake = Math.max(shake, .08); tone(120, .18, .06);
+    const me = vector(center(distance) + lateral, 0, -distance), dd = -l.to.z;
+    const hit = me.distanceTo(vector(l.to.x, 0, l.to.z)) < l.radius + .25 && jumpY < 1.2;
+    if (hit) { const lost = damage(UNIQUE.spit[difficultyKey], l.cause, false, true); if (lost) healthFeedback('−' + lost + ' ' + l.cause.split(' ').pop().toUpperCase(), 'leak'); }
+    const x = l.to.x - center(dd);
+    switch (l.K.splash) {
+      case 'acid': addTrail('acid', dd, x, 3.5, 1.3); break;
+      case 'lava': addTrail('lava', dd, x, 3.5, 1.2); break;
+      case 'goo': addTrail('goo', dd, x, 4.5, 1.5); break;
+      case 'frost': if (hit) { slowTimer = Math.max(slowTimer, 2); message('Frozen · slowed for 2 s', 1.2); } addTrail('ice', dd, x, 3, 1.2); break;
+      case 'dust': if (hit) { hz.dust = 3; ui.game.classList.add('dusted'); message('Sand in your eyes', 1.2); } break;
+    }
+  }
+}
+
+// ---- Level layouts (see LAYOUTS in campaign.js)
+const GATE_HALF = 7;
+const LAYOUT_TAG = {siege: 'SIEGE: shoot the generators to open the gate', hold: 'HOLD POINT: survive until the gate opens', canyon: 'CANYON: spitters on the ledges',
+  fork: 'FORK: a chasm splits the path, pick a side', bridge: 'BRIDGE RUN: stay on the causeway', escape: 'ESCAPE: keep ahead of what is behind you', open: 'OPEN FIELD: more ranged enemies'};
+function layoutTag(level) { const t = LAYOUT_TAG[level?.layout?.type]; return t ? ' · ' + t : ''; }
+function layoutDef(level) { return level?.layout || {type: 'trail', ground: level?.boss ? [0, 0] : [150, 220]}; }
+// Where the ground can't be stood on: a fork's chasm in the middle, or the water beside a bridge.
+function layoutLane(d, x) {
+  const L = layoutDef(currentLevel);
+  if (L.type === 'fork' && d > L.from - 2 && d < L.from + L.len + 2 && Math.abs(x) < 2.1) return x < 0 ? -3.2 : 3.2;
+  if (L.type === 'bridge' && d > L.from - 2 && d < L.from + L.len + 2 && Math.abs(x) > 1.6) return T.MathUtils.clamp(x, -1.4, 1.4);
+  if ((L.type === 'hold' || L.type === 'siege') && d > L.d - 18 && d < L.d + 8 && Math.abs(x) < 4.5) return x < 0 ? -4.6 : 4.6; // keep the gate yard clear
+  return x;
+}
+function layoutFilter(level, course) {
+  const L = layoutDef(level);
+  if (L.type === 'hold' || L.type === 'siege') return course.filter(([d]) => d < L.d - 18 || d > L.d + 8); // a clear yard in front of the gate
+  if (L.type !== 'fork' && L.type !== 'bridge') return course;
+  const ROW = new Set(['log', 'fence', 'airlock', 'ice', 'crust', 'bridge', 'portal', 'ramp']);
+  return course.filter(([d, kind, x, extra]) => {
+    const len = typeof extra === 'number' && (kind === 'ice' || kind === 'crust' || kind === 'bridge') ? extra : 0;
+    if (d + len < L.from - 8 || d > L.from + L.len + 8) return true;
+    if (ROW.has(kind)) return false;
+    return L.type === 'fork' ? Math.abs(x) > 2.4 : Math.abs(x) < 1.2 && kind !== 'thorn';
+  });
+}
+// A textured strip lying on the ground (or standing as a wall), following the path's curve.
+function pathStrip(texName, d, len, {x = 0, width = 4, y = .03, wall = 0, tileLen = null, glow = 0, emissive = 0, opacity = 1} = {}) {
+  const tex = groundTexV15(texName).clone(); tex.needsUpdate = true;
+  const a = aspectOf(texName) || .5;
+  if (wall) tex.repeat.set(len / (wall * a), 1); else tex.repeat.set(1, len / (tileLen || width / a));
+  const N = Math.max(2, Math.ceil(len / 2)), geo = new T.PlaneGeometry(1, 1, 1, N), pos = geo.attributes.position, uv = geo.attributes.uv;
+  for (let i = 0; i < pos.count; i++) {
+    const v = pos.getY(i) + .5, u = pos.getX(i) + .5, dd = d + v * len;
+    if (wall) { pos.setXYZ(i, center(dd) + x, -.1 + u * wall, -dd); uv.setXY(i, v * tex.repeat.x, u); }
+    else { pos.setXYZ(i, center(dd) + x + (u - .5) * width, y, -dd); uv.setXY(i, u, v * tex.repeat.y); }
+  }
+  tex.repeat.set(1, 1); geo.computeVertexNormals();
+  const mat = wall ? new T.MeshStandardMaterial({map: tex, roughness: 1, side: T.DoubleSide, color: WALL_TONE[currentLevel.biome] || 0xffffff})
+    : new T.MeshStandardMaterial({map: tex, transparent: true, alphaTest: .15, roughness: .85, emissive: emissive || 0x000000, emissiveIntensity: emissive ? .55 : 0, emissiveMap: emissive ? tex : null,
+      polygonOffset: true, polygonOffsetFactor: -2, depthWrite: !glow, opacity});
+  const m = new T.Mesh(geo, mat); m.renderOrder = 1; courseGroup.add(m); return m;
+}
+// Canyon walls are a sawtooth of rock faces: each step faces you, so the texture reads straight on.
+function canyonWall(texName, d0, d1, side, height) {
+  const tex = groundTexV15(texName), a = aspectOf(texName) || .5, tile = height * a;
+  const pts = []; for (let d = d0; d < d1; d += 7) pts.push([d, 7.0], [d + 5.6, 9.4], [d + 5.75, 7.0]);
+  const pos = [], uv = []; let run = 0;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [da, xa] = pts[i], [db, xb] = pts[i + 1], len = Math.hypot(db - da, xb - xa);
+    const A = [center(da) + side * xa, -.1, -da], B = [center(db) + side * xb, -.1, -db], u0 = run / tile, u1 = (run + len) / tile; run += len;
+    const At = [A[0], height, A[2]], Bt = [B[0], height, B[2]];
+    pos.push(...A, ...B, ...Bt, ...A, ...Bt, ...At); uv.push(u0, 0, u1, 0, u1, 1, u0, 0, u1, 1, u0, 1);
+  }
+  const geo = new T.BufferGeometry(); geo.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); geo.computeVertexNormals();
+  const m = new T.Mesh(geo, new T.MeshStandardMaterial({map: tex, roughness: 1, side: T.DoubleSide, color: WALL_TONE[currentLevel.biome] || 0xffffff}));
+  courseGroup.add(m); return m;
+}
+const WALL_TONE = {desert: 0x8a7a70, tundra: 0xb8c0c8, space: 0xffffff, city: 0xc8b8c8};
+const BIOME_WALL = {desert: ['desert/g_canyon_wall', 'desert/g_ledge'], tundra: ['tundra/g_cave_wall', 'tundra/g_ledge'], space: ['space/g_shaft_wall', 'space/g_catwalk'], city: ['city/g_canyon_wall', 'city/g_ledge'],
+  volcano: ['desert/g_canyon_wall', 'desert/g_ledge'], forest: ['desert/g_canyon_wall', 'desert/g_ledge']};
+function buildLayout(level) {
+  const L = layoutDef(level), b = level.biome || 'forest';
+  lay = {...L, def: L};
+  if (silhouette.userData.h) silhouette.visible = L.type !== 'canyon'; // the horizon strip would paint over the canyon walls
+  if (level.boss) return;
+  if (L.type === 'canyon') {
+    const [wallTex, ledgeArt] = BIOME_WALL[b], to = finish - 60;
+    for (const side of [-1, 1]) canyonWall(wallTex, L.from, to, side, 10);
+    lay.ledges = [];
+    for (let d = Math.ceil((L.from + 20) / 60) * 60 + 30, i = 0; d < to - 30; d += L.ledges > 90 ? 120 : 60, i++) { // midway between the archways (every 60 m)
+      const side = i % 2 ? 1 : -1, art = makeSprite(ledgeArt, 3.4, {bottom: true, tint: 0xd8d4cc});
+      const h = 3.4 / aspectOf(ledgeArt), y0 = 1.2; art.position.set(center(d) + side * 6.1, y0, -d); courseGroup.add(art);
+      lay.ledges.push({d, x: side * 5.9, top: y0 + h * (ledgeArt.includes('catwalk') ? .3 : .55), used: false});
+    }
+  }
+  if (L.type === 'fork') {
+    pathStrip(L.strip, L.from, L.len, {width: 3.6, y: .035, emissive: L.glow || 0});
+    if (L.glow) for (let k = 0; k <= L.len; k += 8) { const g = addGlow(courseGroup, center(L.from + k), .5, -(L.from + k), L.glow, 3.2, .45); g.material.fog = false; }
+  }
+  if (L.type === 'bridge') {
+    for (const side of [-1, 1]) pathStrip(L.side, L.from, L.len, {x: side * 4.3, width: 5.2, y: .03, emissive: L.glow || 0, tileLen: 10});
+    if (L.path) pathStrip(L.path, L.from, L.len, {width: 4.2, y: .036});
+    if (L.floes) for (let d = L.from + 1.5, i = 0; d < L.from + L.len; d += 3.6, i++) groundArt(i % 2 ? 'tundra/g_floe_b' : 'tundra/g_floe_a', center(d) + (i % 3 - 1) * .25, -d, 4.8, {rot: i % 2 ? Math.PI / 2 + (Math.random() - .5) * .3 : (Math.random() - .5) * .5, y: .04});
+    if (L.pillars) for (let d = L.from + 12, i = 0; d < L.from + L.len; d += 26, i++) for (const side of [-1, 1]) {
+      const p = makeSprite(L.pillars, 1.5, {bottom: true, tint: 0xd8c8c0}); p.position.set(center(d) + side * 2.6, -1.6, -d); courseGroup.add(p); }
+    if (L.glow) for (let k = 0; k <= L.len; k += 10) for (const side of [-1, 1]) { const g = addGlow(courseGroup, center(L.from + k) + side * 4.6, .4, -(L.from + k), L.glow, 3.6, .5); g.material.fog = false; }
+  }
+  if (L.type === 'hold' || L.type === 'siege') {
+    const art = makeSprite(b + '/g_gate_closed', 13.5, {bottom: true, tint: 0xe0dcd4}); art.position.set(center(L.d), -.05, -L.d + .4); courseGroup.add(art);
+    lay.gateArt = art; lay.solid = {d: L.d, x: 0, hw: GATE_HALF, hd: .5, h: 99, door: true, open: false, msg: L.type === 'hold' ? 'The gate is shut · hold out until it opens' : 'The gate is shut · destroy the generators'};
+    solids.push(lay.solid);
+  }
+  if (L.type === 'escape' && !L.lava) {
+    const w = makeFx(L.fx, 17); w.material.fog = false; w.center.set(.5, .2); courseGroup.add(w); lay.wall = w;
+  }
+  if (L.type === 'escape' && L.lava) { const w = makeFx(L.fx, 18); w.material.fog = false; w.center.set(.5, .25); courseGroup.add(w); lay.wall = w; }
+}
+function layoutTargets(level) {
+  const L = layoutDef(level); if (L.type !== 'siege') return [];
+  const kind = (level.biome || 'forest') + '_generator', xs = L.gens === 2 ? [-3, 3] : [-3.6, 0, 3.6];
+  return xs.map((x, i) => { const e = spawnKind(kind, {d: L.d - 9 - (i % 2) * 2, x, drop: i === 1 ? 'auto' : undefined}); e.siege = true; return e; });
+}
+function resetLayout() {
+  const L = layoutDef(currentLevel);
+  for (const w of lay.wrecks || []) courseGroup.remove(w);
+  Object.assign(lay, {holding: false, holdT: 0, done: false, told: {}, drops: 0, nextR: DIFF.warmupDistance + 40, nextS: DIFF.warmupDistance + 90, wallD: -50, wallWarn: 0, burnT: 0, announced: false, fellT: 0, wrecks: []});
+  if (lay.solid) { lay.solid.open = false; lay.gateArt.material.map = spriteTexture((currentLevel.biome || 'forest') + '/g_gate_closed'); lay.gateArt.material.needsUpdate = true; }
+  if (lay.ledges) for (const l of lay.ledges) l.used = false;
+  clearLobs(); hz.goo = false; hz.dust = 0;
+  if (!objectiveEl) { objectiveEl = document.createElement('div'); objectiveEl.id = 'objective'; ui.hud.append(objectiveEl); }
+  objectiveEl.hidden = true;
+  void L;
+}
+let objectiveEl = null;
+function objective(text) { if (!objectiveEl) return; objectiveEl.hidden = !text; if (text && objectiveEl.textContent !== text) objectiveEl.textContent = text; }
+function openGate(text) {
+  lay.solid.open = true; lay.done = true; lay.holding = false;
+  lay.gateArt.material.map = spriteTexture((currentLevel.biome || 'forest') + '/g_gate_open'); lay.gateArt.material.needsUpdate = true;
+  spawnFx('vfx_explosion_big', vector(center(lay.d), 2.5, -lay.d), 7, .6); shake = Math.max(shake, .3); tone(330, .3, .08); setTimeout(() => tone(660, .35, .08), 180);
+  banner(text, 2.8); objective(null);
+}
+function fellOff(cause, toX) {
+  if (elapsed < lay.fellT) return; lay.fellT = elapsed + .8;
+  hazardDamage('fall', cause); spawnFx('vfx_spark', vector(center(distance) + lateral, .4, -distance), 2, .3);
+  lateral = toX; currentSpeed *= .35; rollTime = 0; message(cause + ' · back on solid ground', 1.4); tone(160, .2, .06);
+}
+function updateLayout(dt, prevD) {
+  if (currentLevel.boss || mode !== 'play') return;
+  const L = lay.def; if (!L) return;
+  if (L.text && !lay.announced && ((L.from && distance > L.from - 30) || (L.d && distance > L.d - 70) || (L.type === 'escape' && distance > DIFF.warmupDistance))) { lay.announced = true; banner(L.text, 3); }
+  if (L.type === 'fork' && distance > L.from && distance < L.from + L.len && Math.abs(lateral) < 1.55 && jumpY < .3) fellOff(currentLevel.biome === 'volcano' ? 'Fell in the lava river' : 'Fell into the ' + (currentLevel.biome === 'city' ? 'chasm' : 'crevasse'), lateral < 0 ? -2.4 : 2.4);
+  if (L.type === 'bridge' && distance > L.from && distance < L.from + L.len && Math.abs(lateral) > 2.35 && jumpY < .3) fellOff(currentLevel.biome === 'tundra' ? 'Fell in the freezing water' : currentLevel.biome === 'volcano' ? 'Fell in the lava' : 'Fell off the bridge', Math.sign(lateral) * 1.3);
+  if (L.type === 'canyon') for (const l of lay.ledges) if (!l.used && l.d - distance < 42 && l.d - distance > 8) { l.used = true; if (aliveOf('spitter') < 3) spawnGround('spitter', {d: l.d, x: l.x, perch: l.top}); }
+  if (L.type === 'hold') {
+    if (!lay.holding && !lay.done && distance > L.d - 22) { lay.holding = true; lay.holdT = L.secs * (DIFF.featureKeep < 1 ? .7 : 1); lay.spawnR = 1.5; lay.spawnS = 4; lay.spawnW = 8; banner('HOLD THE LINE · ' + Math.round(lay.holdT) + ' s', 2.6); tone(220, .4, .07); }
+    if (lay.holding) {
+      lay.holdT -= dt; lay.spawnR -= dt; lay.spawnS -= dt; lay.spawnW -= dt;
+      const easy = DIFF.featureKeep < 1;
+      if (lay.spawnR <= 0) { lay.spawnR = easy ? 9 : 6.5; if (aliveOf('rusher') < (easy ? 1 : 2)) { const s = Math.random() < .5 ? -1 : 1; spawnGround('rusher', {d: Math.min(L.d - 2, distance + 14 + Math.random() * 4), x: s * 5}); } }
+      if (lay.spawnS <= 0) { lay.spawnS = easy ? 12 : 9; if (aliveOf('spitter') < (easy ? 1 : 2)) spawnGround('spitter', {d: Math.min(L.d - 3, distance + 16)}); }
+      if (lay.spawnW <= 0) { lay.spawnW = easy ? 20 : 15; spawnWave(Math.max(1, DIFF.waveMoths - 1), (waveSide = -waveSide)); }
+      objective('HOLD THE LINE · ' + Math.max(0, Math.ceil(lay.holdT)) + ' s');
+      if (lay.holdT <= 0) openGate('GATE OPEN · MOVE OUT');
+    }
+  }
+  if (L.type === 'siege' && !lay.done) {
+    const gens = targets.filter(e => e.siege);
+    for (const g of gens) if (g.hp <= 0 && !g.wreck) { g.wreck = true; const K = kindDef(g), w = makeSprite(K.brokenArt, K.w, {bottom: true, tint: 0xc8c4bc}); w.position.set(center(g.d) + g.x, 0, -g.d); courseGroup.add(w); lay.wrecks.push(w);
+      spawnFx('vfx_explosion_big', w.position.clone().add(vector(0, 1.5, 0)), 5, .6); shake = Math.max(shake, .25); const left = gens.filter(o => o.hp > 0).length; if (left) banner(left + ' GENERATOR' + (left > 1 ? 'S' : '') + ' LEFT', 1.6); }
+    const left = gens.filter(o => o.hp > 0).length;
+    if (distance > L.d - 70) objective('SIEGE · GENERATORS ' + (gens.length - left) + ' / ' + gens.length);
+    if (!left && gens.length) openGate('GATE OPEN · KEEP MOVING');
+  }
+  if (L.type === 'escape') {
+    if (L.lava) { if (lay.wall) { const g = distance - hz.lavaD; lay.wall.position.set(center(hz.lavaD), 0, -hz.lavaD + .5); lay.wall.material.opacity = g < 6 ? .35 + g * .06 : .9; if (distance > DIFF.warmupDistance) objective('LAVA · ' + Math.max(0, Math.floor(g)) + ' m BEHIND'); } }
+    else {
+      if (distance > DIFF.warmupDistance) lay.wallD += L.speed * (DIFF.featureKeep < 1 ? .85 : difficultyKey === 'hard' ? 1.08 : 1) * dt;
+      lay.wallD = Math.max(lay.wallD, distance - 48);
+      const gap = distance - lay.wallD;
+      lay.wall.position.set(center(lay.wallD), 0, -lay.wallD); lay.wall.material.opacity = gap < 6 ? .35 + gap * .06 : Math.min(.95, .55 + (40 - gap) / 40);
+      if (distance > DIFF.warmupDistance) objective(L.cause.toUpperCase() + ' · ' + Math.max(0, Math.floor(gap)) + ' m BEHIND');
+      if (gap < 22 && elapsed > lay.wallWarn) { lay.wallWarn = elapsed + 4; message(L.cause.toUpperCase() + ' · ' + Math.max(0, Math.floor(gap)) + ' m behind · keep moving', 2); }
+      if (gap < 1.5) { lay.burnT -= dt; if (lay.burnT <= 0) { lay.burnT = .5; hazardDamage('burn', L.cause); } distance = Math.max(distance, lay.wallD + 1.2); shake = Math.max(shake, .12); }
+    }
+  }
+}
+// Test-bot helper: keep the bots out of chasms and water, and point them at generators during a siege.
+function botLane(desired) {
+  const L = layoutDef(currentLevel);
+  if (L.type === 'fork' && distance > L.from - 14 && distance < L.from + L.len + 2) return desired < 0 ? -3.3 : 3.3;
+  if (L.type === 'bridge' && distance > L.from - 10 && distance < L.from + L.len + 2) return T.MathUtils.clamp(desired, -1.4, 1.4);
+  return desired;
+}
+function botAim() {
+  const g = targets.find(e => e.siege && e.hp > 0 && e.mesh.visible && e.range < 60);
+  if (!g) return false;
+  const v = aimPointOf(g).project(camera); pointer.set(T.MathUtils.clamp(v.x, -1, 1), T.MathUtils.clamp(v.y, -1, 1)); return true;
+}
+
+// ======================================================================
 // V15: ENEMIES of Desert, Tundra, Volcano, Space and the Alien City
 // ======================================================================
 const kindDef = e => ENEMY_KINDS[e.kind] || ENEMY_KINDS[{moth: 'drone', beetle: 'crawler', turret: 'turret'}[e.type]] || {};
@@ -3464,21 +3838,25 @@ function fireBoltFrom(enemy, start, target, {speed = DIFF.boltSpeed, cause, slow
 const trails = [];
 const trailGeo = new T.PlaneGeometry(1.6, 1.6).rotateX(-Math.PI / 2);
 const trailMat = {lava: new T.MeshBasicMaterial({map: spriteTexture('volcano/decal_5'), color: 0xffa060, transparent: true, depthWrite: false, fog: false, blending: T.AdditiveBlending}),
-  ice: new T.MeshBasicMaterial({map: spriteTexture('tundra/decal_10'), color: 0xd8f4ff, transparent: true, depthWrite: false, fog: false})};
-function addTrail(kind, d, x, life = 4) {
+  ice: new T.MeshBasicMaterial({map: spriteTexture('tundra/decal_10'), color: 0xd8f4ff, transparent: true, depthWrite: false, fog: false}),
+  acid: new T.MeshBasicMaterial({map: spriteTexture('forest/g_hit'), color: 0xc8ff90, transparent: true, depthWrite: false, fog: false, blending: T.AdditiveBlending}), // V16: jungle spider acid
+  goo: new T.MeshBasicMaterial({map: spriteTexture('city/g_hit'), color: 0xa0fff0, transparent: true, depthWrite: false, fog: false, blending: T.AdditiveBlending})}; // V16: hive spider goo
+function addTrail(kind, d, x, life = 4, r = .9) {
   if (trails.length > 160) return;
-  const m = new T.Mesh(trailGeo, trailMat[kind].clone()); m.position.set(center(d) + x, .05, -d); m.renderOrder = 3; scene.add(m);
-  trails.push({kind, d, x, until: elapsed + life, life, mesh: m});
+  const m = new T.Mesh(trailGeo, trailMat[kind].clone()); m.position.set(center(d) + x, .05, -d); m.renderOrder = 3; m.scale.setScalar(r / .9); m.rotation.y = Math.random() * 6; scene.add(m);
+  trails.push({kind, d, x, until: elapsed + life, life, mesh: m, r});
 }
 function updateTrails(dt) {
-  let burn = false, ice = false;
+  let burn = false, ice = false, goo = false;
   for (let i = trails.length - 1; i >= 0; i--) {
     const t = trails[i], left = t.until - elapsed;
     if (left <= 0) { scene.remove(t.mesh); trails.splice(i, 1); continue; }
     t.mesh.material.opacity = Math.min(1, left / 1) * (t.kind === 'lava' ? .9 : .75);
-    if (Math.abs(t.d - distance) < .9 && Math.abs(t.x - lateral) < .9 && jumpY < .3) { if (t.kind === 'lava') burn = true; else ice = true; }
+    const r = t.r || .9;
+    if (Math.abs(t.d - distance) < r && Math.abs(t.x - lateral) < r && jumpY < .3) { if (t.kind === 'lava' || t.kind === 'acid') burn = true; else if (t.kind === 'goo') goo = true; else ice = true; }
   }
   if (ice) hz.onIce = true;
+  hz.goo = goo; // V16: hive goo slows you by half
   if (burn) { hz.trailTick = (hz.trailTick || 0) - dt; if (hz.trailTick <= 0) { hz.trailTick = .5; hazardDamage('burn', 'Burning trail'); } } else hz.trailTick = 0;
 }
 // Shield drones (and the elite shield stalker) protect enemies within 8 m: shielded enemies take no damage.
@@ -3625,7 +4003,7 @@ Object.assign(SPECIAL_UPDATE, {
   }
 });
 // Hit volume, weak point and art for every kind (called from spawn).
-const BODY_SIZE = {raptor: [1.8, 1.6, 1.2, .9], tortoise: [3, 2.4, 2, 1.2], stalker: [1.8, 2, 1.2, 1], ram: [2.6, 2.2, 1.6, 1.1], lantern: [2.2, 2, 1.2, 0], golem: [2.8, 3.6, 1.6, 1.8],
+const BODY_SIZE = {rusher: [1.5, 1.7, 1, .95], spitter: [2, 1.4, 1.2, .8], generator: [2.4, 2.6, 1.4, 1.3], raptor: [1.8, 1.6, 1.2, .9], tortoise: [3, 2.4, 2, 1.2], stalker: [1.8, 2, 1.2, 1], ram: [2.6, 2.2, 1.6, 1.1], lantern: [2.2, 2, 1.2, 0], golem: [2.8, 3.6, 1.6, 1.8],
   wisp: [1.6, 1.6, 1, 0], shielder: [1.6, 1.8, 1, 0], sentinel: [1.6, 4.6, 1, 2.3]};
 function kindBody(mesh, config) {
   const s = BODY_SIZE[config.type]; if (!s) return null;
@@ -3633,7 +4011,7 @@ function kindBody(mesh, config) {
 }
 function kindArt(config) {
   const K = ENEMY_KINDS[config.kind]; if (!K) return null;
-  const grounded = ['beetle', 'turret', 'raptor', 'tortoise', 'stalker', 'ram', 'golem', 'sentinel'].includes(K.type);
+  const grounded = ['beetle', 'turret', 'raptor', 'tortoise', 'stalker', 'ram', 'golem', 'sentinel', 'rusher', 'spitter', 'generator'].includes(K.type); // V16
   const art = makeSprite(config.artOverride || K.art, K.w, {own: true, bottom: grounded, height: K.h});
   if (K.type === 'beetle') art.position.y = -.55; if (K.type === 'turret') art.position.y = -1.0;
   return art;
@@ -4298,7 +4676,7 @@ function renderMapV15() {
     b.setAttribute('aria-label', (level.boss ? 'Boss: ' : 'Level ' + local + ': ') + level.name + (open ? ', ' + (best ? best.stars + ' of 3 stars' : 'not cleared') : ', locked'));
     b.innerHTML = '<i>' + (open ? (level.boss ? '☠' : local) : '🔒') + '</i><span><b>' + (level.boss ? 'Boss · ' : '') + level.name + '</b><small>' + (open ? stars(best?.stars || 0) : 'Locked') + '</small></span>';
     b.onclick = () => startLevel(level.id);
-    b.onmouseenter = b.onfocus = () => { ui.mapInfo.textContent = level.idea + (best ? ' · Best ' + best.score + ' pts' : ''); };
+    b.onmouseenter = b.onfocus = () => { ui.mapInfo.textContent = level.idea + layoutTag(level) + (best ? ' · Best ' + best.score + ' pts' : ''); };
     return b;
   }));
   ui.mapNg.hidden = !pr.ng; ui.mapNgToggle.checked = pr.ngOn;
@@ -4506,7 +4884,7 @@ if(new URLSearchParams(location.search).has('test')) window.gameTest={
   start(key,id=1){setDifficulty(key);if(currentLevel.id!==id||CAMPAIGN[id-1].boss||builtFor!==DIFF)buildCourse(CAMPAIGN[id-1]);levelTrack=currentLevel.music;stopBoss2();reset();setMode('play');renderer.setAnimationLoop(null);},
   // ---- V15 checks ----
   godBot(key,id,maxT=420){this.start(key,id);let stuck=0,last=0,minH=999;const log={teleports:0,portals:hazards.filter(h=>h.kind==='portal').length};
-    for(let t=0;t<maxT && mode==='play';t+=1/30){held.clear();held.add('KeyW');const desired=Math.sin(t*.9)*2.2;if(Math.abs(desired-lateral)>.2)held.add(desired>lateral?'KeyD':'KeyA');firing=true;pointer.set(0,0);
+    for(let t=0;t<maxT && mode==='play';t+=1/30){held.clear();held.add('KeyW');const desired=botLane(Math.sin(t*.9)*2.2);if(Math.abs(desired-lateral)>.2)held.add(desired>lateral?'KeyD':'KeyA');firing=true;if(!botAim())pointer.set(0,0);
       if(grounded && (Math.floor(t*30)%34===0 || hazards.some(h=>(h.kind==='log'||h.kind==='fence'&&h.type==='low')&&h.d-distance>0&&h.d-distance<2.2))){grounded=false;jumpVel=trappedPit?10.5:JUMP_VELOCITY;}
       if(trappedPit&&grounded){grounded=false;jumpVel=10.5;held.add(lateral>trappedPit.x?'KeyD':'KeyA');}
       health=maxHealth;update(1/30);minH=Math.min(minH,health);if(Math.floor(t)!==Math.floor(t-1/30)){if(distance-last<.5)stuck++;else stuck=0;last=distance;}if(stuck>25)break;}
@@ -4520,6 +4898,33 @@ if(new URLSearchParams(location.search).has('test')) window.gameTest={
       if(force&&t>20&&boss2.hp>0&&Math.floor(t*30)%60===0)boss2Damage(boss2.max*.025,'test');}
     for(let i=0;i<400&&mode==='finish';i++)finishUpdate(1/30);
     return {mode,t:+t.toFixed(0),hp:boss2.hp,phases:log.phases,results:ui.resultsTitle.textContent,causes:damageEvents.reduce((a,e)=>(a[e.cause]=(a[e.cause]||0)+e.amount,a),{}),ending:ending.phase};},
+  run(src){return eval(src);}, // V16: test-only probe of the engine state
+  // V16 checks: power-ups, attack drones, ground enemies and level layouts
+  powerCheck(key){this.start(key,7);this.clearTargets();distance=120;const out={};const hit=n=>{recovery=rollInvuln=0;return damage(n,'test',false,true);};
+    collectDrop('shield');out.shieldHits=shield;hit(10);out.after1=shield;hit(10);out.after2=shield;const h0=health;hit(10);out.thirdHitHurts=h0-health;
+    health=maxHealth;charges=0;for(let i=0;i<5;i++)collectDrop('charge');out.grenades=charges;out.grenadeCap=maxCharges();
+    collectDrop('heavy');collectDrop('reload');collectDrop('magnet');out.timers={heavy:+heavy.toFixed(1),rapid:+rapid.toFixed(1),magnet:+magnetTime.toFixed(1)};
+    for(let i=0;i<30*16;i++){health=maxHealth;update(1/30);}out.after16s={heavy:+heavy.toFixed(1),rapid:+rapid.toFixed(1),magnet:+magnetTime.toFixed(1)};
+    for(let i=0;i<3;i++)collectDrop('auto');out.drones=drones.length;hit(20);out.droneHp=drones.map(d=>d.hp);collectDrop('auto');out.repaired=drones.map(d=>d.hp);collectDrop('auto');collectDrop('auto');out.fullIgnored=drones.map(d=>d.hp).join()+' · '+drones.length;
+    out.chips=[...ui.powerbar.children].map(c=>c.textContent);hud();out.chips=[...ui.powerbar.children].map(c=>c.className+':'+c.textContent);return out;},
+  droneCheck(key){this.start(key,8);this.clearTargets();distance=150;lateral=0;currentSpeed=0;held.clear();firing=false;place(1);collectDrop('auto');collectDrop('auto');
+    const e=spawnKind('crawler',{d:distance+14,x:0});e.hp=999;targets.push(e);for(let i=0;i<10;i++){e.d=distance+14;update(1/30);}const hp0=e.hp;const T0=elapsed;
+    for(let i=0;i<60;i++){e.d=distance+14;held.clear();health=maxHealth;update(1/30);}const dealt=hp0-e.hp,secs=elapsed-T0;
+    return {drones:drones.length,dealt:+dealt.toFixed(2),secs:+secs.toFixed(2),perDronePerSec:+(dealt/secs/2).toFixed(2),rifleDps:+(ARMS.rifle.dmg/ARMS.rifle.cooldown*.6).toFixed(2),visible:drones.every(d=>d.sp.visible)};},
+  groundCheck(key){const out={};for(const [b,id] of [['forest',3],['desert',7],['tundra',13],['volcano',19],['space',25],['city',31]]){this.start(key,id);this.clearTargets();distance=200;lateral=0;held.clear();damageEvents.length=0;
+      const r=spawnGround('rusher',{d:distance+25,x:0}),sp=spawnGround('spitter',{d:distance+30,x:2});let minGap=99,wind=false,lobbed=0;
+      for(let i=0;i<30*9;i++){health=maxHealth;held.clear();update(1/30);minGap=Math.min(minGap,Math.abs(r.d-distance));if(r.state==='windup')wind=true;lobbed=Math.max(lobbed,lobs.length);}
+      const causes=[...new Set(damageEvents.map(e=>e.cause))];out[b]={rusher:ENEMY_KINDS[r.kind].name,reached:minGap<3,windup:wind,spitter:ENEMY_KINDS[sp.kind].name,spitGap:+(sp.d-distance).toFixed(1),lobbed:lobbed>0,causes};
+      held.clear();held.add('KeyW');for(let i=0;i<30*12;i++){health=maxHealth;update(1/30);}out[b].outran=r.escaped||r.hp<=0;}
+    return out;},
+  layoutCheck(key){const out={};for(const id of [2,4,10,14,17,20,21,23,26,29,33,34]){this.start(key,id);const L=lay.def;const o={type:L.type};
+      if(L.type==='siege'){const g=targets.filter(e=>e.siege);o.gens=g.length;distance=L.d-20;place(1);for(let i=0;i<60;i++){health=maxHealth;held.clear();held.add('KeyW');update(1/30);}o.blocked=distance<L.d;for(const e of g)strike(e,999);for(let i=0;i<10;i++)update(1/30);distance=L.d-2;lateral=0;for(let i=0;i<60;i++){health=maxHealth;held.clear();held.add('KeyW');update(1/30);}o.opened=lay.solid.open&&distance>L.d;}
+      if(L.type==='hold'){distance=L.d-25;place(1);for(let i=0;i<30*8;i++){health=maxHealth;held.clear();held.add('KeyW');update(1/30);}o.holding=lay.holding;o.blocked=distance<L.d;o.left=+lay.holdT.toFixed(0);o.objective=objectiveEl.textContent;lay.holdT=.1;for(let i=0;i<10;i++)update(1/30);distance=L.d-2;lateral=0;for(let i=0;i<60;i++){health=maxHealth;held.clear();held.add('KeyW');update(1/30);}o.opened=lay.solid.open&&distance>L.d;}
+      if(L.type==='fork'||L.type==='bridge'){distance=L.from+30;lateral=L.type==='fork'?0:3;jumpY=0;grounded=true;const h=health;damageEvents.length=0;update(1/30);o.fell=damageEvents.some(e=>/Fell/.test(e.cause));o.movedTo=+lateral.toFixed(1);o.coinsSafe=coins.filter(c=>c.d>L.from&&c.d<L.from+L.len).every(c=>layoutLane(c.d,c.lane)===c.lane);}
+      if(L.type==='escape'){const w0=L.lava?hz.lavaD:lay.wallD;distance=120;for(let i=0;i<30*5;i++){health=maxHealth;held.clear();update(1/30);}o.wallMoved=+((L.lava?hz.lavaD:lay.wallD)-w0).toFixed(1);o.wallVisible=!!lay.wall;}
+      if(L.type==='canyon'){o.ledges=lay.ledges.length;distance=lay.ledges[0].d-45;for(let i=0;i<30*3;i++){health=maxHealth;held.clear();held.add('KeyW');update(1/30);}o.perched=targets.filter(e=>e.perch&&e.hp>0).length;}
+      out[id]=o;}
+    return out;},
   enemyCheck(key,id){this.start(key,id);this.clearTargets();distance=200;const out={};const kinds=Object.keys(ENEMY_KINDS).filter(k=>!['drone','crawler','turret'].includes(k));
     for(const k of kinds){const e=spawnKind(k,{d:225,x:0,shooter:true});targets.push(e);for(let i=0;i<90;i++){health=maxHealth;update(1/30);}out[k]={hp:+e.hp.toFixed(1),vis:e.mesh.visible,d:+e.d.toFixed(1)};for(let i=0;i<20&&e.hp>0;i++)strike(e,3,{melt:true});out[k].dead=e.hp<=0;this.clearTargets();distance=200;}
     return out;},
@@ -4535,7 +4940,7 @@ if(new URLSearchParams(location.search).has('test')) window.gameTest={
   maxHealthCheck(key){const pr=prog();pr.upgrades.armour=3;pr.upgrades.belt=2;pr.upgrades.startShield=1;this.start(key,7);const r={maxHealth,health,charges,shield};pr.upgrades={};return r;},
   endingRun(key){this.start(key,36);elapsed=120;health=80;boss2.freeze=0;hideTaunt();boss2Damage(boss2.hp+1);let n=0;for(;n<900&&mode==='finish';n++)finishUpdate(1/30);return {mode,phase:ending.phase,n,cls:ui.ending.className,ng:prog().ng,finished:prog().finished};},
   step(dt){if(mode==='play')update(dt);else if(mode==='finish')finishUpdate(dt);},
-  bot(key,id=1){this.start(key,id);let jumpAt=0;for(let t=0;t<700 && mode==='play';t+=1/30){held.clear();held.add('KeyW');const desired=Math.sin(t*1.2)*2.5;if(Math.abs(desired-lateral)>.12)held.add(desired>lateral?'KeyD':'KeyA');firing=true;pointer.set(0,0);if(t>=jumpAt){if(grounded){grounded=false;jumpVel=trappedPit?10.5:JUMP_VELOCITY;}jumpAt=t+1.1;}update(1/30);}return this.state();},
+  bot(key,id=1){this.start(key,id);let jumpAt=0;for(let t=0;t<700 && mode==='play';t+=1/30){held.clear();held.add('KeyW');const desired=botLane(Math.sin(t*1.2)*2.5);if(Math.abs(desired-lateral)>.12)held.add(desired>lateral?'KeyD':'KeyA');firing=true;if(!botAim())pointer.set(0,0);if(t>=jumpAt){if(grounded){grounded=false;jumpVel=trappedPit?10.5:JUMP_VELOCITY;}jumpAt=t+1.1;}update(1/30);}return this.state();},
   state(){return {mode,health,distance,elapsed,finish,difficultyKey,earnedDrops,damageEvents,pickups:pickups.map(p=>({key:p.key,d:p.d,lane:p.lane,expiresAt:p.expiresAt})),targets:targets.map(e=>({d:e.d,type:e.type,hp:e.hp,training:e.training})),diff:DIFF};},
   damage(n,source){recovery=rollInvuln=shield=0;damage(n,source,false,true);},
   collectHealth(){collectDrop('health');},

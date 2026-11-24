@@ -99,7 +99,27 @@ export const ENEMY_KINDS = {
   elite_raptor: { type: 'raptor', hp: 7, art: 'city/elite_4', pounceArt: 'city/elite_4', w: 2.6, blink: true, name: 'Elite blink raptor' },
   elite_stalker: { type: 'stalker', hp: 8, art: 'city/elite_5', leapArt: 'city/elite_5', w: 2.6, projector: true, name: 'Elite shield stalker' },
   elite_golem: { type: 'golem', hp: 26, art: 'city/elite_6', exposedArt: 'city/elite_6', w: 3.4, armour: 10, shell: 3, name: 'Elite frost golem' },
-  sentinel: { type: 'sentinel', hp: 12, art: 'city/sentinel', openArt: 'city/sentinel_open', w: 2.4, h: 4.7, name: 'Sentinel' }
+  sentinel: { type: 'sentinel', hp: 12, art: 'city/sentinel', openArt: 'city/sentinel_open', w: 2.4, h: 4.7, name: 'Sentinel' },
+  // V16: ground enemies. Rushers run at you (5 m/s, you run at 6), rear up for 0.6 s, then strike,
+  // and keep attacking until killed or outrun. Spitters stop 12-15 m away and lob a slow shot onto
+  // a marked spot, then keep pace with you. Each biome has its own style and attack.
+  forest_rusher: { type: 'rusher', hp: 4, art: 'forest/g_rusher_run', strikeArt: 'forest/g_rusher_strike', w: 2.2, speed: 4.6, reach: 2.4, hit: 'melee', heavy: 1.3, name: 'Mushroom brute', how: 'slow and heavy · its smash hits hardest' },
+  forest_spitter: { type: 'spitter', hp: 4, art: 'forest/g_spitter_walk', fireArt: 'forest/g_spitter_fire', fx: 'forest', w: 2.4, splash: 'acid', name: 'Jungle spider', how: 'acid leaves a burning puddle' },
+  desert_rusher: { type: 'rusher', hp: 3.5, art: 'desert/g_rusher_run', strikeArt: 'desert/g_rusher_strike', w: 2.4, speed: 5.2, reach: 3.1, hit: 'melee', name: 'Sand scorpion', how: 'fast · its tail stabs from 3 m' },
+  desert_spitter: { type: 'spitter', hp: 4.5, art: 'desert/g_spitter_walk', fireArt: 'desert/g_spitter_fire', fx: 'desert', w: 2.4, splash: 'dust', name: 'Dune spitter beetle', how: 'sand bursts blind you for 3 s' },
+  tundra_rusher: { type: 'rusher', hp: 3.5, art: 'tundra/g_rusher_run', strikeArt: 'tundra/g_rusher_strike', w: 2.2, speed: 5, reach: 2.4, hit: 'melee', leap: 7, chill: 1.5, name: 'Frost imp', how: 'leaps in from 7 m · its claws numb you' },
+  tundra_spitter: { type: 'spitter', hp: 4, art: 'tundra/g_spitter_walk', fireArt: 'tundra/g_spitter_fire', fx: 'tundra', w: 2.4, splash: 'frost', name: 'Ice spider', how: 'ice shards slow you for 2 s' },
+  volcano_rusher: { type: 'rusher', hp: 4, art: 'volcano/g_rusher_run', strikeArt: 'volcano/g_rusher_strike', w: 2.3, speed: 5, reach: 2.4, hit: 'melee', scorch: true, name: 'Magma imp', how: 'leaves burning footprints' },
+  volcano_spitter: { type: 'spitter', hp: 4.5, art: 'volcano/g_spitter_walk', fireArt: 'volcano/g_spitter_fire', fx: 'volcano', w: 2.4, splash: 'lava', name: 'Lava spider', how: 'lava blobs leave a burning pool' },
+  space_rusher: { type: 'rusher', hp: 4.5, art: 'space/g_rusher_run', strikeArt: 'space/g_rusher_strike', w: 2.4, speed: 5, reach: 2.5, hit: 'melee', shock: 1.2, name: 'Boarding bot', how: 'its shock baton stuns you' },
+  space_spitter: { type: 'spitter', hp: 4.5, art: 'space/g_spitter_walk', fireArt: 'space/g_spitter_fire', fx: 'space', w: 2.4, splash: 'plasma', name: 'Plasma tripod', how: 'plasma bursts hit a wide area' },
+  city_rusher: { type: 'rusher', hp: 4.5, art: 'city/g_rusher_run', strikeArt: 'city/g_rusher_strike', w: 2.0, h: 3.0, speed: 5, reach: 2.6, hit: 'melee', double: true, name: 'Hive soldier', how: 'slashes twice' },
+  city_spitter: { type: 'spitter', hp: 5, art: 'city/g_spitter_walk', fireArt: 'city/g_spitter_fire', fx: 'city', w: 2.4, splash: 'goo', name: 'Hive spider', how: 'goo leaves a sticky patch' },
+  // V16: siege generators (shoot them all to open the gate)
+  forest_generator: { type: 'generator', hp: 14, art: 'forest/g_generator', brokenArt: 'forest/g_generator_broken', w: 2.6, name: 'Turret-line generator' },
+  volcano_generator: { type: 'generator', hp: 16, art: 'volcano/g_generator', brokenArt: 'volcano/g_generator_broken', w: 2.8, name: 'Forge generator' },
+  space_generator: { type: 'generator', hp: 16, art: 'space/g_generator', brokenArt: 'space/g_generator_broken', w: 2.4, name: 'Shield generator' },
+  city_generator: { type: 'generator', hp: 18, art: 'city/g_generator', brokenArt: 'city/g_generator_broken', w: 2.4, name: 'Hive node' }
 };
 
 // Unique-enemy damage (flat, by difficulty: easy, medium, hard)
@@ -113,6 +133,9 @@ export const UNIQUE = {
   beam: { easy: 5, medium: 9, hard: 13 },
   explode: { easy: 4, medium: 8, hard: 12 },
   hazard: { easy: 6, medium: 12, hard: 18 }, // vents, falling rocks, meteors, icicles, laser fences
+  melee: { easy: 6, medium: 10, hard: 15 },  // V16: rusher strikes
+  spit: { easy: 5, medium: 8, hard: 12 },    // V16: spitter shots
+  fall: { easy: 8, medium: 14, hard: 20 },   // V16: falling off a bridge or into a fork's chasm
   pit: { easy: 10, medium: 18, hard: 25 }    // lava pools and void gaps (no trap, you reappear at the edge)
 };
 
@@ -184,7 +207,45 @@ const NEW_LEVELS = [
 ];
 // Each biome's Level 3 has one set-piece: an ambush, a chase or a turret nest.
 const FOREST_SET = { 3: { type: 'ambush', d: 600, kinds: ['crawler', 'crawler', 'crawler', 'crawler'], text: 'AMBUSH · CRAWLERS FROM THE FOLIAGE' } };
-export const CAMPAIGN = [...FOREST_LEVELS.map(l => ({ ...l, biome: 'forest', boss: l.boss ? 'beetle' : undefined, setPiece: FOREST_SET[l.id] })), ...NEW_LEVELS];
+// ---- V16: level layouts. Every biome mixes these so its five levels play differently.
+// trail: the open path · open: open field, more ranged enemies · canyon: walls close in, spitters on ledges
+// fork: a chasm splits the path, pick a side · bridge: a narrow causeway over water, lava or a chasm
+// hold: a gate stays shut until you survive the waves · siege: shoot the generators to open the gate
+// escape: something chases you from behind. ground: [rusher every m, spitter every m] (0 = none).
+export const LAYOUTS = {
+  1: { type: 'trail', ground: [0, 0] },
+  2: { type: 'siege', d: 560, gens: 3, ground: [170, 0], text: 'SIEGE · SHOOT THE 3 GENERATORS TO OPEN THE GATE' },
+  3: { type: 'trail', ground: [150, 220] },
+  4: { type: 'hold', d: 600, secs: 60, ground: [140, 200], text: 'HOLD AT THE HIVE · SURVIVE UNTIL THE GATE OPENS' },
+  5: { type: 'trail', ground: [120, 170] },
+  7: { type: 'trail', ground: [150, 220] },
+  8: { type: 'open', ground: [140, 110] },
+  9: { type: 'hold', d: 600, secs: 60, ground: [160, 200], text: 'HOLD IN THE STORM · SURVIVE UNTIL THE GATE OPENS' },
+  10: { type: 'canyon', from: 120, ground: [150, 0], ledges: 70 },
+  11: { type: 'escape', speed: 4.5, fx: 'desert/g_avalanche_fx', cause: 'Sand avalanche', text: 'THE DUNES ARE COLLAPSING · RUN', ground: [130, 190] },
+  13: { type: 'trail', ground: [150, 220] },
+  14: { type: 'bridge', from: 260, len: 220, side: 'tundra/g_water', floes: true, ground: [170, 150], text: 'ICE FLOES · STAY ON THE ICE' },
+  15: { type: 'open', ground: [150, 120] },
+  16: { type: 'canyon', from: 110, ground: [150, 0], ledges: 75 },
+  17: { type: 'fork', from: 320, len: 180, strip: 'tundra/g_crevasse', ground: [130, 180], text: 'CREVASSE · PICK A SIDE' },
+  19: { type: 'trail', ground: [150, 220] },
+  20: { type: 'fork', from: 300, len: 200, strip: 'volcano/g_lava_river', glow: 0xff5a10, ground: [140, 190], text: 'LAVA RIVER · PICK A SIDE' },
+  21: { type: 'bridge', from: 250, len: 260, side: 'volcano/g_lava_river', path: 'volcano/g_bridge', pillars: 'volcano/g_bridge_pillar', glow: 0xff5a10, ground: [160, 150], text: 'THE EMBER BRIDGE · STAY ON THE STONE' },
+  22: { type: 'siege', d: 600, gens: 3, ground: [150, 180], text: 'SIEGE · SHOOT THE 3 FORGE GENERATORS TO OPEN THE GATE' },
+  23: { type: 'escape', lava: true, fx: 'volcano/g_lava_wave_fx', ground: [140, 200] },
+  25: { type: 'trail', ground: [150, 220] },
+  26: { type: 'siege', d: 620, gens: 2, ground: [150, 190], text: 'SECURITY GRID · SHOOT THE 2 SHIELD GENERATORS' },
+  27: { type: 'open', ground: [150, 110] },
+  28: { type: 'canyon', from: 110, ground: [150, 0], ledges: 70 },
+  29: { type: 'escape', speed: 4.6, fx: 'space/g_breach_fx', cause: 'Hull breach', text: 'HULL BREACH · RUN FOR THE BULKHEAD', ground: [130, 180] },
+  31: { type: 'fork', from: 280, len: 200, strip: 'city/g_chasm', glow: 0x22d3c0, ground: [140, 190], text: 'THE CHASM · PICK A SIDE' },
+  32: { type: 'hold', d: 600, secs: 60, ground: [140, 180], text: 'HOLD IN THE LABS · SURVIVE UNTIL THE MEMBRANE OPENS' },
+  33: { type: 'siege', d: 560, gens: 3, ground: [140, 180], text: 'SIEGE · BURST THE 3 HIVE NODES TO OPEN THE GATE' },
+  34: { type: 'bridge', from: 260, len: 240, side: 'city/g_chasm', path: 'city/g_bridge_a', ground: [150, 150], text: 'SPIRE BRIDGE · STAY ON THE BRIDGE' },
+  35: { type: 'canyon', from: 120, ground: [130, 0], ledges: 65 }
+};
+export const CAMPAIGN = [...FOREST_LEVELS.map(l => ({ ...l, biome: 'forest', boss: l.boss ? 'beetle' : undefined, setPiece: FOREST_SET[l.id] })), ...NEW_LEVELS]
+  .map(l => LAYOUTS[l.id] ? { ...l, layout: LAYOUTS[l.id] } : l);
 export const LEVEL_COUNT = CAMPAIGN.length; // 36
 export const biomeOf = id => CAMPAIGN[id - 1]?.biome || 'forest';
 export const firstLevelOf = biome => CAMPAIGN.find(l => l.biome === biome).id;

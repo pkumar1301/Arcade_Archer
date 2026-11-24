@@ -2,7 +2,9 @@
 
 [Play the game](https://pkumar1301.github.io/Arcade_Archer/)
 
-The current build is V15: the complete campaign. Six zones of five levels and a boss (36 stages): the Forest, Sunken Dunes, Frozen Reach, Ashen Caldera, Dead Orbit and the Hive Capital, ending with the Overmind, a 90s celebration, cast-roll credits and New Game+. Between levels the Quartermaster sells 16 weapons, weapon tiers, 12 soldier upgrades, gear and uniforms. See CHANGES_V15.md.
+V15 is the complete campaign. Six zones of five levels and a boss (36 stages): the Forest, Sunken Dunes, Frozen Reach, Ashen Caldera, Dead Orbit and the Hive Capital, ending with the Overmind, a 90s celebration, cast-roll credits and New Game+. Between levels the Quartermaster sells 16 weapons, weapon tiers, 12 soldier upgrades, gear and uniforms. See CHANGES_V15.md.
+
+The current build is V16. It adds visible attack drones that fight beside you for the whole level, a 2-hit shield, and timed power-ups with countdown rings. Every biome gets a melee rusher and a ranged spitter. Each biome's five levels now use different layouts: canyons, forks, bridge runs, hold points, sieges and escapes. See CHANGES_V16.md.
 
 ## Controls
 
@@ -31,7 +33,7 @@ Three.js is bundled in vendor/ with its license. The included ground textures an
 
 V12 removes health regeneration. Green health drops restore up to 20 health. Incoming fire uses red closing rings and directional warnings; exposed weak points glow cyan. The Rapid fire pickup temporarily increases the firing rate.
 
-Automated checks are in tools/test_v15.mjs and docs/V15-validation.md (earlier versions: docs/V12 to V14).
+Automated checks are in tools/test_v16.mjs and tools/test_v15.mjs, with results in docs/V16-validation.md and docs/V15-validation.md (earlier versions: docs/V12 to V14). The test scripts import `playwright`; link or install it next to the repository before running them.
 
 V13 adds enemy entrances (drones drop from the canopy, crawlers burst from the foliage), a fade-in instead of pop-in, a sound and edge warning before each wave, a final wave and finish gate, and a results tally with up to three stars per difficulty. The jungle biome sprite pack for later levels is in art/jungle-biome/.
 
