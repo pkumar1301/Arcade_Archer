@@ -127,12 +127,12 @@
   "Every biome has a spitter that holds 12-15 m and lobs onto a marked spot": {
    "pass": true,
    "detail": {
-    "forest": "Jungle spider 14.4",
-    "desert": "Dune spitter beetle 12",
-    "tundra": "Ice spider 14.4",
-    "volcano": "Lava spider 13.9",
-    "space": "Plasma tripod 12.2",
-    "city": "Hive spider 14.4"
+    "forest": "Jungle spider 13.8",
+    "desert": "Dune spitter beetle 14.4",
+    "tundra": "Ice spider 12.4",
+    "volcano": "Lava spider 12.9",
+    "space": "Plasma tripod 12.4",
+    "city": "Hive spider 12.4"
    }
   },
   "Rushers can be outrun": {
@@ -144,6 +144,77 @@
     "volcano": true,
     "space": true,
     "city": true
+   }
+  },
+  "Every biome has a nest: opens, hatches, armoured while closed, destroyed with a guaranteed drop": {
+   "pass": true,
+   "detail": {
+    "3": {
+     "nests": 1,
+     "kind": "forest_nest",
+     "opened": true,
+     "hatched": 2,
+     "closedDmg": 1,
+     "openDmg": 4,
+     "destroyed": true,
+     "drop": true,
+     "hatchlingsDead": true
+    },
+    "8": {
+     "nests": 2,
+     "kind": "desert_nest",
+     "opened": true,
+     "hatched": 2,
+     "closedDmg": 1,
+     "openDmg": 4,
+     "destroyed": true,
+     "drop": true,
+     "hatchlingsDead": true
+    },
+    "14": {
+     "nests": 2,
+     "kind": "tundra_nest",
+     "opened": true,
+     "hatched": 2,
+     "closedDmg": 1,
+     "openDmg": 4,
+     "destroyed": true,
+     "drop": true,
+     "hatchlingsDead": true
+    },
+    "20": {
+     "nests": 2,
+     "kind": "volcano_nest",
+     "opened": true,
+     "hatched": 2,
+     "closedDmg": 1,
+     "openDmg": 4,
+     "destroyed": true,
+     "drop": true,
+     "hatchlingsDead": true
+    },
+    "26": {
+     "nests": 2,
+     "kind": "space_nest",
+     "opened": true,
+     "hatched": 2,
+     "closedDmg": 1,
+     "openDmg": 4,
+     "destroyed": true,
+     "drop": true,
+     "hatchlingsDead": true
+    },
+    "32": {
+     "nests": 2,
+     "kind": "city_nest",
+     "opened": true,
+     "hatched": 2,
+     "closedDmg": 1,
+     "openDmg": 4,
+     "destroyed": true,
+     "drop": true,
+     "hatchlingsDead": true
+    }
    }
   },
   "Siege: generators keep the gate shut; destroying them opens it": {
@@ -294,7 +365,7 @@
     },
     "10": {
      "mode": "finish",
-     "health": 38
+     "health": 91
     },
     "11": {
      "mode": "finish",
@@ -310,31 +381,31 @@
     },
     "15": {
      "mode": "finish",
-     "health": 64
+     "health": 56
     },
     "16": {
      "mode": "finish",
-     "health": 65
+     "health": 50
     },
     "17": {
      "mode": "finish",
-     "health": 53
+     "health": 59
     },
     "19": {
      "mode": "finish",
-     "health": 84
+     "health": 79
     },
     "20": {
      "mode": "finish",
-     "health": 29
+     "health": 17
     },
     "21": {
      "mode": "finish",
-     "health": 93
+     "health": 100
     },
     "22": {
      "mode": "finish",
-     "health": 61
+     "health": 55
     },
     "23": {
      "mode": "finish",
@@ -342,31 +413,31 @@
     },
     "25": {
      "mode": "finish",
-     "health": 57
+     "health": 58
     },
     "26": {
      "mode": "finish",
-     "health": 38
+     "health": 42
     },
     "27": {
      "mode": "finish",
-     "health": 49
+     "health": 56
     },
     "28": {
      "mode": "finish",
-     "health": 70
+     "health": 65
     },
     "29": {
      "mode": "finish",
-     "health": 39
+     "health": 42
     },
     "31": {
      "mode": "finish",
-     "health": 48
+     "health": 42
     },
     "32": {
      "mode": "finish",
-     "health": 91
+     "health": 94
     },
     "33": {
      "mode": "finish",
@@ -378,7 +449,7 @@
     },
     "35": {
      "mode": "finish",
-     "health": 36
+     "health": 28
     }
    }
   },
@@ -435,7 +506,7 @@
     "reached": true,
     "windup": true,
     "spitter": "Jungle spider",
-    "spitGap": 14.4,
+    "spitGap": 13.8,
     "lobbed": true,
     "causes": [
      "Jungle spider",
@@ -449,7 +520,7 @@
     "reached": true,
     "windup": true,
     "spitter": "Dune spitter beetle",
-    "spitGap": 12,
+    "spitGap": 14.4,
     "lobbed": true,
     "causes": [
      "Dune spitter beetle",
@@ -462,7 +533,7 @@
     "reached": true,
     "windup": true,
     "spitter": "Ice spider",
-    "spitGap": 14.4,
+    "spitGap": 12.4,
     "lobbed": true,
     "causes": [
      "Ice spider",
@@ -475,7 +546,7 @@
     "reached": true,
     "windup": true,
     "spitter": "Lava spider",
-    "spitGap": 13.9,
+    "spitGap": 12.9,
     "lobbed": true,
     "causes": [
      "Lava spider",
@@ -489,7 +560,7 @@
     "reached": true,
     "windup": true,
     "spitter": "Plasma tripod",
-    "spitGap": 12.2,
+    "spitGap": 12.4,
     "lobbed": true,
     "causes": [
      "Plasma tripod",
@@ -502,13 +573,81 @@
     "reached": true,
     "windup": true,
     "spitter": "Hive spider",
-    "spitGap": 14.4,
+    "spitGap": 12.4,
     "lobbed": true,
     "causes": [
      "Hive spider",
      "Hive soldier"
     ],
     "outran": true
+   }
+  },
+  "nests": {
+   "3": {
+    "nests": 1,
+    "kind": "forest_nest",
+    "opened": true,
+    "hatched": 2,
+    "closedDmg": 1,
+    "openDmg": 4,
+    "destroyed": true,
+    "drop": true,
+    "hatchlingsDead": true
+   },
+   "8": {
+    "nests": 2,
+    "kind": "desert_nest",
+    "opened": true,
+    "hatched": 2,
+    "closedDmg": 1,
+    "openDmg": 4,
+    "destroyed": true,
+    "drop": true,
+    "hatchlingsDead": true
+   },
+   "14": {
+    "nests": 2,
+    "kind": "tundra_nest",
+    "opened": true,
+    "hatched": 2,
+    "closedDmg": 1,
+    "openDmg": 4,
+    "destroyed": true,
+    "drop": true,
+    "hatchlingsDead": true
+   },
+   "20": {
+    "nests": 2,
+    "kind": "volcano_nest",
+    "opened": true,
+    "hatched": 2,
+    "closedDmg": 1,
+    "openDmg": 4,
+    "destroyed": true,
+    "drop": true,
+    "hatchlingsDead": true
+   },
+   "26": {
+    "nests": 2,
+    "kind": "space_nest",
+    "opened": true,
+    "hatched": 2,
+    "closedDmg": 1,
+    "openDmg": 4,
+    "destroyed": true,
+    "drop": true,
+    "hatchlingsDead": true
+   },
+   "32": {
+    "nests": 2,
+    "kind": "city_nest",
+    "opened": true,
+    "hatched": 2,
+    "closedDmg": 1,
+    "openDmg": 4,
+    "destroyed": true,
+    "drop": true,
+    "hatchlingsDead": true
    }
   },
   "layouts": {
@@ -751,7 +890,7 @@
    },
    "10": {
     "mode": "finish",
-    "health": 38
+    "health": 91
    },
    "11": {
     "mode": "finish",
@@ -767,31 +906,31 @@
    },
    "15": {
     "mode": "finish",
-    "health": 64
+    "health": 56
    },
    "16": {
     "mode": "finish",
-    "health": 65
+    "health": 50
    },
    "17": {
     "mode": "finish",
-    "health": 53
+    "health": 59
    },
    "19": {
     "mode": "finish",
-    "health": 84
+    "health": 79
    },
    "20": {
     "mode": "finish",
-    "health": 29
+    "health": 17
    },
    "21": {
     "mode": "finish",
-    "health": 93
+    "health": 100
    },
    "22": {
     "mode": "finish",
-    "health": 61
+    "health": 55
    },
    "23": {
     "mode": "finish",
@@ -799,31 +938,31 @@
    },
    "25": {
     "mode": "finish",
-    "health": 57
+    "health": 58
    },
    "26": {
     "mode": "finish",
-    "health": 38
+    "health": 42
    },
    "27": {
     "mode": "finish",
-    "health": 49
+    "health": 56
    },
    "28": {
     "mode": "finish",
-    "health": 70
+    "health": 65
    },
    "29": {
     "mode": "finish",
-    "health": 39
+    "health": 42
    },
    "31": {
     "mode": "finish",
-    "health": 48
+    "health": 42
    },
    "32": {
     "mode": "finish",
-    "health": 91
+    "health": 94
    },
    "33": {
     "mode": "finish",
@@ -835,7 +974,7 @@
    },
    "35": {
     "mode": "finish",
-    "health": 36
+    "health": 28
    }
   }
  }

@@ -1,6 +1,6 @@
 # V16 validation
 
-`tools/test_v16.mjs` at commit after dd5a46f, Chromium with SwiftShader WebGL, 1280×720. All 18 checks pass. `tools/test_v15.mjs` still covers the campaign, bosses, ending, shop and UI; its boss, weapon, set-piece, shop, ending and UI checks passed on V16.
+`tools/test_v16.mjs` at commit after dd5a46f, Chromium with SwiftShader WebGL, 1280×720. All 18 checks pass, including nests. `tools/test_v15.mjs` still covers the campaign, bosses, ending, shop and UI; its boss, weapon, set-piece, shop, ending and UI checks passed on V16.
 
 | Check | Result |
 | --- | --- |
@@ -13,6 +13,7 @@
 | Every biome has a rusher that closes in, rears up and strikes | PASS |
 | Every biome has a spitter that holds 12-15 m and lobs onto a marked spot | PASS |
 | Rushers can be outrun | PASS |
+| Every biome has a nest: opens, hatches, armoured while closed, destroyed with a guaranteed drop | PASS |
 | Siege: generators keep the gate shut; destroying them opens it | PASS |
 | Hold point: the gate stays shut for the countdown, then opens | PASS |
 | Fork and bridge: stepping into the chasm or water costs health and puts you back | PASS |
