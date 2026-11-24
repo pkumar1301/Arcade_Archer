@@ -119,7 +119,21 @@ export const ENEMY_KINDS = {
   forest_generator: { type: 'generator', hp: 14, art: 'forest/g_generator', brokenArt: 'forest/g_generator_broken', w: 2.6, name: 'Turret-line generator' },
   volcano_generator: { type: 'generator', hp: 16, art: 'volcano/g_generator', brokenArt: 'volcano/g_generator_broken', w: 2.8, name: 'Forge generator' },
   space_generator: { type: 'generator', hp: 16, art: 'space/g_generator', brokenArt: 'space/g_generator_broken', w: 2.4, name: 'Shield generator' },
-  city_generator: { type: 'generator', hp: 18, art: 'city/g_generator', brokenArt: 'city/g_generator_broken', w: 2.4, name: 'Hive node' }
+  city_generator: { type: 'generator', hp: 18, art: 'city/g_generator', brokenArt: 'city/g_generator_broken', w: 2.4, name: 'Hive node' },
+  // V16: nests (mini elites). Armoured while closed (a quarter damage); every 6 s they open for 2 s, show the glowing core
+  // and hatch 2 hatchlings (at most 4 alive). A grenade cracks one open. Destroying a nest always drops a drone or a shield.
+  forest_nest: { type: 'nest', hp: 20, art: 'forest/g_nest_closed', openArt: 'forest/g_nest_open', brokenArt: 'forest/g_nest_destroyed', fx: 'forest', w: 4.2, name: 'Fungal pod hive' },
+  forest_hatchling: { type: 'rusher', hp: 1, art: 'forest/g_hatchling_run', strikeArt: 'forest/g_hatchling_run', w: 1.2, speed: 5.4, reach: 1.7, windup: .45, dmg: 'hatch', name: 'Mushroom sprout', how: 'hatched by the nest · one hit kills it' },
+  desert_nest: { type: 'nest', hp: 20, art: 'desert/g_nest_closed', openArt: 'desert/g_nest_open', brokenArt: 'desert/g_nest_destroyed', fx: 'desert', w: 4.2, name: 'Scarab mound' },
+  desert_hatchling: { type: 'rusher', hp: 1, art: 'desert/g_hatchling_run', strikeArt: 'desert/g_hatchling_run', w: 1.2, speed: 5.4, reach: 1.7, windup: .45, dmg: 'hatch', name: 'Scorpion larva', how: 'hatched by the nest · one hit kills it' },
+  tundra_nest: { type: 'nest', hp: 20, art: 'tundra/g_nest_closed', openArt: 'tundra/g_nest_open', brokenArt: 'tundra/g_nest_destroyed', fx: 'tundra', w: 4.2, name: 'Glacier egg nest' },
+  tundra_hatchling: { type: 'rusher', hp: 1, art: 'tundra/g_hatchling_run', strikeArt: 'tundra/g_hatchling_run', w: 1.2, speed: 5.4, reach: 1.7, windup: .45, dmg: 'hatch', name: 'Frost imp hatchling', how: 'hatched by the nest · one hit kills it' },
+  volcano_nest: { type: 'nest', hp: 20, art: 'volcano/g_nest_closed', openArt: 'volcano/g_nest_open', brokenArt: 'volcano/g_nest_destroyed', fx: 'volcano', w: 4.2, name: 'Obsidian egg mound' },
+  volcano_hatchling: { type: 'rusher', hp: 1, art: 'volcano/g_hatchling_run', strikeArt: 'volcano/g_hatchling_run', w: 1.2, speed: 5.4, reach: 1.7, windup: .45, dmg: 'hatch', name: 'Magma imp hatchling', how: 'hatched by the nest · one hit kills it' },
+  space_nest: { type: 'nest', hp: 20, art: 'space/g_nest_closed', openArt: 'space/g_nest_open', brokenArt: 'space/g_nest_destroyed', fx: 'space', w: 4.2, name: 'Drone fabricator' },
+  space_hatchling: { type: 'rusher', hp: 1, art: 'space/g_hatchling_run', strikeArt: 'space/g_hatchling_run', w: 1.2, speed: 5.4, reach: 1.7, windup: .45, dmg: 'hatch', name: 'Mini boarding bot', how: 'hatched by the nest · one hit kills it' },
+  city_nest: { type: 'nest', hp: 20, art: 'city/g_nest_closed', openArt: 'city/g_nest_open', brokenArt: 'city/g_nest_destroyed', fx: 'city', w: 4.2, name: 'Hive brood pod' },
+  city_hatchling: { type: 'rusher', hp: 1, art: 'city/g_hatchling_run', strikeArt: 'city/g_hatchling_run', w: 1.2, speed: 5.4, reach: 1.7, windup: .45, dmg: 'hatch', name: 'Hive larva', how: 'hatched by the nest · one hit kills it' }
 };
 
 // Unique-enemy damage (flat, by difficulty: easy, medium, hard)
@@ -134,6 +148,7 @@ export const UNIQUE = {
   explode: { easy: 4, medium: 8, hard: 12 },
   hazard: { easy: 6, medium: 12, hard: 18 }, // vents, falling rocks, meteors, icicles, laser fences
   melee: { easy: 4, medium: 10, hard: 15 },  // V16: rusher strikes
+  hatch: { easy: 2, medium: 4, hard: 6 },    // V16: nest hatchlings
   spit: { easy: 5, medium: 8, hard: 12 },    // V16: spitter shots
   fall: { easy: 8, medium: 14, hard: 20 },   // V16: falling off a bridge or into a fork's chasm
   pit: { easy: 10, medium: 18, hard: 25 }    // lava pools and void gaps (no trap, you reappear at the edge)

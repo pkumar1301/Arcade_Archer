@@ -44,6 +44,22 @@ Every biome has two new enemies that come at you on foot.
 - They appear from Forest Level 2 onward, with no more than 2 of each kind at once (1 on Easy). Their damage is in `UNIQUE.melee` and `UNIQUE.spit` in `campaign.js`.
 - Kills sometimes drop power-ups. The first time each kind appears, a one-line tip describes it.
 
+## Nests (mini elites, art brief 4)
+- One nest on Forest Level 3, then two per level (one on Easy). Each sits beside the path, visible from about 90 m.
+- Closed, it is armoured and takes a quarter damage. Every 6 s (8 s on Easy) it opens for 2 s, shows its glowing core, and hatches 2 hatchlings (1 on Easy). At most 4 of a nest's hatchlings are alive at once (2 on Easy).
+- A grenade cracks it open for 3 s. It has 20 health (rifle hits).
+- Hatchlings are small, fast rushers that die to one hit and do 2 / 4 / 6 damage. Drones shoot them first. They die when their nest is destroyed.
+- Destroying a nest is worth 600 points and always drops a drone or a shield. The wreck stays on the path.
+
+| Biome | Nest | Hatchling |
+| --- | --- | --- |
+| Forest | Fungal pod hive | Mushroom sprout |
+| Desert | Scarab mound | Scorpion larva |
+| Tundra | Glacier egg nest | Frost imp hatchling |
+| Volcano | Obsidian egg mound | Magma imp hatchling |
+| Space | Drone fabricator | Mini boarding bot |
+| Alien City | Hive brood pod | Hive larva |
+
 ## Level layouts
 
 The five levels of each biome now play differently. The layouts are in `LAYOUTS` in `campaign.js`.

@@ -38,6 +38,11 @@ check('Every biome has a rusher that closes in, rears up and strikes', Object.va
 check('Every biome has a spitter that holds 12-15 m and lobs onto a marked spot', Object.values(g).every(b => b.lobbed && b.spitGap > 11 && b.spitGap < 16 && b.causes.includes(b.spitter)), Object.fromEntries(Object.entries(g).map(([k, b]) => [k, b.spitter + ' ' + b.spitGap])));
 check('Rushers can be outrun', Object.values(g).every(b => b.outran), Object.fromEntries(Object.entries(g).map(([k, b]) => [k, b.outran])));
 
+// 2b. Nests (mini elites)
+const n = await ev(() => gameTest.nestCheck('medium'));
+R.data.nests = n;
+check('Every biome has a nest: opens, hatches, armoured while closed, destroyed with a guaranteed drop', Object.values(n).every(o => o.opened && o.hatched >= 1 && o.closedDmg < o.openDmg && o.destroyed && o.drop), n);
+
 // 3. Layouts
 const L = await ev(() => gameTest.layoutCheck('medium'));
 R.data.layouts = L;
@@ -69,6 +74,7 @@ const shots = [
   ['bridge-tundra', 14, "(()=>{distance=lay.def.from+12;lateral=0;for(let i=0;i<5;i++)update(1/30);})()"],
   ['siege-space', 26, "(()=>{distance=lay.def.d-26;lateral=0;for(let i=0;i<10;i++){health=maxHealth;update(1/30);}})()"],
   ['hold-forest', 4, "(()=>{distance=lay.def.d-30;lateral=0;for(let i=0;i<30*4;i++){health=maxHealth;held.clear();held.add('KeyW');update(1/30);}held.clear();})()"],
+  ['nest-forest', 4, "(()=>{const e=targets.find(t=>t.type==='nest');distance=e.d-18;lateral=0;for(let i=0;i<30*3.2;i++){health=maxHealth;held.clear();update(1/30);}})()"],
   ['escape-space', 29, "(()=>{distance=200;lateral=0;lay.wallD=150;for(let i=0;i<60;i++){health=maxHealth;update(1/30);}})()"]];
 for (const [name, id, src] of shots) {
   await ev(([id, src]) => { gameTest.start('medium', id); gameTest.run(src); }, [id, src]);

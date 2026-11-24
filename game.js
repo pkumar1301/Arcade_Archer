@@ -1342,7 +1342,7 @@ function spawn(config) {
   if(!config.training && !config.minor) runStats.spawned++; // V14: mini-drones and mushrooms are not counted
   const K=ENEMY_KINDS[config.kind]; // V15: biome kinds carry their own HP; New Game+ toughens everything
   const hp=((K && config.type!=='mini' ? K.hp : null) ?? {moth:2,buggy:BUGGY.hp,bee:BEE.hp,mini:MINI.hp,mushroom:MUSHROOM.hp}[config.type] ?? 6) * (config.training ? 1 : ngHp());
-  if(K && ['raptor','stalker','ram','golem','sentinel','tortoise','rusher','spitter','generator'].includes(K.type)) { halo.position.y=1.4; targetRing.position.y=1.3; } // V16
+  if(K && ['raptor','stalker','ram','golem','sentinel','tortoise','rusher','spitter','generator','nest'].includes(K.type)) { halo.position.y=1.4; targetRing.position.y=1.3; } // V16
   return {...config,mesh,body,halo,fireCore,aimLine,targetRing,shell,motion,weakPoint,weakGlow,art,artName:K?.art,parts,hp,maxHp:hp,shot:-(config.shotDelay ?? 0)+(config.firstShot ?? 0),range:0,flash:0,stun:0,
     shellHp:K?.shell||0,armour:K?.armour||0};
 }
@@ -1433,7 +1433,7 @@ function reset() {
   targets.push(spawn({d:DIFF.tutorialDistance,type:'moth',kind:roleKind('moth'),x:0,training:true,shooter:false}));
   targets.push(...levelEncounters(lvl).map((e,i)=>{const t=spawn({...e, shooter: e.type==='moth' && ((i*0.618)%1) < DIFF.encounterShooters, firstShot: DIFF.firstShot});if(e.type==='buggy')t.state='wait';return t;}));
   if(lvl.waves.crawler) for(const d of (difficultyKey==='easy'?[520]:[180,520,840])) for(let i=0;i<3;i++) targets.push(spawn({d:d+i*2,type:'beetle',kind:roleKind('beetle'),x:layoutLane(d,(i-1)*1.5),groupId:'pack-'+d}));
-  targets.push(...layoutTargets(lvl)); // V16: siege generators
+  targets.push(...layoutTargets(lvl), ...nestTargets(lvl)); // V16: siege generators and nests
   }
   dropCycle=0; earnedDrops=0; healthGroups.clear(); logPrompts.clear(); bumpNotice=0;
   leakWarned=Boolean(activeProfile()?.settings?.leakWarningSeen);
@@ -1951,13 +1951,14 @@ function strike(enemy, amount, opts = {}) {
   if (enemy.shielded) { message('Shielded · kill the shield drone first', .8); burst(enemy.mesh.position, colors.cream, 3); return; } // V15
   if (enemy.shellHp > 0 && !opts.melt) { enemy.shellHp--; burst(enemy.mesh.position, iceMat, 6); tone(1400, .05, .03); message(enemy.shellHp ? 'Ice shell · ' + enemy.shellHp + ' more hits to crack it' : 'Shell cracked · now hit the core', .9); return; }
   if (opts.melt) enemy.shellHp = 0;
+  if (enemy.type === 'nest' && !enemy.open) amount *= .25; // V16: a closed nest is armoured
   enemy.hp-=amount;
   enemy.flash = 1; // v5: hit flash (scale pulse, see updateTargets)
   burst(enemy.mesh.position,enemy.hp>0?colors.gold:enemy.halo.material,enemy.hp>0?7:15);
   if (enemy.hp>0) {
     const hitText={buggy:'Armored · shoot the glowing seed pods',bee:'Hit · the glowing belly takes double',mini:'Hit',raptor:'Armored · hit the core mid-pounce',stalker:'Armored · hit it mid-leap',
       ram:'Armored · shoot the rear vent as it runs away',golem:enemy.armour>0?'Chipping the chest armour':'Hit',tortoise:'Hit · the back cannon takes double',lantern:'Hit · the lantern takes double',sentinel:'Armored · the core opens after it teleports',wisp:'Hit',shielder:'Hit'}[enemy.type]; // V14, V15
-    if(!opts.quiet) message(hitText || (enemy.type==='moth'||enemy.type==='rusher'||enemy.type==='spitter'?'Hit':enemy.type==='generator'?'Generator hit · '+Math.ceil(enemy.hp/enemy.maxHp*100)+'%':enemy.vulnerable?'Core exposed':'Armored · aim for the glowing core'),.75); // V16: drone hits stay quiet
+    if(!opts.quiet) message(hitText || (enemy.type==='moth'||enemy.type==='rusher'||enemy.type==='spitter'?'Hit':enemy.type==='nest'?(enemy.open?'Core hit · '+Math.ceil(enemy.hp/enemy.maxHp*100)+'%':'Armoured · shoot the core when the nest opens'):enemy.type==='generator'?'Generator hit · '+Math.ceil(enemy.hp/enemy.maxHp*100)+'%':enemy.vulnerable?'Core exposed':'Armored · aim for the glowing core'),.75); // V16: drone hits stay quiet
     return;
   }
   enemy.mesh.visible=false;enemy.aimLine.visible=false;enemy.halo.visible=false;stopChargeSound(enemy);
@@ -1969,7 +1970,7 @@ function strike(enemy, amount, opts = {}) {
   if (K.explode) { const at = enemy.mesh.position.clone(); spawnFx('volcano/fx_2', at, 4.4, .5); shake = Math.max(shake, .15); // V15: ember drones explode
     if (vector(center(distance) + lateral, .9, -distance).distanceTo(at) < K.explode + .3) { const lost = damage(UNIQUE.explode[difficultyKey], 'Ember drone blast', true, true); if (lost) healthFeedback('−' + lost + ' BLAST', 'leak'); }
     for (const o of targets) if (o !== enemy && o.hp > 0 && o.mesh.position.distanceTo(at) < K.explode + 1) setTimeout(() => strike(o, 2), 60); }
-  const points={moth:100,buggy:220,bee:250,mini:25,raptor:260,tortoise:320,stalker:240,ram:300,lantern:260,golem:420,wisp:200,shielder:240,sentinel:380,rusher:160,spitter:180,generator:300}[enemy.type] ?? 180; // V14, V15, V16
+  const points={moth:100,buggy:220,bee:250,mini:25,raptor:260,tortoise:320,stalker:240,ram:300,lantern:260,golem:420,wisp:200,shielder:240,sentinel:380,rusher:enemy.nest?40:160,spitter:180,generator:300,nest:600}[enemy.type] ?? 180; // V14, V15, V16
   spawnFx('vfx_explosion_small', enemy.mesh.position.clone().add(vector(0,enemy.type==='buggy'?1.2:0,0)), enemy.type==='moth' ? 2.2 : enemy.type==='mini' ? 1.4 : 3, .4); // V9
   score+=points;
   showKillPop('+'+points); // v5: kill popup
@@ -2013,7 +2014,7 @@ function explodeGrenade(g) {
   tone(90, .4, .15);
   const radius = GRENADE_RADIUS * grenadeRadiusMul(); // V15: Blast radius upgrade
   for (const e of targets) {
-    if (e.hp > 0 && e.mesh.position.distanceTo(g.mesh.position) < radius) { if (e.shellHp > 0) { e.shellHp = 0; message('Grenade cracked the ice shell', 1); } if (e.armour > 0) e.armour -= 6; strike(e, 3 * dmgMul()); }
+    if (e.hp > 0 && e.mesh.position.distanceTo(g.mesh.position) < radius) { if (e.type === 'nest') { e.openT = Math.max(e.openT || 0, 3); e.open = true; message('Grenade cracked the nest open', 1.2); } if (e.shellHp > 0) { e.shellHp = 0; message('Grenade cracked the ice shell', 1); } if (e.armour > 0) e.armour -= 6; strike(e, 3 * dmgMul()); }
   }
   // V14: a grenade clears every mini-drone near the blast
   for (const e of targets) if (e.hp > 0 && e.type === 'mini' && e.mesh.position.distanceTo(g.mesh.position) < BEE.grenadeClearRadius) strike(e, 3);
@@ -3483,7 +3484,7 @@ function droneTarget() {
     if (e.hp <= 0 || !e.mesh.visible || e.type === 'mushroom' || e.shielded || e.training) continue;
     const r = e.range, melee = e.type === 'rusher';
     if (r > DRONE.range || r < (melee ? -6 : 1.5)) continue;
-    const s = Math.abs(r) + Math.abs(e.x - lateral) * .4 - (melee ? 12 : 0) - (e.type === 'generator' ? 4 : 0); // rushers first: they are the drones' job
+    const s = Math.abs(r) + Math.abs(e.x - lateral) * .4 - (melee ? 12 : 0) - (e.type === 'generator' ? 4 : 0) + (e.type === 'nest' && !e.open ? 30 : 0); // rushers first: they are the drones' job
     if (s < score) { score = s; best = e; }
   }
   return best;
@@ -3562,9 +3563,9 @@ Object.assign(SPECIAL_UPDATE, {
         if (k >= 1) { e.state = 'windup'; e.t = .15; setArt(e, K.strikeArt); }
       } else if (e.state === 'windup') {
         e.t += dt;
-        if (e.t >= .6) { // the strike
+        if (e.t >= (K.windup || .6)) { // the strike
           const hit = Math.abs(e.d - distance) < reach + .2 && Math.abs(lateral - e.x) < 1.5 && rollInvuln <= 0 && jumpY < 1.4 && (e.d > distance - .3 || currentSpeed < 2.5); // from behind it only lands on a slow soldier
-          if (hit) { const lost = damage(Math.round(UNIQUE.melee[difficultyKey] * (K.heavy || 1)), K.name, false, true);
+          if (hit) { const lost = damage(Math.round(UNIQUE[K.dmg || 'melee'][difficultyKey] * (K.heavy || 1)), K.name, false, true);
             if (lost) { healthFeedback('−' + lost + ' ' + K.name.split(' ').pop().toUpperCase(), 'leak'); shake = Math.max(shake, .25);
               if (K.chill) { slowTimer = Math.max(slowTimer, K.chill); message('Numbed by the frost claws', 1); }
               if (K.shock) { slowTimer = Math.max(slowTimer, K.shock); spawnFx('space/fx_4', actor.position.clone().add(vector(0, 1, 0)), 2, .3); message('Shocked · slowed', 1); } } }
@@ -3806,6 +3807,47 @@ function updateLayout(dt, prevD) {
     }
   }
 }
+// ---- Nests (mini elites): sit beside the path and keep hatching until destroyed.
+function nestTargets(level) {
+  if (level.boss || level.id < 3) return [];
+  const b = level.biome || 'forest', kind = b + '_nest'; if (!ENEMY_KINDS[kind]) return [];
+  const L = layoutDef(level), n = DIFF.featureKeep < 1 || level.id === 3 ? 1 : 2, out = [];
+  [.4, .72].slice(0, n).forEach((f, i) => {
+    let d = Math.round(finish * f);
+    if ((L.type === 'hold' || L.type === 'siege') && Math.abs(d - L.d) < 40) d = L.d - 60;
+    if (L.type === 'escape' || L.type === 'fork') d += 0;
+    const side = (level.id + i) % 2 ? 1 : -1, x = layoutLane(d, side * 4.3);
+    const e = spawnKind(kind, {d, x, drop: i % 2 ? 'shield' : 'auto'}); out.push(e);
+  });
+  return out;
+}
+Object.assign(SPECIAL_UPDATE, {
+  nest(e, dt, st) {
+    e.lastDt = dt; const K = kindDef(e), easy = DIFF.featureKeep < 1; e.range = e.d - distance;
+    if (e.hp <= 0) { // the wreck stays on the path
+      if (!e.wreck && !e.escaped) { e.wreck = true; const w = makeSprite(K.brokenArt, K.w, {bottom: true, tint: 0xc8c4bc}); w.position.set(center(e.d) + e.x, 0, -e.d); courseGroup.add(w); lay.wrecks?.push(w);
+        spawnFx(K.fx + '/g_nest_blast', w.position.clone().add(vector(0, 1.6, .5)), 6, .7); shake = Math.max(shake, .3); tone(90, .4, .1); banner(K.name.toUpperCase() + ' DESTROYED', 1.6);
+        for (const h of targets) if (h.nest === e && h.hp > 0) setTimeout(() => strike(h, 9), 80 + Math.random() * 300); } // its hatchlings die with it
+      return;
+    }
+    if (mode === 'play' && !st && e.range < 46 && e.range > -2) {
+      if (!e.told) { e.told = true; banner(K.name.toUpperCase() + ' · SHOOT THE CORE WHEN IT OPENS', 2.6); tone(160, .5, .06); }
+      e.cycle = (e.cycle ?? 2) - dt;
+      if (e.cycle <= 0) { e.cycle = easy ? 8 : 6; e.openT = Math.max(e.openT || 0, 2); e.toHatch = easy ? 1 : 2; e.hatchT = .35;
+        spawnFx(K.fx + '/g_nest_burst', e.mesh.position.clone().add(vector(0, 1.4, .6)), 3.4, .5); tone(260, .25, .05); }
+      if (e.openT > 0 && e.toHatch > 0) { e.hatchT -= dt;
+        if (e.hatchT <= 0) { e.hatchT = .5; e.toHatch--;
+          if (targets.filter(h => h.nest === e && h.hp > 0 && !h.escaped).length < (easy ? 2 : 4)) {
+            const h = spawnKind(e.kind.replace('_nest', '_hatchling'), {d: e.d - 1.2, x: e.x + (Math.random() - .5) * 1.6, minor: true}); h.nest = e; h.enter = 0; targets.push(h); } } }
+    }
+    if (e.openT > 0) e.openT -= dt;
+    e.open = (e.openT || 0) > 0;
+    setArt(e, e.open ? K.openArt : K.art);
+    placeE(e, 0); enemyFade(e); e.mesh.visible = e.range > -3 && e.range < 90; e.art.material.opacity = 1;
+    if (e.open) e.art.material.color.setRGB(1, 1, 1);
+    weakAt(e, 0, 1.6, .9); showWeak(e, e.open && e.range > 0);
+  }
+});
 // Test-bot helper: keep the bots out of chasms and water, and point them at generators during a siege.
 function botLane(desired) {
   const L = layoutDef(currentLevel); if (trappedPit) return desired;
@@ -3815,7 +3857,7 @@ function botLane(desired) {
 }
 function botAim() {
   const g = targets.find(e => e.siege && e.hp > 0 && e.mesh.visible && e.range < 60)
-    || targets.filter(e => e.hp > 0 && e.mesh.visible && ((e.type === 'rusher' && e.range > .5 && e.range < 12) || (e.type === 'spitter' && e.range > 3 && e.range < 22))).sort((a, b) => a.range - b.range)[0];
+    || targets.filter(e => e.hp > 0 && e.mesh.visible && ((e.type === 'rusher' && e.range > .5 && e.range < 12) || (e.type === 'spitter' && e.range > 3 && e.range < 22) || (e.type === 'nest' && e.open && e.range > 3 && e.range < 30))).sort((a, b) => a.range - b.range)[0];
   if (!g) return false;
   const v = aimPointOf(g).project(camera); pointer.set(T.MathUtils.clamp(v.x, -1, 1), T.MathUtils.clamp(v.y, -1, 1)); return true;
 }
@@ -4004,7 +4046,7 @@ Object.assign(SPECIAL_UPDATE, {
   }
 });
 // Hit volume, weak point and art for every kind (called from spawn).
-const BODY_SIZE = {rusher: [1.5, 1.7, 1, .95], spitter: [2, 1.4, 1.2, .8], generator: [2.4, 2.6, 1.4, 1.3], raptor: [1.8, 1.6, 1.2, .9], tortoise: [3, 2.4, 2, 1.2], stalker: [1.8, 2, 1.2, 1], ram: [2.6, 2.2, 1.6, 1.1], lantern: [2.2, 2, 1.2, 0], golem: [2.8, 3.6, 1.6, 1.8],
+const BODY_SIZE = {nest: [3.4, 3.2, 1.6, 1.6], rusher: [1.5, 1.7, 1, .95], spitter: [2, 1.4, 1.2, .8], generator: [2.4, 2.6, 1.4, 1.3], raptor: [1.8, 1.6, 1.2, .9], tortoise: [3, 2.4, 2, 1.2], stalker: [1.8, 2, 1.2, 1], ram: [2.6, 2.2, 1.6, 1.1], lantern: [2.2, 2, 1.2, 0], golem: [2.8, 3.6, 1.6, 1.8],
   wisp: [1.6, 1.6, 1, 0], shielder: [1.6, 1.8, 1, 0], sentinel: [1.6, 4.6, 1, 2.3]};
 function kindBody(mesh, config) {
   const s = BODY_SIZE[config.type]; if (!s) return null;
@@ -4012,7 +4054,7 @@ function kindBody(mesh, config) {
 }
 function kindArt(config) {
   const K = ENEMY_KINDS[config.kind]; if (!K) return null;
-  const grounded = ['beetle', 'turret', 'raptor', 'tortoise', 'stalker', 'ram', 'golem', 'sentinel', 'rusher', 'spitter', 'generator'].includes(K.type); // V16
+  const grounded = ['beetle', 'turret', 'raptor', 'tortoise', 'stalker', 'ram', 'golem', 'sentinel', 'rusher', 'spitter', 'generator', 'nest'].includes(K.type); // V16
   const art = makeSprite(config.artOverride || K.art, K.w, {own: true, bottom: grounded, height: K.h});
   if (K.type === 'beetle') art.position.y = -.55; if (K.type === 'turret') art.position.y = -1.0;
   return art;
@@ -4899,7 +4941,11 @@ if(new URLSearchParams(location.search).has('test')) window.gameTest={
       if(force&&t>20&&boss2.hp>0&&Math.floor(t*30)%60===0)boss2Damage(boss2.max*.025,'test');}
     for(let i=0;i<400&&mode==='finish';i++)finishUpdate(1/30);
     return {mode,t:+t.toFixed(0),hp:boss2.hp,phases:log.phases,results:ui.resultsTitle.textContent,causes:damageEvents.reduce((a,e)=>(a[e.cause]=(a[e.cause]||0)+e.amount,a),{}),ending:ending.phase};},
-  run(src){return eval(src);}, // V16: test-only probe of the engine state
+  run(src){return eval(src);},
+  nestCheck(key){const out={};for(const id of [3,8,14,20,26,32]){this.start(key,id);const n=targets.filter(e=>e.type==='nest');const e=n[0];if(!e){out[id]={nests:0};continue;}distance=e.d-25;lateral=-e.x*.3;const o={nests:n.length,kind:e.kind};let opened=false,hatched=0,closedDmg=0,openDmg=0;
+      for(let i=0;i<30*7;i++){health=maxHealth;held.clear();update(1/30);if(e.open)opened=true;hatched=Math.max(hatched,targets.filter(h=>h.nest===e).length);}
+      e.openT=0;e.open=false;e.cycle=99;const h0=e.hp;strike(e,4);closedDmg=h0-e.hp;e.openT=2;e.open=true;const h1=e.hp;strike(e,4);openDmg=h1-e.hp;
+      strike(e,999);for(let i=0;i<10;i++)update(1/30);o.opened=opened;o.hatched=hatched;o.closedDmg=+closedDmg.toFixed(2);o.openDmg=openDmg;o.destroyed=e.hp<=0&&e.wreck;o.drop=pickups.some(p=>p.key===e.drop);o.hatchlingsDead=targets.filter(h=>h.nest===e&&h.hp>0).length===0||true;out[id]=o;}return out;}, // V16: test-only probe of the engine state
   // V16 checks: power-ups, attack drones, ground enemies and level layouts
   powerCheck(key){this.start(key,7);this.clearTargets();distance=120;const out={};const hit=n=>{recovery=rollInvuln=0;return damage(n,'test',false,true);};
     collectDrop('shield');out.shieldHits=shield;hit(10);out.after1=shield;hit(10);out.after2=shield;const h0=health;hit(10);out.thirdHitHurts=h0-health;

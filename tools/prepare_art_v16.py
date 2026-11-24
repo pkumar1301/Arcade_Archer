@@ -1,4 +1,4 @@
-# V16: turns Codex Art Brief 3 (ground enemies, attack drone, level kits) into game files
+# V16: turns Codex Art Briefs 3 and 4 (ground enemies, attack drone, level kits) into game files
 # under art/biomes/<biome>/g_<item>.webp and art/biomes/drone/, and merges their aspects
 # into art_manifest.js. Gray (#6B6B6B) backgrounds are keyed out by flood fill from the
 # edges; effect sheets keep black (drawn additively) and are sliced into 3 cells.
@@ -64,7 +64,7 @@ for biome in sorted(os.listdir(SRC)):
     d = os.path.join(SRC, biome)
     if not os.path.isdir(d) or biome == 'previews': continue
     for f in sorted(os.listdir(d)):
-        m = re.match(r'(\w+?)_3x_(\w+)\.png$', f)
+        m = re.match(r'(\w+?)_[34]x_(\w+)\.png$', f)
         if not m: continue
         item = m.group(2)
         img = Image.open(os.path.join(d, f))
@@ -75,7 +75,11 @@ for biome in sorted(os.listdir(SRC)):
                 save('drone', item, cutout(img), 384)
             continue
         key = 'g_' + item
-        if item == 'shot_fx':
+        if item.startswith('nest_') and item != 'nest_fx':
+            continue  # the three nest states are cut together below
+        if item == 'nest_fx':
+            for name, cell in zip(['g_nest_burst', 'g_nest_ring', 'g_nest_blast'], fx_cells(img, 3)): save(biome, name, cell, 384, 80)
+        elif item == 'shot_fx':
             for name, cell in zip(['g_shot', 'g_ring', 'g_hit'], fx_cells(img, 3)): save(biome, name, cell, 256, 80)
         elif item in FX:
             save(biome, key, fx_one(img), 768, 80)
@@ -85,6 +89,24 @@ for biome in sorted(os.listdir(SRC)):
             save(biome, key, cutout(img, 20), 768)
         else:
             save(biome, key, cutout(img), 1024 if item.startswith(('gate', 'canyon')) else 512)
+
+# Nests: closed, open and destroyed share one crop so the game can swap them in place.
+def cutout_full(img, tol=16):
+    a = np.asarray(img.convert('RGB')).astype(np.int16)
+    dist = np.abs(a - GRAY).max(axis=2); lab, _ = ndimage.label(dist <= tol)
+    edge = set(np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))) - {0}
+    alpha = np.clip((ndimage.gaussian_filter((~np.isin(lab, list(edge))).astype(np.float32), .8) - .15) / .7, 0, 1)
+    rgb = a.astype(np.float32); k = alpha[..., None]
+    fixed = np.clip(np.where(k > .02, (rgb - (1 - k) * GRAY) / np.maximum(k, .02), rgb), 0, 255)
+    return Image.fromarray(np.dstack([fixed, alpha * 255]).astype(np.uint8), 'RGBA'), alpha
+for biome in sorted(os.listdir(SRC)):
+    d = os.path.join(SRC, biome); states = ['closed', 'open', 'destroyed']
+    files = [os.path.join(d, f'{biome}_4x_nest_{st}.png') for st in states]
+    if not all(os.path.exists(f) for f in files): continue
+    cuts = [cutout_full(Image.open(f)) for f in files]
+    ys, xs = np.where(np.maximum.reduce([c[1] for c in cuts]) > .06); m = 4
+    box = (max(0, xs.min() - m), max(0, ys.min() - m), xs.max() + m + 1, ys.max() + m + 1)
+    for st, (im, _) in zip(states, cuts): save(biome, 'g_nest_' + st, im.crop(box), 512)
 
 path = 'art_manifest.js'
 src = open(path).read()
