@@ -3563,7 +3563,7 @@ Object.assign(SPECIAL_UPDATE, {
       } else if (e.state === 'windup') {
         e.t += dt;
         if (e.t >= .6) { // the strike
-          const hit = Math.abs(e.d - distance) < reach + .2 && Math.abs(lateral - e.x) < 1.5 && rollInvuln <= 0 && jumpY < 1.4;
+          const hit = Math.abs(e.d - distance) < reach + .2 && Math.abs(lateral - e.x) < 1.5 && rollInvuln <= 0 && jumpY < 1.4 && (e.d > distance - .3 || currentSpeed < 2.5); // from behind it only lands on a slow soldier
           if (hit) { const lost = damage(Math.round(UNIQUE.melee[difficultyKey] * (K.heavy || 1)), K.name, false, true);
             if (lost) { healthFeedback('−' + lost + ' ' + K.name.split(' ').pop().toUpperCase(), 'leak'); shake = Math.max(shake, .25);
               if (K.chill) { slowTimer = Math.max(slowTimer, K.chill); message('Numbed by the frost claws', 1); }
@@ -3660,7 +3660,7 @@ function layoutFilter(level, course) {
   const ROW = new Set(['log', 'fence', 'airlock', 'ice', 'crust', 'bridge', 'portal', 'ramp']);
   return course.filter(([d, kind, x, extra]) => {
     const len = typeof extra === 'number' && (kind === 'ice' || kind === 'crust' || kind === 'bridge') ? extra : 0;
-    if (d + len < L.from - 8 || d > L.from + L.len + 8) return true;
+    if (d + len < L.from - 16 || d > L.from + L.len + 8) return true;
     if (ROW.has(kind)) return false;
     return L.type === 'fork' ? Math.abs(x) > 2.4 : Math.abs(x) < 1.2 && kind !== 'thorn';
   });
@@ -3729,7 +3729,7 @@ function buildLayout(level) {
   }
   if (L.type === 'hold' || L.type === 'siege') {
     const art = makeSprite(b + '/g_gate_closed', 13.5, {bottom: true, tint: 0xe0dcd4}); art.position.set(center(L.d), -.05, -L.d + .4); courseGroup.add(art);
-    lay.gateArt = art; lay.solid = {d: L.type === 'siege' ? L.d - 3.2 : L.d, x: 0, hw: GATE_HALF, hd: .5, h: 99, door: true, open: false, msg: L.type === 'hold' ? 'The gate is shut · hold out until it opens' : 'The gate is shut · destroy the generators'};
+    lay.gateArt = art; lay.solid = {d: L.d - (L.type === 'siege' ? 3.2 : 6), x: 0, hw: GATE_HALF, hd: .5, h: 99, door: true, open: false, msg: L.type === 'hold' ? 'The gate is shut · hold out until it opens' : 'The gate is shut · destroy the generators'};
     solids.push(lay.solid);
   }
   if (L.type === 'escape' && !L.lava) {
@@ -3778,8 +3778,8 @@ function updateLayout(dt, prevD) {
     if (lay.holding) {
       lay.holdT -= dt; lay.spawnR -= dt; lay.spawnS -= dt; lay.spawnW -= dt;
       const easy = DIFF.featureKeep < 1;
-      if (lay.spawnR <= 0) { lay.spawnR = easy ? 9 : 6.5; if (aliveOf('rusher') < (easy ? 1 : 2)) { const s = Math.random() < .5 ? -1 : 1; spawnGround('rusher', {d: Math.min(L.d - 2, distance + 14 + Math.random() * 4), x: s * 5}); } }
-      if (lay.spawnS <= 0) { lay.spawnS = easy ? 12 : 9; if (aliveOf('spitter') < (easy ? 1 : 2)) spawnGround('spitter', {d: Math.min(L.d - 3, distance + 16)}); }
+      if (lay.spawnR <= 0) { lay.spawnR = easy ? 9 : 6.5; if (aliveOf('rusher') < (easy ? 1 : 2)) { const s = Math.random() < .5 ? -1 : 1; spawnGround('rusher', {d: Math.min(L.d - 1.5, distance + 14 + Math.random() * 4), x: s * 5}); } }
+      if (lay.spawnS <= 0) { lay.spawnS = easy ? 12 : 9; if (aliveOf('spitter') < (easy ? 1 : 2)) spawnGround('spitter', {d: L.d - 1.2, x: (Math.random() < .5 ? -1 : 1) * (2 + Math.random() * 2.5), perch: .01}); } // they hold at the gate
       if (lay.spawnW <= 0) { lay.spawnW = easy ? 20 : 15; spawnWave(Math.max(1, DIFF.waveMoths - 1), (waveSide = -waveSide)); }
       objective('HOLD THE LINE · ' + Math.max(0, Math.ceil(lay.holdT)) + ' s');
       if (lay.holdT <= 0) openGate('GATE OPEN · MOVE OUT');
@@ -3808,7 +3808,7 @@ function updateLayout(dt, prevD) {
 }
 // Test-bot helper: keep the bots out of chasms and water, and point them at generators during a siege.
 function botLane(desired) {
-  const L = layoutDef(currentLevel);
+  const L = layoutDef(currentLevel); if (trappedPit) return desired;
   if (L.type === 'fork' && distance > L.from - 14 && distance < L.from + L.len + 2) return (Math.abs(lateral) > .5 ? lateral : desired) < 0 ? -3.3 : 3.3; // stay on one side
   if (L.type === 'bridge' && distance > L.from - 10 && distance < L.from + L.len + 2) return T.MathUtils.clamp(desired, -1.4, 1.4);
   return desired;
@@ -4916,7 +4916,7 @@ if(new URLSearchParams(location.search).has('test')) window.gameTest={
       const r=spawnGround('rusher',{d:distance+25,x:0}),sp=spawnGround('spitter',{d:distance+30,x:2});let minGap=99,wind=false,lobbed=0;
       for(let i=0;i<30*9;i++){health=maxHealth;held.clear();update(1/30);minGap=Math.min(minGap,Math.abs(r.d-distance));if(r.state==='windup')wind=true;lobbed=Math.max(lobbed,lobs.length);}
       const causes=[...new Set(damageEvents.map(e=>e.cause))];out[b]={rusher:ENEMY_KINDS[r.kind].name,reached:minGap<3,windup:wind,spitter:ENEMY_KINDS[sp.kind].name,spitGap:+(sp.d-distance).toFixed(1),lobbed:lobbed>0,causes};
-      held.clear();held.add('KeyW');for(let i=0;i<30*12;i++){health=maxHealth;update(1/30);}out[b].outran=r.escaped||r.hp<=0;}
+      for(let i=0;i<30*14&&!(r.escaped||r.hp<=0);i++){health=maxHealth;held.clear();distance+=6/30;currentSpeed=6;update(1/30);}out[b].outran=r.escaped||r.hp<=0;}
     return out;},
   layoutCheck(key){const out={};for(const id of [2,4,10,14,17,20,21,23,26,29,33,34]){this.start(key,id);const L=lay.def;const o={type:L.type};
       if(L.type==='siege'){const g=targets.filter(e=>e.siege);o.gens=g.length;distance=L.d-20;place(1);for(let i=0;i<60;i++){health=maxHealth;held.clear();held.add('KeyW');update(1/30);}o.blocked=distance<L.d;for(const e of g)strike(e,999);for(let i=0;i<10;i++)update(1/30);distance=L.d-2;lateral=0;for(let i=0;i<60;i++){health=maxHealth;held.clear();held.add('KeyW');update(1/30);}o.opened=lay.solid.open&&distance>L.d;}

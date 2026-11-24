@@ -133,7 +133,7 @@ export const UNIQUE = {
   beam: { easy: 5, medium: 9, hard: 13 },
   explode: { easy: 4, medium: 8, hard: 12 },
   hazard: { easy: 6, medium: 12, hard: 18 }, // vents, falling rocks, meteors, icicles, laser fences
-  melee: { easy: 6, medium: 10, hard: 15 },  // V16: rusher strikes
+  melee: { easy: 4, medium: 10, hard: 15 },  // V16: rusher strikes
   spit: { easy: 5, medium: 8, hard: 12 },    // V16: spitter shots
   fall: { easy: 8, medium: 14, hard: 20 },   // V16: falling off a bridge or into a fork's chasm
   pit: { easy: 10, medium: 18, hard: 25 }    // lava pools and void gaps (no trap, you reappear at the edge)
