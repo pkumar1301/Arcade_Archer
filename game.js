@@ -3729,7 +3729,7 @@ function buildLayout(level) {
   }
   if (L.type === 'hold' || L.type === 'siege') {
     const art = makeSprite(b + '/g_gate_closed', 13.5, {bottom: true, tint: 0xe0dcd4}); art.position.set(center(L.d), -.05, -L.d + .4); courseGroup.add(art);
-    lay.gateArt = art; lay.solid = {d: L.d, x: 0, hw: GATE_HALF, hd: .5, h: 99, door: true, open: false, msg: L.type === 'hold' ? 'The gate is shut · hold out until it opens' : 'The gate is shut · destroy the generators'};
+    lay.gateArt = art; lay.solid = {d: L.type === 'siege' ? L.d - 3.2 : L.d, x: 0, hw: GATE_HALF, hd: .5, h: 99, door: true, open: false, msg: L.type === 'hold' ? 'The gate is shut · hold out until it opens' : 'The gate is shut · destroy the generators'};
     solids.push(lay.solid);
   }
   if (L.type === 'escape' && !L.lava) {
@@ -3739,8 +3739,8 @@ function buildLayout(level) {
 }
 function layoutTargets(level) {
   const L = layoutDef(level); if (L.type !== 'siege') return [];
-  const kind = (level.biome || 'forest') + '_generator', xs = L.gens === 2 ? [-3, 3] : [-3.6, 0, 3.6];
-  return xs.map((x, i) => { const e = spawnKind(kind, {d: L.d - 9 - (i % 2) * 2, x, drop: i === 1 ? 'auto' : undefined}); e.siege = true; return e; });
+  const kind = (level.biome || 'forest') + '_generator', xs = L.gens === 2 ? [-3.4, 3.4] : [-4.2, 0, 4.2];
+  return xs.map((x, i) => { const e = spawnKind(kind, {d: L.d - 1.4, x, drop: i === 1 ? 'auto' : undefined}); e.siege = true; return e; }); // at the foot of the gate, behind a barrier line
 }
 function resetLayout() {
   const L = layoutDef(currentLevel);
@@ -3809,12 +3809,13 @@ function updateLayout(dt, prevD) {
 // Test-bot helper: keep the bots out of chasms and water, and point them at generators during a siege.
 function botLane(desired) {
   const L = layoutDef(currentLevel);
-  if (L.type === 'fork' && distance > L.from - 14 && distance < L.from + L.len + 2) return desired < 0 ? -3.3 : 3.3;
+  if (L.type === 'fork' && distance > L.from - 14 && distance < L.from + L.len + 2) return (Math.abs(lateral) > .5 ? lateral : desired) < 0 ? -3.3 : 3.3; // stay on one side
   if (L.type === 'bridge' && distance > L.from - 10 && distance < L.from + L.len + 2) return T.MathUtils.clamp(desired, -1.4, 1.4);
   return desired;
 }
 function botAim() {
-  const g = targets.find(e => e.siege && e.hp > 0 && e.mesh.visible && e.range < 60);
+  const g = targets.find(e => e.siege && e.hp > 0 && e.mesh.visible && e.range < 60)
+    || targets.filter(e => e.hp > 0 && e.mesh.visible && ((e.type === 'rusher' && e.range > .5 && e.range < 12) || (e.type === 'spitter' && e.range > 3 && e.range < 22))).sort((a, b) => a.range - b.range)[0];
   if (!g) return false;
   const v = aimPointOf(g).project(camera); pointer.set(T.MathUtils.clamp(v.x, -1, 1), T.MathUtils.clamp(v.y, -1, 1)); return true;
 }
@@ -4887,7 +4888,7 @@ if(new URLSearchParams(location.search).has('test')) window.gameTest={
     for(let t=0;t<maxT && mode==='play';t+=1/30){held.clear();held.add('KeyW');const desired=botLane(Math.sin(t*.9)*2.2);if(Math.abs(desired-lateral)>.2)held.add(desired>lateral?'KeyD':'KeyA');firing=true;if(!botAim())pointer.set(0,0);
       if(grounded && (Math.floor(t*30)%34===0 || hazards.some(h=>(h.kind==='log'||h.kind==='fence'&&h.type==='low')&&h.d-distance>0&&h.d-distance<2.2))){grounded=false;jumpVel=trappedPit?10.5:JUMP_VELOCITY;}
       if(trappedPit&&grounded){grounded=false;jumpVel=10.5;held.add(lateral>trappedPit.x?'KeyD':'KeyA');}
-      health=maxHealth;update(1/30);minH=Math.min(minH,health);if(Math.floor(t)!==Math.floor(t-1/30)){if(distance-last<.5)stuck++;else stuck=0;last=distance;}if(stuck>25)break;}
+      health=maxHealth;update(1/30);minH=Math.min(minH,health);if(Math.floor(t)!==Math.floor(t-1/30)){if(distance-last<.5&&!lay.holding)stuck++;else stuck=0;last=distance;}if(stuck>25)break;}
     return {mode,d:+distance.toFixed(0),t:+elapsed.toFixed(0),stuck,targets:targets.length,kinds:[...new Set(targets.map(e=>e.kind||e.type))],hazards:[...new Set(hazards.map(h=>h.kind))],biome:currentBiome,light:lightingKey};},
   bossRun(key,id,god=true,force=true){this.start(key,id);const log={phases:[],damage:{}};let t=0;
     for(;t<400&&mode==='play';t+=1/30){held.clear();firing=true;
