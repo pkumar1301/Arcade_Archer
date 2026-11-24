@@ -1140,7 +1140,7 @@ let health = 100, maxHealth = 100, reviveUsed = false, score = 0, coinCount = 0;
 let shield = 0, recovery = 0, notice = 0, cooldown = 0, firing = false, elapsed = 0;
 let resumed = false, audio;
 let wallet, level, dual, rapid, heavy, autoTime, autoCooldown, charges, pressShot, powerShot;
-let heavyMax = 1, rapidMax = 1, magnetMax = 1; const SHIELD_HITS = 2; // V16
+let heavyMax = 1, rapidMax = 1, magnetMax = 1, beltT = 0; const SHIELD_HITS = 2; // V16
 const lastTap = {};
 const DROP_CYCLE = ['shield','heavy','reload','auto','charge','magnet']; // V11; V15: the coin magnet joins the cycle
 let dropCycle = 0;
@@ -2239,6 +2239,7 @@ function update(dt) {
   recoilTimer = Math.max(0, recoilTimer - dt); // v3
   autoTime-=dt;
   heavy = Math.max(0, heavy - dt); rapid = Math.max(0, rapid - dt); // V16: timed power-ups
+  if (up('belt') >= 2 && charges < maxCharges()) { beltT = (beltT || 0) + dt; if (beltT >= 45) { beltT = 0; charges++; message('Grenade belt · +1 grenade (' + charges + ' / 3)', 1.6); } } else beltT = 0; // V16
   updateDrones(dt); updateLayout(dt, previousDistance); updateGroundDirector(dt); updateLobs(dt); // V16
   notice -= dt;
   if (notice <= 0) ui.notice.textContent = '';
@@ -4071,7 +4072,7 @@ const dmgMul = () => 1 + .1 * up('hollow');
 const weakUpgradeMul = () => 1 + .15 * up('weak');
 const grenadeRadiusMul = () => 1 + .2 * up('blast');
 const powerMul = () => 1 + .25 * up('powerup');
-const maxCharges = () => 3 + up('belt');
+const maxCharges = () => 3; // V16: a hard cap of 3 grenades (the Grenade belt now adds a starting grenade and a restock)
 function runSpeedMul() { return (1 + .05 * up('feet')) * (weapon === 'rotary' ? 1 - ARMS.rotary.slow : 1); }
 function weaponTier(key) { return prog().tiers?.[key] || 0; }
 // Stats of a weapon at its current tier, with the soldier upgrades applied.
