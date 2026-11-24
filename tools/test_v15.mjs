@@ -42,7 +42,7 @@ check('All 16 weapons deal damage', Object.values(weapons).every(v => v > 0) && 
 const sets = await ev(() => gameTest.setPieces('medium'));
 check('Every biome Level 3 has a set-piece that triggers', Object.values(sets).every(s => s.done), sets);
 const hp = await ev(() => gameTest.maxHealthCheck('medium'));
-check('Soldier upgrades apply (armour, grenade belt, starting shield)', hp.maxHealth === 130 && hp.charges === 3 && hp.shield === 1, hp);
+check('Soldier upgrades apply (armour, grenade belt to 5, starting shield)', hp.maxHealth === 130 && hp.cap === 5 && hp.shield === 1, hp);
 
 // 4. Bosses: three phases each, defeat leads to results and the boss weapon (free at tier 1)
 const bosses = {};

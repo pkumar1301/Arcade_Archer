@@ -1140,7 +1140,7 @@ let health = 100, maxHealth = 100, reviveUsed = false, score = 0, coinCount = 0;
 let shield = 0, recovery = 0, notice = 0, cooldown = 0, firing = false, elapsed = 0;
 let resumed = false, audio;
 let wallet, level, dual, rapid, heavy, autoTime, autoCooldown, charges, pressShot, powerShot;
-let heavyMax = 1, rapidMax = 1, magnetMax = 1, beltT = 0; const SHIELD_HITS = 2; // V16
+let heavyMax = 1, rapidMax = 1, magnetMax = 1; const SHIELD_HITS = 2; // V16
 const lastTap = {};
 const DROP_CYCLE = ['shield','heavy','reload','auto','charge','magnet']; // V11; V15: the coin magnet joins the cycle
 let dropCycle = 0;
@@ -1465,7 +1465,7 @@ function reset() {
   maxHealth = 100 + 10 * up('armour'); health = maxHealth; reviveUsed = false; damageEvents.length=0;hitDirections.length=0; // V15: Armour upgrade
   wallet=rapid=heavy=autoTime=autoCooldown=magnetTime=0; spin=0; beamCharge=0; heavyMax=rapidMax=magnetMax=1; clearDrones(); resetLayout(); // V16
   for (const sh of shots) remove(sh); shots.length = 0;
-  charges=Math.min(maxCharges(), DIFF.startCharges + up('belt')); // V7: per difficulty; V15: Grenade belt
+  charges=Math.min(maxCharges(), DIFF.startCharges); // V7: per difficulty; V16: the Grenade belt raises the cap, not the starting count
   if (up('startShield')) shield = 1;
 
   AIM_ASSIST_ANGLE=DIFF.aimAssist;
@@ -2239,7 +2239,6 @@ function update(dt) {
   recoilTimer = Math.max(0, recoilTimer - dt); // v3
   autoTime-=dt;
   heavy = Math.max(0, heavy - dt); rapid = Math.max(0, rapid - dt); // V16: timed power-ups
-  if (up('belt') >= 2 && charges < maxCharges()) { beltT = (beltT || 0) + dt; if (beltT >= 45) { beltT = 0; charges++; message('Grenade belt · +1 grenade (' + charges + ' / 3)', 1.6); } } else beltT = 0; // V16
   updateDrones(dt); updateLayout(dt, previousDistance); updateGroundDirector(dt); updateLobs(dt); // V16
   notice -= dt;
   if (notice <= 0) ui.notice.textContent = '';
@@ -4072,7 +4071,7 @@ const dmgMul = () => 1 + .1 * up('hollow');
 const weakUpgradeMul = () => 1 + .15 * up('weak');
 const grenadeRadiusMul = () => 1 + .2 * up('blast');
 const powerMul = () => 1 + .25 * up('powerup');
-const maxCharges = () => 3; // V16: a hard cap of 3 grenades (the Grenade belt now adds a starting grenade and a restock)
+const maxCharges = () => 3 + up('belt'); // V16: 3 grenades; the Grenade belt raises the cap to 4, then 5
 function runSpeedMul() { return (1 + .05 * up('feet')) * (weapon === 'rotary' ? 1 - ARMS.rotary.slow : 1); }
 function weaponTier(key) { return prog().tiers?.[key] || 0; }
 // Stats of a weapon at its current tier, with the soldier upgrades applied.
@@ -4939,7 +4938,7 @@ if(new URLSearchParams(location.search).has('test')) window.gameTest={
   setPieces(key){const out={};for(const id of [3,9,15,21,27,33]){this.start(key,id);const sp=currentLevel.setPiece;distance=sp.d-14;lateral=0;const n0=targets.length;let chase=false,impacts=0;
     for(let i=0;i<150;i++){health=maxHealth;held.clear();held.add('KeyW');update(1/30);if(hz.chase)chase=true;impacts=Math.max(impacts,hz.markers.length);}
     out[id]={type:sp.type,done:hz.setDone,spawned:targets.length-n0,chase,impacts,nest:targets.filter(e=>Math.abs(e.d-sp.d)<6).map(e=>e.kind).join('/')};}return out;},
-  maxHealthCheck(key){const pr=prog();pr.upgrades.armour=3;pr.upgrades.belt=2;pr.upgrades.startShield=1;this.start(key,7);const r={maxHealth,health,charges,shield};pr.upgrades={};return r;},
+  maxHealthCheck(key){const pr=prog();pr.upgrades.armour=3;pr.upgrades.belt=2;pr.upgrades.startShield=1;this.start(key,7);const r={maxHealth,health,charges,cap:maxCharges(),shield};pr.upgrades={};return r;},
   endingRun(key){this.start(key,36);elapsed=120;health=80;boss2.freeze=0;hideTaunt();boss2Damage(boss2.hp+1);let n=0;for(;n<900&&mode==='finish';n++)finishUpdate(1/30);return {mode,phase:ending.phase,n,cls:ui.ending.className,ng:prog().ng,finished:prog().finished};},
   step(dt){if(mode==='play')update(dt);else if(mode==='finish')finishUpdate(dt);},
   bot(key,id=1){this.start(key,id);let jumpAt=0;for(let t=0;t<700 && mode==='play';t+=1/30){held.clear();held.add('KeyW');const desired=botLane(Math.sin(t*1.2)*2.5);if(Math.abs(desired-lateral)>.12)held.add(desired>lateral?'KeyD':'KeyA');firing=true;if(!botAim())pointer.set(0,0);if(t>=jumpAt){if(grounded){grounded=false;jumpVel=trappedPit?10.5:JUMP_VELOCITY;}jumpAt=t+1.1;}update(1/30);}return this.state();},

@@ -8,7 +8,7 @@ Built on V15. This version adds the playtest feedback and Art Brief 3 (ground en
 | --- | --- | --- |
 | Attack drone | An invisible auto-shot every 0.85 s for 15 s | A visible gun drone that flies beside you for the whole level (see below) |
 | Shield | Blocked 1 hit | Blocks 2 hits and lasts the whole level. A second pickup refills it to 2 |
-| Grenade | +1, up to 3 (+1 per Grenade belt level) | Hard cap of 3. A pickup with 3 grenades is ignored and says so. The Grenade belt now gives +1 starting grenade (level 1) and restocks a grenade every 45 s (level 2) |
+| Grenade | +1, up to 3 (+1 per Grenade belt level) | +1, up to 3. The Grenade belt upgrade raises the cap to 4, then 5. A pickup with the pouches full is ignored and says so |
 | Power bolts | Double damage for the next 8 shots | Double damage for 15 s |
 | Rapid fire | Faster fire for the next 12 shots | +50% fire rate for 15 s |
 | Coin magnet | 10 s | 20 s |

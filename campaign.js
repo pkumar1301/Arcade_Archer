@@ -343,7 +343,7 @@ export const UPGRADES = {
   weak: { name: 'Weak-point specialist', levels: 2, each: '+15% weak-point damage', price: [160, 300] },
   armour: { name: 'Armour', levels: 3, each: '+10 max health · shown as gear', price: [150, 280, 420], gear: ['chest plate', 'shoulder plates', 'visor helmet'] },
   feet: { name: 'Quick feet', levels: 2, each: '+5% run speed · 0.2 s shorter roll cooldown', price: [130, 260] },
-  belt: { name: 'Grenade belt', levels: 2, each: 'Level 1: start with +1 grenade · Level 2: a grenade restocks every 45 s (max 3)', price: [140, 280] },
+  belt: { name: 'Grenade belt', levels: 2, each: '+1 grenade capacity (3 → 4 → 5) · pouches on the belt', price: [140, 280] },
   blast: { name: 'Blast radius', levels: 2, each: '+20% grenade radius', price: [120, 240] },
   powerup: { name: 'Power-up time', levels: 2, each: 'Power-ups last 25% longer', price: [110, 220] },
   magnet: { name: 'Magnet', levels: 2, each: 'Larger coin pickup radius', price: [90, 180] },
