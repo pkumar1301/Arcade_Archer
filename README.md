@@ -1,5 +1,21 @@
 # Jungle Soldier
 
+**[Play it here](https://pkumar1301.github.io/Arcade_Archer/)**
+
+![V16 in-game capture: Sunken Dunes, Level 2, with two attack drones, a shield and timed power-ups active](docs/v16/v16-drones.png)
+
+A browser run-and-gun game in 3D. V15 is the complete campaign: 36 stages across six zones, a Quartermaster with 16 weapons and 12 soldier upgrades. V16 is the current build and adds attack drones, a 2-hit shield and timed power-ups.
+
+To play in 10 seconds: open the link, hold W to run, aim with the mouse, hold left click to fire, press Space to jump.
+
+## How I built this
+
+- Built with generative AI coding tools. `START_HERE_CLAUDE.md` and `README_FOR_CODEX.md` are the briefs I handed them.
+- JavaScript on Three.js (bundled in `vendor/`), served as static files with no build step.
+- Automated checks in `tools/test_v16.mjs` and `tools/test_v15.mjs`, with results in `docs/V16-validation.md` and `docs/V15-validation.md`. The screenshot above comes from the V16 run.
+
+---
+
 [Play the game](https://pkumar1301.github.io/Arcade_Archer/)
 
 V15 is the complete campaign. Six zones of five levels and a boss (36 stages): the Forest, Sunken Dunes, Frozen Reach, Ashen Caldera, Dead Orbit and the Hive Capital, ending with the Overmind, a 90s celebration, cast-roll credits and New Game+. Between levels the Quartermaster sells 16 weapons, weapon tiers, 12 soldier upgrades, gear and uniforms. See CHANGES_V15.md.
