@@ -151,7 +151,11 @@ export const UNIQUE = {
   hatch: { easy: 2, medium: 4, hard: 6 },    // V16: nest hatchlings
   spit: { easy: 5, medium: 8, hard: 12 },    // V16: spitter shots
   fall: { easy: 8, medium: 14, hard: 20 },   // V16: falling off a bridge or into a fork's chasm
-  pit: { easy: 10, medium: 18, hard: 25 }    // lava pools and void gaps (no trap, you reappear at the edge)
+  pit: { easy: 10, medium: 18, hard: 25 },   // lava pools and void gaps (no trap, you reappear at the edge)
+  snipe: { easy: 6, medium: 12, hard: 18 },  // V17: sniper shot
+  latch: { easy: 2, medium: 3, hard: 5 },    // V17: latcher, per second while it clings
+  breath: { easy: 6, medium: 12, hard: 18 }, // V17: elite dragon breath
+  bash: { easy: 4, medium: 8, hard: 12 }     // V17: blocker shell bash
 };
 
 // ---- Levels. Each non-boss level uses the shared V13 course (logs, thorns, pits, cover) in its
@@ -259,6 +263,92 @@ export const LAYOUTS = {
   34: { type: 'bridge', from: 260, len: 240, side: 'city/g_chasm', path: 'city/g_bridge_a', ground: [150, 150], text: 'SPIRE BRIDGE · STAY ON THE BRIDGE' },
   35: { type: 'canyon', from: 120, ground: [130, 0], ledges: 65 }
 };
+// ---- V17: the new enemy roster (Codex Art Brief 5). Every role is in all six biomes; each biome
+// version is the same creature in that biome's materials. art keys are under art/biomes/<biome>/.
+// type is the engine behaviour (see the V17 section of game.js). hp is in rifle hits.
+const V17_NAMES = {
+  blocker: ['Moss shell beetle', 'Sandstone scarab tank', 'Glacier tortoise', 'Obsidian armadillo', 'Riot bot', 'Hive bulwark'],
+  exploder: ['Spore toad', 'Oil scarab', 'Cryo bloater', 'Magma bomb', 'Kamikaze bot', 'Acid larva'],
+  ambusher: ['Trapdoor spider', 'Sand antlion', 'Snow worm', 'Lava eel', 'Vent crawler', 'Hive mantis'],
+  pack: ['Jungle raptor', 'Desert raptor', 'Snow raptor', 'Ember raptor', 'Cyber raptor', 'Hive raptor'],
+  wyvern: ['Leaf-wing wyvern', 'Bone wyvern', 'Frost wyvern', 'Ember wyvern', 'Mech wyvern', 'Hive wyvern'],
+  dragon: ['Mushroom dragon', 'Dune drake', 'Frost drake', 'Magma drake', 'Mecha dragon', 'Hive drake'],
+  charger: ['Dome-skull charger', 'Razorback boar', 'Woolly frost rhino', 'Furnace bull', 'Battering-ram bot', 'Hive beetle-rhino'],
+  sniper: ['Chameleon sniper', 'Scorpion sniper', 'Frost imp marksman', 'Magma imp lancer', 'Sniper bot', 'Hive stalker'],
+  latcher: ['Leech-tick', 'Sand hugger', 'Ice tick', 'Ember leech', 'Clamp bot', 'Hook larva'],
+  mimic: ['Chest mimic', 'Urn mimic', 'Crate mimic', 'Obsidian chest mimic', 'Cargo mimic', 'Egg mimic'],
+  shieldbearer: ['Mushroom shaman', 'Scarab priest', 'Frost shaman', 'Magma totem imp', 'Shield bot', 'Hive priest'],
+  swarm: ['Jungle rat', 'Sand crab', 'Frost crawler', 'Magma crawler', 'Spider bot', 'Hive ant'],
+  queen: ['Spider queen', 'Scorpion queen', 'Frost spider queen', 'Magma spider queen', 'Fabricator mother', 'Hive brood queen'],
+  bomber: ['Horned beetle bomber', 'Bone vulture', 'Snow bat', 'Ember bat', 'Bomber drone', 'Hive flyer']
+};
+// What each biome's exploder leaves behind, and what its wyvern spits.
+const V17_RESIDUE = { forest: 'spores', desert: 'oil', tundra: 'frost', volcano: 'lava', space: 'shock', city: 'acid' };
+const V17_SPIT = { forest: 'acid', desert: 'lava', tundra: 'frost', volcano: 'lava', space: 'plasma', city: 'goo' };
+const V17_HOW = {
+  blocker: 'plants a shell on the trail · flank it or crack the shell with a grenade',
+  exploder: 'bursts near you or when killed · shoot it early',
+  ambusher: 'bursts out of the marked ground · step off the mound',
+  pack: 'hunts in packs of three · the leader screeches first',
+  wyvern: 'dives and spits onto a marked spot',
+  dragon: 'ELITE · blocks the path · step out of the marked lane, shoot the glowing chest',
+  charger: 'charges down a marked lane · dodge it and it is stunned',
+  sniper: 'a red laser means it is aiming · keep moving or roll',
+  latcher: 'clings to you · roll or jump to shake it off',
+  mimic: 'not every chest is a reward',
+  shieldbearer: 'shields the enemies near it · kill it first',
+  swarm: 'comes in groups · one hit each',
+  queen: 'ELITE · spawns young until killed · shoot the egg sac when it opens',
+  bomber: 'drops bombs on marked spots'
+};
+const V17_STATS = { // type: [hp, width m, height m or null, soft (full body damage)]
+  blocker: [10, 3.0, null, true], exploder: [2, 1.9, null, true], ambusher: [4, 2.6, null, true], pack: [3, 2.6, null, true],
+  wyvern: [3, 3.4, null, true], dragon: [36, 6.0, null, false], charger: [8, 3.2, null, false], sniper: [3, 2.5, null, true],
+  latcher: [1.5, 1.5, null, true], mimic: [5, 2.0, null, true], shieldbearer: [5, 2.4, null, true], swarm: [1, 1.15, null, true],
+  queen: [26, 5.4, null, false], bomber: [3, 2.8, null, true]
+};
+const V17_ART = {
+  blocker: { art: 'blocker_walk', bracedArt: 'blocker_braced', brokenArt: 'blocker_broken' },
+  exploder: { art: 'exploder_run', swellArt: 'exploder_swell' },
+  ambusher: { art: 'ambusher_attack', strikeArt: 'ambusher_attack', eruptArt: 'ambusher_erupt', tellArt: 'ambusher_tell' },
+  pack: { art: 'raptor_run', strikeArt: 'raptor_leap', callArt: 'raptor_call' },
+  wyvern: { art: 'wyvern_fly', diveArt: 'wyvern_dive' },
+  dragon: { art: 'dragon_stand', breathArt: 'dragon_breath', woundedArt: 'dragon_wounded' },
+  charger: { art: 'charger_walk', chargeArt: 'charger_charge', stunArt: 'charger_stunned' },
+  sniper: { art: 'sniper_idle', aimArt: 'sniper_aim' },
+  latcher: { art: 'latcher_run', strikeArt: 'latcher_run', clingArt: 'latcher_cling' },
+  mimic: { art: 'mimic_revealed', strikeArt: 'mimic_revealed', hiddenArt: 'mimic_hidden' },
+  shieldbearer: { art: 'shield_walk', castArt: 'shield_cast' },
+  swarm: { art: 'swarm_run', strikeArt: 'swarm_run', groupArt: 'swarm_group' },
+  queen: { art: 'queen_idle', spawnArt: 'queen_spawn', dyingArt: 'queen_dying' },
+  bomber: { art: 'bomber_carry', dropArt: 'bomber_drop' }
+};
+const V17_FX = { blocker: 'blocker', exploder: 'exploder', ambusher: 'ambusher', wyvern: 'wyvern', dragon: 'dragon', charger: 'charger', sniper: 'sniper',
+  latcher: 'latcher', mimic: 'mimic', shieldbearer: 'shield', swarm: 'swarm', bomber: 'bomber', pack: 'ambusher', queen: 'swarm' };
+BIOME_ORDER.forEach((biome, i) => {
+  for (const [type, names] of Object.entries(V17_NAMES)) {
+    const [hp, w, h, soft] = V17_STATS[type], art = Object.fromEntries(Object.entries(V17_ART[type]).map(([k, v]) => [k, biome + '/n_' + v]));
+    const fx = biome + '/n_' + V17_FX[type] + '_fx';
+    ENEMY_KINDS[biome + '_' + type] = { type, hp, w, h: h ?? undefined, soft, name: names[i], how: V17_HOW[type], fx: [fx + '1', fx + '2', fx + '3'], biome, v17: true,
+      residue: V17_RESIDUE[biome], splash: V17_SPIT[biome], ...art,
+      // rusher-style movers reuse the V16 rusher logic with these numbers
+      ...(type === 'swarm' ? { speed: 6.2, reach: 1.6, windup: .35, dmg: 'hatch' } : {}),
+      ...(type === 'pack' ? { speed: 6.6, reach: 2.4, windup: .4, leap: 7, dmg: 'melee' } : {}),
+      ...(type === 'ambusher' ? { speed: 5.2, reach: 2.4, windup: .45, dmg: 'melee' } : {}),
+      ...(type === 'mimic' ? { speed: 5.4, reach: 2.2, windup: .4, dmg: 'melee' } : {}),
+      ...(type === 'latcher' ? { speed: 6.8, reach: 1.6, windup: .2, dmg: 'hatch' } : {}) };
+  }
+});
+// Which new roles each level brings. Forest introduces them two or three at a time; every other
+// biome brings them back in its own skins. Every role appears in all six biomes.
+// Elites (dragon, queen) come once per biome. Easy keeps every other non-elite.
+export const ROSTER = {
+  forest: { 1: ['swarm', 'mimic'], 2: ['exploder', 'ambusher', 'pack', 'swarm'], 3: ['blocker', 'wyvern', 'charger', 'dragon', 'exploder'],
+    4: ['sniper', 'latcher', 'shieldbearer', 'queen', 'ambusher'], 5: ['bomber', 'pack', 'sniper', 'blocker', 'latcher', 'wyvern'] },
+  other: { 1: ['swarm', 'pack', 'exploder', 'mimic'], 2: ['blocker', 'ambusher', 'wyvern', 'latcher', 'swarm'], 3: ['sniper', 'charger', 'shieldbearer', 'dragon', 'pack'],
+    4: ['bomber', 'queen', 'exploder', 'mimic', 'ambusher'], 5: ['blocker', 'sniper', 'wyvern', 'charger', 'latcher', 'bomber', 'swarm'] }
+};
+export const ELITES = new Set(['dragon', 'queen']);
 export const CAMPAIGN = [...FOREST_LEVELS.map(l => ({ ...l, biome: 'forest', boss: l.boss ? 'beetle' : undefined, setPiece: FOREST_SET[l.id] })), ...NEW_LEVELS]
   .map(l => LAYOUTS[l.id] ? { ...l, layout: LAYOUTS[l.id] } : l);
 export const LEVEL_COUNT = CAMPAIGN.length; // 36
@@ -331,7 +421,7 @@ export const WEAPONS = {
   torch: { name: 'Ember Torch', tier: 'standard', after: 14, price: 450, icon: 'tundra/weapon_1', kind: 'flame', cooldown: .09, dmg: .45, range: 10, burn: 2, blurb: 'Short cone that burns · melts ice shells', t1: '+2 m reach' },
   rotary: { name: 'Rotary Gun', tier: 'standard', after: 16, price: 520, icon: 'tundra/weapon_2', kind: 'hitscan', cooldown: .045, spinUp: 1, dmg: .58, range: 55, pellets: [0], wobble: .02, slow: .15, blurb: 'Spins up to a huge fire rate · you run 15% slower', t1: 'Spins up twice as fast' },
   arc: { name: 'Arc Carbine', tier: 'standard', after: 20, price: 600, icon: 'volcano/weapon_1', kind: 'hitscan', cooldown: .32, dmg: 1.5, range: 50, pellets: [0], chain: 3, blurb: 'Lightning that chains between 3 enemies', t1: 'Chains to 4 enemies' },
-  seeker: { name: 'Seeker Pod', tier: 'standard', after: 22, price: 650, icon: 'volcano/weapon_2', kind: 'rocket', cooldown: 1.35, dmg: 2.2, range: 70, salvo: 3, blurb: 'Fires 3 small homing rockets · slow reload', t1: '25% faster reload' },
+  seeker: { name: 'Seeker Pod', tier: 'standard', after: 22, price: 650, icon: 'volcano/weapon_2', kind: 'rocket', cooldown: 1.35, dmg: 2.2, range: 70, salvo: 3, blurb: 'Fires 3 small rockets in a spread · slow reload', t1: '25% faster reload' },
   repulsor: { name: 'Void Repulsor', tier: 'standard', after: 26, price: 700, icon: 'space/weapon_1', kind: 'blast', cooldown: .9, dmg: 1.6, range: 14, blurb: 'Blast that knocks enemies back and stuns them', t1: 'Stun lasts 1.5 s' },
   mine: { name: 'Gravity Mine', tier: 'standard', after: 28, price: 750, icon: 'space/weapon_mine', kind: 'mine', cooldown: 2.4, dmg: 3, range: 30, pull: 5, blurb: 'Sticks to the ground and pulls enemies within 5 m together for 2 s', t1: 'Pull radius 7 m' },
   triple: { name: 'Triple Shot', tier: 'boss', boss: 6, price: 0, icon: 'sprites/weapon_triple', kind: 'hitscan', cooldown: .15, dmg: 1, range: 70, pellets: [-.075, 0, .075], blurb: 'Spread of 3 · swarms and drones',
@@ -340,7 +430,7 @@ export const WEAPONS = {
     t1: '25% faster fire', t2: '+20% damage', t3: 'Pierces 5 enemies' },
   launcher: { name: 'Grenade Launcher', tier: 'boss', boss: 18, price: 0, icon: 'tundra/weapon_3', kind: 'shell', cooldown: .85, dmg: 3, range: 50, radius: 3, blurb: 'Arcing splash · armour and groups',
     t1: '+20% radius', t2: '+15% fire rate', t3: 'Shells split into 3 bomblets' },
-  orb: { name: 'Orb Blaster', tier: 'boss', boss: 24, price: 0, icon: 'volcano/weapon_3', kind: 'orb', cooldown: .5, dmg: 2.2, range: 60, blurb: 'Slow homing orbs · fast movers and teleporters',
+  orb: { name: 'Orb Blaster', tier: 'boss', boss: 24, price: 0, icon: 'volcano/weapon_3', kind: 'orb', cooldown: .5, dmg: 2.2, range: 60, blurb: 'Slow heavy orbs that fly straight · big hits',
     t1: 'Faster orbs', t2: '+15% damage', t3: 'Orbs split in two on a hit' },
   cannon: { name: 'Light Cannon', tier: 'boss', boss: 30, price: 0, icon: 'space/weapon_2', kind: 'beam', cooldown: .4, charge: .9, dmg: 7, range: 70, blurb: 'Hold to charge a piercing beam · bosses',
     t1: '25% faster charge', t2: 'Longer, wider beam', t3: 'The beam jumps to a second target' }

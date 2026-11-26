@@ -1,0 +1,1895 @@
+{
+ "checks": {
+  "Drone pickups give 25 -> 35 -> 45 -> 55 -> 60%, then a pickup is ignored": {
+   "pass": true,
+   "detail": {
+    "shares": [
+     25,
+     35,
+     45,
+     55,
+     60
+    ],
+    "capIgnored": true
+   }
+  },
+  "Drone art steps up in three tiers": {
+   "pass": true,
+   "detail": [
+    "drone/p_pod_t1",
+    "drone/p_pod_t1",
+    "drone/p_pod_t2",
+    "drone/p_pod_t2",
+    "drone/p_pod_t3"
+   ]
+  },
+  "Drone takes the damage you take (20 -> 40 of 60) and a pickup at the cap repairs it": {
+   "pass": true,
+   "detail": {
+    "shares": [
+     25,
+     35,
+     45,
+     55,
+     60
+    ],
+    "arts": [
+     "drone/p_pod_t1",
+     "drone/p_pod_t1",
+     "drone/p_pod_t2",
+     "drone/p_pod_t2",
+     "drone/p_pod_t3"
+    ],
+    "capIgnored": true,
+    "hpAfter20": 40,
+    "repairedAtCap": true,
+    "destroyed": true,
+    "afterRebuild": 25,
+    "dps": {
+     "rifle": {
+      "got": 3.69,
+      "want": 3.75,
+      "weapon": 8.33
+     },
+     "scatter": {
+      "got": 3.76,
+      "want": 3.92,
+      "weapon": 8.71
+     },
+     "marksman": {
+      "got": 3.24,
+      "want": 3.27,
+      "weapon": 7.27
+     },
+     "seeker": {
+      "got": 2.11,
+      "want": 2.2,
+      "weapon": 4.89
+     }
+    },
+    "carriedOver": 0,
+    "onRightShoulder": true,
+    "flying": true
+   }
+  },
+  "Drone can be destroyed (bracket stays) and the next pickup mounts a new one at 25%": {
+   "pass": true,
+   "detail": {
+    "shares": [
+     25,
+     35,
+     45,
+     55,
+     60
+    ],
+    "arts": [
+     "drone/p_pod_t1",
+     "drone/p_pod_t1",
+     "drone/p_pod_t2",
+     "drone/p_pod_t2",
+     "drone/p_pod_t3"
+    ],
+    "capIgnored": true,
+    "hpAfter20": 40,
+    "repairedAtCap": true,
+    "destroyed": true,
+    "afterRebuild": 25,
+    "dps": {
+     "rifle": {
+      "got": 3.69,
+      "want": 3.75,
+      "weapon": 8.33
+     },
+     "scatter": {
+      "got": 3.76,
+      "want": 3.92,
+      "weapon": 8.71
+     },
+     "marksman": {
+      "got": 3.24,
+      "want": 3.27,
+      "weapon": 7.27
+     },
+     "seeker": {
+      "got": 2.11,
+      "want": 2.2,
+      "weapon": 4.89
+     }
+    },
+    "carriedOver": 0,
+    "onRightShoulder": true,
+    "flying": true
+   }
+  },
+  "Drone damage per second is its share of the current weapon (power bolts not counted)": {
+   "pass": true,
+   "detail": {
+    "rifle": {
+     "got": 3.69,
+     "want": 3.75,
+     "weapon": 8.33
+    },
+    "scatter": {
+     "got": 3.76,
+     "want": 3.92,
+     "weapon": 8.71
+    },
+    "marksman": {
+     "got": 3.24,
+     "want": 3.27,
+     "weapon": 7.27
+    },
+    "seeker": {
+     "got": 2.11,
+     "want": 2.2,
+     "weapon": 4.89
+    }
+   }
+  },
+  "Drone sits on the right shoulder (no flying drone) and does not carry over between levels": {
+   "pass": true,
+   "detail": {
+    "onRightShoulder": true,
+    "carriedOver": 0
+   }
+  },
+  "A shot through the crosshair hits the enemy painted under it": {
+   "pass": true,
+   "detail": {
+    "centreHit": true,
+    "emptyPixel": [
+     0.02,
+     0.98
+    ],
+    "transparentMiss": true,
+    "maskBuilt": true,
+    "levelHit": true,
+    "firstOnLine": true,
+    "ringShown": false,
+    "reticleRed": true,
+    "rocketTurn": 0,
+    "orbTurn": 0
+   }
+  },
+  "Transparent pixels inside an enemy picture are not hit (hit area = visible art)": {
+   "pass": true,
+   "detail": {
+    "centreHit": true,
+    "emptyPixel": [
+     0.02,
+     0.98
+    ],
+    "transparentMiss": true,
+    "maskBuilt": true,
+    "levelHit": true,
+    "firstOnLine": true,
+    "ringShown": false,
+    "reticleRed": true,
+    "rocketTurn": 0,
+    "orbTurn": 0
+   }
+  },
+  "Enemies level with you can be hit": {
+   "pass": true,
+   "detail": {
+    "centreHit": true,
+    "emptyPixel": [
+     0.02,
+     0.98
+    ],
+    "transparentMiss": true,
+    "maskBuilt": true,
+    "levelHit": true,
+    "firstOnLine": true,
+    "ringShown": false,
+    "reticleRed": true,
+    "rocketTurn": 0,
+    "orbTurn": 0
+   }
+  },
+  "The first enemy on the line takes the hit, not the one behind it": {
+   "pass": true,
+   "detail": {
+    "centreHit": true,
+    "emptyPixel": [
+     0.02,
+     0.98
+    ],
+    "transparentMiss": true,
+    "maskBuilt": true,
+    "levelHit": true,
+    "firstOnLine": true,
+    "ringShown": false,
+    "reticleRed": true,
+    "rocketTurn": 0,
+    "orbTurn": 0
+   }
+  },
+  "No target ring around the enemy under the crosshair (the crosshair turns red instead)": {
+   "pass": true,
+   "detail": {
+    "centreHit": true,
+    "emptyPixel": [
+     0.02,
+     0.98
+    ],
+    "transparentMiss": true,
+    "maskBuilt": true,
+    "levelHit": true,
+    "firstOnLine": true,
+    "ringShown": false,
+    "reticleRed": true,
+    "rocketTurn": 0,
+    "orbTurn": 0
+   }
+  },
+  "Rockets and orbs fly straight (no homing)": {
+   "pass": true,
+   "detail": {
+    "rocketTurn": 0,
+    "orbTurn": 0
+   }
+  },
+  "No role errors in any biome": {
+   "pass": true,
+   "detail": {}
+  },
+  "Blocker: plants a shell wall, front hits soak into the shell, flank hits hurt, a grenade breaks it": {
+   "pass": true,
+   "detail": {
+    "braced": true,
+    "frontAbsorbed": true,
+    "flankHurts": true,
+    "wall": true,
+    "grenadeBreaks": true,
+    "wallGone": true
+   }
+  },
+  "Exploder: swells and bursts near you; killing it sets it off": {
+   "pass": true,
+   "detail": {
+    "swelled": true,
+    "blastHurts": true,
+    "killSetsOff": true
+   }
+  },
+  "Ambusher: marked ground, bullets cannot reach it hidden (a blast flushes it out), erupts at ~8.5 m and attacks": {
+   "pass": true,
+   "detail": [
+    8.3,
+    8.3,
+    8.3,
+    8.3,
+    8.3,
+    8.3
+   ]
+  },
+  "Raptor pack: three hold until the leader screeches, then run you down": {
+   "pass": true,
+   "detail": {
+    "n": 3,
+    "leaderCalled": true,
+    "released": true,
+    "attacks": true
+   }
+  },
+  "Wyvern: flies, dives and spits onto a marked spot": {
+   "pass": true,
+   "detail": {
+    "dove": true,
+    "spitHurts": true,
+    "flying": true
+   }
+  },
+  "Elite dragon: blocks the path, breath down a marked lane (dodgeable), chest weak point, path opens when it dies": {
+   "pass": true,
+   "detail": {
+    "blocks": true,
+    "breathHurts": true,
+    "dodged": true,
+    "weakInBreath": true,
+    "passableAfter": true
+   }
+  },
+  "Charger: a hit in its lane; dodged, it is stunned with a weak point": {
+   "pass": true,
+   "detail": {
+    "hitInLane": true,
+    "stunnedOnMiss": true,
+    "weakWhenStunned": true
+   }
+  },
+  "Sniper: red laser, hits a still target, misses if you move after the lock": {
+   "pass": true,
+   "detail": {
+    "laser": true,
+    "hitsStill": true,
+    "missesMover": true
+   }
+  },
+  "Latcher: clings, drains health, a roll shakes it off": {
+   "pass": true,
+   "detail": {
+    "latched": true,
+    "drains": true,
+    "rollShakesOff": true
+   }
+  },
+  "Mimic: looks like a chest, opens within ~6.5 m, bites, drops coins and a power-up": {
+   "pass": true,
+   "detail": [
+    6.3,
+    6.3,
+    6.3,
+    6.3,
+    6.3,
+    6.3
+   ]
+  },
+  "Shield-bearer: dome over its escorts (no damage), not itself, gone when it dies": {
+   "pass": true,
+   "detail": {
+    "escorts": 2,
+    "casting": true,
+    "shielded": true,
+    "noDamageInDome": true,
+    "selfNotShielded": true,
+    "domeDropsOnDeath": true
+   }
+  },
+  "Swarm: six critters that bite, one hit each": {
+   "pass": true,
+   "detail": {
+    "n": 6,
+    "bites": true,
+    "oneHit": true
+   }
+  },
+  "Brood queen: stays back, spawns young, egg sac weak point, young die with her": {
+   "pass": true,
+   "detail": {
+    "young": 4,
+    "eggSacWeak": true,
+    "staysBack": true,
+    "youngDie": true
+   }
+  },
+  "Bomber: flies high and drops bombs on marked spots": {
+   "pass": true,
+   "detail": {
+    "marked": true,
+    "bombHurts": true,
+    "high": true
+   }
+  },
+  "Every new role appears in all six biomes (Easy and Medium)": {
+   "pass": true,
+   "detail": {
+    "easy:forest": 14,
+    "easy:desert": 14,
+    "easy:tundra": 14,
+    "easy:volcano": 14,
+    "easy:space": 14,
+    "easy:city": 14,
+    "medium:forest": 14,
+    "medium:desert": 14,
+    "medium:tundra": 14,
+    "medium:volcano": 14,
+    "medium:space": 14,
+    "medium:city": 14
+   }
+  },
+  "All 30 levels can be finished (invulnerable bot, Medium)": {
+   "pass": true,
+   "detail": {
+    "1": "finish 950 m 175 s",
+    "2": "finish 950 m 196 s",
+    "3": "finish 950 m 217 s",
+    "4": "finish 950 m 230 s",
+    "5": "finish 950 m 175 s",
+    "7": "finish 950 m 166 s",
+    "8": "finish 950 m 166 s",
+    "9": "finish 950 m 223 s",
+    "10": "finish 950 m 168 s",
+    "11": "finish 950 m 166 s",
+    "13": "finish 950 m 166 s",
+    "14": "finish 950 m 166 s",
+    "15": "finish 950 m 168 s",
+    "16": "finish 950 m 169 s",
+    "17": "finish 950 m 166 s",
+    "19": "finish 950 m 166 s",
+    "20": "finish 950 m 170 s",
+    "21": "finish 950 m 166 s",
+    "22": "finish 950 m 180 s",
+    "23": "finish 950 m 172 s",
+    "25": "finish 950 m 164 s",
+    "26": "finish 950 m 167 s",
+    "27": "finish 950 m 163 s",
+    "28": "finish 950 m 164 s",
+    "29": "finish 950 m 168 s",
+    "31": "finish 950 m 168 s",
+    "32": "finish 950 m 225 s",
+    "33": "finish 950 m 183 s",
+    "34": "finish 950 m 168 s",
+    "35": "finish 950 m 175 s"
+   }
+  },
+  "Easy bot (no dodging, fixed weave) clears most levels": {
+   "pass": true,
+   "detail": {
+    "cleared": "30 / 30",
+    "levels": {
+     "1": {
+      "mode": "finish",
+      "health": 4
+     },
+     "2": {
+      "mode": "finish",
+      "health": 1
+     },
+     "3": {
+      "mode": "finish",
+      "health": 74
+     },
+     "4": {
+      "mode": "finish",
+      "health": 40
+     },
+     "5": {
+      "mode": "finish",
+      "health": 57
+     },
+     "7": {
+      "mode": "finish",
+      "health": 94
+     },
+     "8": {
+      "mode": "finish",
+      "health": 88
+     },
+     "9": {
+      "mode": "finish",
+      "health": 87
+     },
+     "10": {
+      "mode": "finish",
+      "health": 100
+     },
+     "11": {
+      "mode": "finish",
+      "health": 78
+     },
+     "13": {
+      "mode": "finish",
+      "health": 79
+     },
+     "14": {
+      "mode": "finish",
+      "health": 92
+     },
+     "15": {
+      "mode": "finish",
+      "health": 87
+     },
+     "16": {
+      "mode": "finish",
+      "health": 42
+     },
+     "17": {
+      "mode": "finish",
+      "health": 39
+     },
+     "19": {
+      "mode": "finish",
+      "health": 73
+     },
+     "20": {
+      "mode": "finish",
+      "health": 63
+     },
+     "21": {
+      "mode": "finish",
+      "health": 100
+     },
+     "22": {
+      "mode": "finish",
+      "health": 45
+     },
+     "23": {
+      "mode": "finish",
+      "health": 52
+     },
+     "25": {
+      "mode": "finish",
+      "health": 64
+     },
+     "26": {
+      "mode": "finish",
+      "health": 42
+     },
+     "27": {
+      "mode": "finish",
+      "health": 42
+     },
+     "28": {
+      "mode": "finish",
+      "health": 70
+     },
+     "29": {
+      "mode": "finish",
+      "health": 39
+     },
+     "31": {
+      "mode": "finish",
+      "health": 63
+     },
+     "32": {
+      "mode": "finish",
+      "health": 88
+     },
+     "33": {
+      "mode": "finish",
+      "health": 42
+     },
+     "34": {
+      "mode": "finish",
+      "health": 64
+     },
+     "35": {
+      "mode": "finish",
+      "health": 30
+     }
+    }
+   }
+  },
+  "No page or console errors": {
+   "pass": true,
+   "detail": []
+  }
+ },
+ "data": {
+  "drone": {
+   "shares": [
+    25,
+    35,
+    45,
+    55,
+    60
+   ],
+   "arts": [
+    "drone/p_pod_t1",
+    "drone/p_pod_t1",
+    "drone/p_pod_t2",
+    "drone/p_pod_t2",
+    "drone/p_pod_t3"
+   ],
+   "capIgnored": true,
+   "hpAfter20": 40,
+   "repairedAtCap": true,
+   "destroyed": true,
+   "afterRebuild": 25,
+   "dps": {
+    "rifle": {
+     "got": 3.69,
+     "want": 3.75,
+     "weapon": 8.33
+    },
+    "scatter": {
+     "got": 3.76,
+     "want": 3.92,
+     "weapon": 8.71
+    },
+    "marksman": {
+     "got": 3.24,
+     "want": 3.27,
+     "weapon": 7.27
+    },
+    "seeker": {
+     "got": 2.11,
+     "want": 2.2,
+     "weapon": 4.89
+    }
+   },
+   "carriedOver": 0,
+   "onRightShoulder": true,
+   "flying": true
+  },
+  "aim": {
+   "centreHit": true,
+   "emptyPixel": [
+    0.02,
+    0.98
+   ],
+   "transparentMiss": true,
+   "maskBuilt": true,
+   "levelHit": true,
+   "firstOnLine": true,
+   "ringShown": false,
+   "reticleRed": true,
+   "rocketTurn": 0,
+   "orbTurn": 0
+  },
+  "roles": {
+   "forest": {
+    "blocker": {
+     "braced": true,
+     "frontAbsorbed": true,
+     "flankHurts": true,
+     "wall": true,
+     "grenadeBreaks": true,
+     "wallGone": true
+    },
+    "exploder": {
+     "swelled": true,
+     "blastHurts": true,
+     "killSetsOff": true
+    },
+    "ambusher": {
+     "tellShown": true,
+     "hiddenSafe": true,
+     "blastFlushes": true,
+     "erupted": true,
+     "eruptRange": 8.3,
+     "attacks": true
+    },
+    "pack": {
+     "n": 3,
+     "leaderCalled": true,
+     "released": true,
+     "attacks": true
+    },
+    "wyvern": {
+     "dove": true,
+     "spitHurts": true,
+     "flying": true
+    },
+    "dragon": {
+     "blocks": true,
+     "breathHurts": true,
+     "dodged": true,
+     "weakInBreath": true,
+     "passableAfter": true
+    },
+    "charger": {
+     "hitInLane": true,
+     "stunnedOnMiss": true,
+     "weakWhenStunned": true
+    },
+    "sniper": {
+     "laser": true,
+     "hitsStill": true,
+     "missesMover": true
+    },
+    "latcher": {
+     "latched": true,
+     "drains": true,
+     "rollShakesOff": true
+    },
+    "mimic": {
+     "looksLikeChest": true,
+     "revealedAt": 6.3,
+     "bites": true,
+     "loot": true
+    },
+    "shieldbearer": {
+     "escorts": 2,
+     "casting": true,
+     "shielded": true,
+     "noDamageInDome": true,
+     "selfNotShielded": true,
+     "domeDropsOnDeath": true
+    },
+    "swarm": {
+     "n": 6,
+     "bites": true,
+     "oneHit": true
+    },
+    "queen": {
+     "young": 4,
+     "eggSacWeak": true,
+     "staysBack": true,
+     "youngDie": true
+    },
+    "bomber": {
+     "marked": true,
+     "bombHurts": true,
+     "high": true
+    }
+   },
+   "desert": {
+    "blocker": {
+     "braced": true,
+     "frontAbsorbed": true,
+     "flankHurts": true,
+     "wall": true,
+     "grenadeBreaks": true,
+     "wallGone": true
+    },
+    "exploder": {
+     "swelled": true,
+     "blastHurts": true,
+     "killSetsOff": true
+    },
+    "ambusher": {
+     "tellShown": true,
+     "hiddenSafe": true,
+     "blastFlushes": true,
+     "erupted": true,
+     "eruptRange": 8.3,
+     "attacks": true
+    },
+    "pack": {
+     "n": 3,
+     "leaderCalled": true,
+     "released": true,
+     "attacks": true
+    },
+    "wyvern": {
+     "dove": true,
+     "spitHurts": true,
+     "flying": true
+    },
+    "dragon": {
+     "blocks": true,
+     "breathHurts": true,
+     "dodged": true,
+     "weakInBreath": true,
+     "passableAfter": true
+    },
+    "charger": {
+     "hitInLane": true,
+     "stunnedOnMiss": true,
+     "weakWhenStunned": true
+    },
+    "sniper": {
+     "laser": true,
+     "hitsStill": true,
+     "missesMover": true
+    },
+    "latcher": {
+     "latched": true,
+     "drains": true,
+     "rollShakesOff": true
+    },
+    "mimic": {
+     "looksLikeChest": true,
+     "revealedAt": 6.3,
+     "bites": true,
+     "loot": true
+    },
+    "shieldbearer": {
+     "escorts": 2,
+     "casting": true,
+     "shielded": true,
+     "noDamageInDome": true,
+     "selfNotShielded": true,
+     "domeDropsOnDeath": true
+    },
+    "swarm": {
+     "n": 6,
+     "bites": true,
+     "oneHit": true
+    },
+    "queen": {
+     "young": 4,
+     "eggSacWeak": true,
+     "staysBack": true,
+     "youngDie": true
+    },
+    "bomber": {
+     "marked": true,
+     "bombHurts": true,
+     "high": true
+    }
+   },
+   "tundra": {
+    "blocker": {
+     "braced": true,
+     "frontAbsorbed": true,
+     "flankHurts": true,
+     "wall": true,
+     "grenadeBreaks": true,
+     "wallGone": true
+    },
+    "exploder": {
+     "swelled": true,
+     "blastHurts": true,
+     "killSetsOff": true
+    },
+    "ambusher": {
+     "tellShown": true,
+     "hiddenSafe": true,
+     "blastFlushes": true,
+     "erupted": true,
+     "eruptRange": 8.3,
+     "attacks": true
+    },
+    "pack": {
+     "n": 3,
+     "leaderCalled": true,
+     "released": true,
+     "attacks": true
+    },
+    "wyvern": {
+     "dove": true,
+     "spitHurts": true,
+     "flying": true
+    },
+    "dragon": {
+     "blocks": true,
+     "breathHurts": true,
+     "dodged": true,
+     "weakInBreath": true,
+     "passableAfter": true
+    },
+    "charger": {
+     "hitInLane": true,
+     "stunnedOnMiss": true,
+     "weakWhenStunned": true
+    },
+    "sniper": {
+     "laser": true,
+     "hitsStill": true,
+     "missesMover": true
+    },
+    "latcher": {
+     "latched": true,
+     "drains": true,
+     "rollShakesOff": true
+    },
+    "mimic": {
+     "looksLikeChest": true,
+     "revealedAt": 6.3,
+     "bites": true,
+     "loot": true
+    },
+    "shieldbearer": {
+     "escorts": 2,
+     "casting": true,
+     "shielded": true,
+     "noDamageInDome": true,
+     "selfNotShielded": true,
+     "domeDropsOnDeath": true
+    },
+    "swarm": {
+     "n": 6,
+     "bites": true,
+     "oneHit": true
+    },
+    "queen": {
+     "young": 4,
+     "eggSacWeak": true,
+     "staysBack": true,
+     "youngDie": true
+    },
+    "bomber": {
+     "marked": true,
+     "bombHurts": true,
+     "high": true
+    }
+   },
+   "volcano": {
+    "blocker": {
+     "braced": true,
+     "frontAbsorbed": true,
+     "flankHurts": true,
+     "wall": true,
+     "grenadeBreaks": true,
+     "wallGone": true
+    },
+    "exploder": {
+     "swelled": true,
+     "blastHurts": true,
+     "killSetsOff": true
+    },
+    "ambusher": {
+     "tellShown": true,
+     "hiddenSafe": true,
+     "blastFlushes": true,
+     "erupted": true,
+     "eruptRange": 8.3,
+     "attacks": true
+    },
+    "pack": {
+     "n": 3,
+     "leaderCalled": true,
+     "released": true,
+     "attacks": true
+    },
+    "wyvern": {
+     "dove": true,
+     "spitHurts": true,
+     "flying": true
+    },
+    "dragon": {
+     "blocks": true,
+     "breathHurts": true,
+     "dodged": true,
+     "weakInBreath": true,
+     "passableAfter": true
+    },
+    "charger": {
+     "hitInLane": true,
+     "stunnedOnMiss": true,
+     "weakWhenStunned": true
+    },
+    "sniper": {
+     "laser": true,
+     "hitsStill": true,
+     "missesMover": true
+    },
+    "latcher": {
+     "latched": true,
+     "drains": true,
+     "rollShakesOff": true
+    },
+    "mimic": {
+     "looksLikeChest": true,
+     "revealedAt": 6.3,
+     "bites": true,
+     "loot": true
+    },
+    "shieldbearer": {
+     "escorts": 2,
+     "casting": true,
+     "shielded": true,
+     "noDamageInDome": true,
+     "selfNotShielded": true,
+     "domeDropsOnDeath": true
+    },
+    "swarm": {
+     "n": 6,
+     "bites": true,
+     "oneHit": true
+    },
+    "queen": {
+     "young": 4,
+     "eggSacWeak": true,
+     "staysBack": true,
+     "youngDie": true
+    },
+    "bomber": {
+     "marked": true,
+     "bombHurts": true,
+     "high": true
+    }
+   },
+   "space": {
+    "blocker": {
+     "braced": true,
+     "frontAbsorbed": true,
+     "flankHurts": true,
+     "wall": true,
+     "grenadeBreaks": true,
+     "wallGone": true
+    },
+    "exploder": {
+     "swelled": true,
+     "blastHurts": true,
+     "killSetsOff": true
+    },
+    "ambusher": {
+     "tellShown": true,
+     "hiddenSafe": true,
+     "blastFlushes": true,
+     "erupted": true,
+     "eruptRange": 8.3,
+     "attacks": true
+    },
+    "pack": {
+     "n": 3,
+     "leaderCalled": true,
+     "released": true,
+     "attacks": true
+    },
+    "wyvern": {
+     "dove": true,
+     "spitHurts": true,
+     "flying": true
+    },
+    "dragon": {
+     "blocks": true,
+     "breathHurts": true,
+     "dodged": true,
+     "weakInBreath": true,
+     "passableAfter": true
+    },
+    "charger": {
+     "hitInLane": true,
+     "stunnedOnMiss": true,
+     "weakWhenStunned": true
+    },
+    "sniper": {
+     "laser": true,
+     "hitsStill": true,
+     "missesMover": true
+    },
+    "latcher": {
+     "latched": true,
+     "drains": true,
+     "rollShakesOff": true
+    },
+    "mimic": {
+     "looksLikeChest": true,
+     "revealedAt": 6.3,
+     "bites": true,
+     "loot": true
+    },
+    "shieldbearer": {
+     "escorts": 2,
+     "casting": true,
+     "shielded": true,
+     "noDamageInDome": true,
+     "selfNotShielded": true,
+     "domeDropsOnDeath": true
+    },
+    "swarm": {
+     "n": 6,
+     "bites": true,
+     "oneHit": true
+    },
+    "queen": {
+     "young": 4,
+     "eggSacWeak": true,
+     "staysBack": true,
+     "youngDie": true
+    },
+    "bomber": {
+     "marked": true,
+     "bombHurts": true,
+     "high": true
+    }
+   },
+   "city": {
+    "blocker": {
+     "braced": true,
+     "frontAbsorbed": true,
+     "flankHurts": true,
+     "wall": true,
+     "grenadeBreaks": true,
+     "wallGone": true
+    },
+    "exploder": {
+     "swelled": true,
+     "blastHurts": true,
+     "killSetsOff": true
+    },
+    "ambusher": {
+     "tellShown": true,
+     "hiddenSafe": true,
+     "blastFlushes": true,
+     "erupted": true,
+     "eruptRange": 8.3,
+     "attacks": true
+    },
+    "pack": {
+     "n": 3,
+     "leaderCalled": true,
+     "released": true,
+     "attacks": true
+    },
+    "wyvern": {
+     "dove": true,
+     "spitHurts": true,
+     "flying": true
+    },
+    "dragon": {
+     "blocks": true,
+     "breathHurts": true,
+     "dodged": true,
+     "weakInBreath": true,
+     "passableAfter": true
+    },
+    "charger": {
+     "hitInLane": true,
+     "stunnedOnMiss": true,
+     "weakWhenStunned": true
+    },
+    "sniper": {
+     "laser": true,
+     "hitsStill": true,
+     "missesMover": true
+    },
+    "latcher": {
+     "latched": true,
+     "drains": true,
+     "rollShakesOff": true
+    },
+    "mimic": {
+     "looksLikeChest": true,
+     "revealedAt": 6.3,
+     "bites": true,
+     "loot": true
+    },
+    "shieldbearer": {
+     "escorts": 2,
+     "casting": true,
+     "shielded": true,
+     "noDamageInDome": true,
+     "selfNotShielded": true,
+     "domeDropsOnDeath": true
+    },
+    "swarm": {
+     "n": 6,
+     "bites": true,
+     "oneHit": true
+    },
+    "queen": {
+     "young": 4,
+     "eggSacWeak": true,
+     "staysBack": true,
+     "youngDie": true
+    },
+    "bomber": {
+     "marked": true,
+     "bombHurts": true,
+     "high": true
+    }
+   }
+  },
+  "coverage": {
+   "easy:forest": {
+    "count": 14,
+    "per": {
+     "1": [
+      "mimic@318",
+      "swarm@653"
+     ],
+     "2": [
+      "pack@262",
+      "exploder@485",
+      "ambusher@708"
+     ],
+     "3": [
+      "blocker@234",
+      "dragon@441",
+      "wyvern@569",
+      "charger@736"
+     ],
+     "4": [
+      "latcher@234",
+      "queen@441",
+      "shieldbearer@540",
+      "sniper@736"
+     ],
+     "5": [
+      "sniper@262",
+      "bomber@485",
+      "pack@708"
+     ]
+    }
+   },
+   "easy:desert": {
+    "count": 14,
+    "per": {
+     "7": [
+      "mimic@234",
+      "swarm@401",
+      "pack@569",
+      "exploder@736"
+     ],
+     "8": [
+      "blocker@234",
+      "ambusher@401",
+      "wyvern@569",
+      "latcher@736"
+     ],
+     "9": [
+      "sniper@234",
+      "dragon@441",
+      "charger@540",
+      "shieldbearer@736"
+     ],
+     "10": [
+      "bomber@262",
+      "queen@485",
+      "exploder@708"
+     ],
+     "11": [
+      "wyvern@262",
+      "blocker@485",
+      "sniper@708"
+     ]
+    }
+   },
+   "easy:tundra": {
+    "count": 14,
+    "per": {
+     "13": [
+      "pack@234",
+      "exploder@401",
+      "mimic@569",
+      "swarm@736"
+     ],
+     "14": [
+      "wyvern@234",
+      "latcher@401",
+      "blocker@569",
+      "ambusher@736"
+     ],
+     "15": [
+      "sniper@234",
+      "dragon@441",
+      "charger@569",
+      "shieldbearer@736"
+     ],
+     "16": [
+      "bomber@262",
+      "queen@485",
+      "exploder@708"
+     ],
+     "17": [
+      "wyvern@262",
+      "blocker@516",
+      "sniper@708"
+     ]
+    }
+   },
+   "easy:volcano": {
+    "count": 14,
+    "per": {
+     "19": [
+      "mimic@234",
+      "swarm@401",
+      "pack@569",
+      "exploder@736"
+     ],
+     "20": [
+      "blocker@234",
+      "ambusher@516",
+      "wyvern@569",
+      "latcher@736"
+     ],
+     "21": [
+      "sniper@234",
+      "dragon@526",
+      "charger@569",
+      "shieldbearer@736"
+     ],
+     "22": [
+      "bomber@262",
+      "queen@485",
+      "exploder@708"
+     ],
+     "23": [
+      "wyvern@262",
+      "blocker@485",
+      "sniper@708"
+     ]
+    }
+   },
+   "easy:space": {
+    "count": 14,
+    "per": {
+     "25": [
+      "pack@234",
+      "exploder@401",
+      "mimic@569",
+      "swarm@736"
+     ],
+     "26": [
+      "wyvern@234",
+      "latcher@401",
+      "blocker@569",
+      "ambusher@736"
+     ],
+     "27": [
+      "sniper@234",
+      "dragon@441",
+      "charger@569",
+      "shieldbearer@736"
+     ],
+     "28": [
+      "bomber@262",
+      "queen@485",
+      "exploder@708"
+     ],
+     "29": [
+      "wyvern@262",
+      "blocker@485",
+      "sniper@708"
+     ]
+    }
+   },
+   "easy:city": {
+    "count": 14,
+    "per": {
+     "31": [
+      "mimic@234",
+      "swarm@401",
+      "pack@569",
+      "exploder@736"
+     ],
+     "32": [
+      "blocker@234",
+      "ambusher@401",
+      "wyvern@540",
+      "latcher@736"
+     ],
+     "33": [
+      "sniper@234",
+      "dragon@441",
+      "charger@500",
+      "shieldbearer@736"
+     ],
+     "34": [
+      "bomber@262",
+      "queen@516",
+      "exploder@708"
+     ],
+     "35": [
+      "wyvern@262",
+      "blocker@485",
+      "sniper@708"
+     ]
+    }
+   },
+   "medium:forest": {
+    "count": 14,
+    "per": {
+     "1": [
+      "mimic@318",
+      "swarm@653"
+     ],
+     "2": [
+      "pack@234",
+      "swarm@401",
+      "exploder@500",
+      "ambusher@736"
+     ],
+     "3": [
+      "exploder@217",
+      "blocker@351",
+      "dragon@485",
+      "wyvern@619",
+      "charger@753"
+     ],
+     "4": [
+      "sniper@217",
+      "latcher@351",
+      "queen@485",
+      "shieldbearer@540",
+      "ambusher@753"
+     ],
+     "5": [
+      "wyvern@206",
+      "bomber@318",
+      "pack@429",
+      "sniper@541",
+      "blocker@653",
+      "latcher@764"
+     ]
+    }
+   },
+   "medium:desert": {
+    "count": 14,
+    "per": {
+     "7": [
+      "mimic@234",
+      "swarm@401",
+      "pack@569",
+      "exploder@736"
+     ],
+     "8": [
+      "latcher@217",
+      "swarm@351",
+      "blocker@485",
+      "ambusher@619",
+      "wyvern@753"
+     ],
+     "9": [
+      "charger@217",
+      "shieldbearer@351",
+      "dragon@485",
+      "pack@540",
+      "sniper@753"
+     ],
+     "10": [
+      "mimic@217",
+      "ambusher@351",
+      "queen@485",
+      "bomber@619",
+      "exploder@753"
+     ],
+     "11": [
+      "latcher@198",
+      "bomber@294",
+      "swarm@389",
+      "blocker@485",
+      "sniper@581",
+      "wyvern@676",
+      "charger@772"
+     ]
+    }
+   },
+   "medium:tundra": {
+    "count": 14,
+    "per": {
+     "13": [
+      "pack@234",
+      "exploder@401",
+      "mimic@569",
+      "swarm@736"
+     ],
+     "14": [
+      "swarm@217",
+      "blocker@496",
+      "ambusher@526",
+      "wyvern@619",
+      "latcher@753"
+     ],
+     "15": [
+      "pack@217",
+      "sniper@351",
+      "dragon@485",
+      "charger@619",
+      "shieldbearer@753"
+     ],
+     "16": [
+      "bomber@217",
+      "exploder@351",
+      "queen@485",
+      "mimic@619",
+      "ambusher@753"
+     ],
+     "17": [
+      "charger@198",
+      "latcher@294",
+      "bomber@389",
+      "swarm@485",
+      "blocker@581",
+      "sniper@676",
+      "wyvern@772"
+     ]
+    }
+   },
+   "medium:volcano": {
+    "count": 14,
+    "per": {
+     "19": [
+      "mimic@234",
+      "swarm@401",
+      "pack@569",
+      "exploder@736"
+     ],
+     "20": [
+      "blocker@217",
+      "wyvern@485",
+      "ambusher@516",
+      "latcher@619",
+      "swarm@753"
+     ],
+     "21": [
+      "charger@217",
+      "shieldbearer@351",
+      "dragon@526",
+      "pack@619",
+      "sniper@753"
+     ],
+     "22": [
+      "mimic@217",
+      "ambusher@351",
+      "queen@485",
+      "bomber@540",
+      "exploder@753"
+     ],
+     "23": [
+      "wyvern@198",
+      "charger@294",
+      "latcher@389",
+      "bomber@485",
+      "swarm@581",
+      "blocker@676",
+      "sniper@772"
+     ]
+    }
+   },
+   "medium:space": {
+    "count": 14,
+    "per": {
+     "25": [
+      "pack@234",
+      "exploder@401",
+      "mimic@569",
+      "swarm@736"
+     ],
+     "26": [
+      "ambusher@217",
+      "wyvern@351",
+      "latcher@485",
+      "swarm@560",
+      "blocker@753"
+     ],
+     "27": [
+      "pack@217",
+      "sniper@351",
+      "dragon@485",
+      "charger@619",
+      "shieldbearer@753"
+     ],
+     "28": [
+      "bomber@217",
+      "exploder@351",
+      "queen@485",
+      "mimic@619",
+      "ambusher@753"
+     ],
+     "29": [
+      "sniper@198",
+      "wyvern@294",
+      "charger@389",
+      "latcher@485",
+      "bomber@581",
+      "swarm@676",
+      "blocker@772"
+     ]
+    }
+   },
+   "medium:city": {
+    "count": 14,
+    "per": {
+     "31": [
+      "mimic@234",
+      "swarm@401",
+      "pack@569",
+      "exploder@736"
+     ],
+     "32": [
+      "wyvern@217",
+      "latcher@351",
+      "swarm@485",
+      "blocker@540",
+      "ambusher@753"
+     ],
+     "33": [
+      "charger@217",
+      "shieldbearer@351",
+      "dragon@485",
+      "pack@619",
+      "sniper@753"
+     ],
+     "34": [
+      "mimic@217",
+      "ambusher@516",
+      "queen@546",
+      "bomber@619",
+      "exploder@753"
+     ],
+     "35": [
+      "blocker@198",
+      "sniper@294",
+      "wyvern@389",
+      "charger@485",
+      "latcher@581",
+      "bomber@676",
+      "swarm@772"
+     ]
+    }
+   }
+  },
+  "god": {
+   "1": {
+    "mode": "finish",
+    "d": 950,
+    "t": 175,
+    "stuck": 0
+   },
+   "2": {
+    "mode": "finish",
+    "d": 950,
+    "t": 196,
+    "stuck": 0
+   },
+   "3": {
+    "mode": "finish",
+    "d": 950,
+    "t": 217,
+    "stuck": 0
+   },
+   "4": {
+    "mode": "finish",
+    "d": 950,
+    "t": 230,
+    "stuck": 0
+   },
+   "5": {
+    "mode": "finish",
+    "d": 950,
+    "t": 175,
+    "stuck": 0
+   },
+   "7": {
+    "mode": "finish",
+    "d": 950,
+    "t": 166,
+    "stuck": 0
+   },
+   "8": {
+    "mode": "finish",
+    "d": 950,
+    "t": 166,
+    "stuck": 0
+   },
+   "9": {
+    "mode": "finish",
+    "d": 950,
+    "t": 223,
+    "stuck": 0
+   },
+   "10": {
+    "mode": "finish",
+    "d": 950,
+    "t": 168,
+    "stuck": 0
+   },
+   "11": {
+    "mode": "finish",
+    "d": 950,
+    "t": 166,
+    "stuck": 0
+   },
+   "13": {
+    "mode": "finish",
+    "d": 950,
+    "t": 166,
+    "stuck": 0
+   },
+   "14": {
+    "mode": "finish",
+    "d": 950,
+    "t": 166,
+    "stuck": 0
+   },
+   "15": {
+    "mode": "finish",
+    "d": 950,
+    "t": 168,
+    "stuck": 0
+   },
+   "16": {
+    "mode": "finish",
+    "d": 950,
+    "t": 169,
+    "stuck": 0
+   },
+   "17": {
+    "mode": "finish",
+    "d": 950,
+    "t": 166,
+    "stuck": 0
+   },
+   "19": {
+    "mode": "finish",
+    "d": 950,
+    "t": 166,
+    "stuck": 0
+   },
+   "20": {
+    "mode": "finish",
+    "d": 950,
+    "t": 170,
+    "stuck": 0
+   },
+   "21": {
+    "mode": "finish",
+    "d": 950,
+    "t": 166,
+    "stuck": 0
+   },
+   "22": {
+    "mode": "finish",
+    "d": 950,
+    "t": 180,
+    "stuck": 0
+   },
+   "23": {
+    "mode": "finish",
+    "d": 950,
+    "t": 172,
+    "stuck": 0
+   },
+   "25": {
+    "mode": "finish",
+    "d": 950,
+    "t": 164,
+    "stuck": 0
+   },
+   "26": {
+    "mode": "finish",
+    "d": 950,
+    "t": 167,
+    "stuck": 0
+   },
+   "27": {
+    "mode": "finish",
+    "d": 950,
+    "t": 163,
+    "stuck": 0
+   },
+   "28": {
+    "mode": "finish",
+    "d": 950,
+    "t": 164,
+    "stuck": 0
+   },
+   "29": {
+    "mode": "finish",
+    "d": 950,
+    "t": 168,
+    "stuck": 0
+   },
+   "31": {
+    "mode": "finish",
+    "d": 950,
+    "t": 168,
+    "stuck": 0
+   },
+   "32": {
+    "mode": "finish",
+    "d": 950,
+    "t": 225,
+    "stuck": 0
+   },
+   "33": {
+    "mode": "finish",
+    "d": 950,
+    "t": 183,
+    "stuck": 0
+   },
+   "34": {
+    "mode": "finish",
+    "d": 950,
+    "t": 168,
+    "stuck": 0
+   },
+   "35": {
+    "mode": "finish",
+    "d": 950,
+    "t": 175,
+    "stuck": 0
+   }
+  },
+  "easy": {
+   "1": {
+    "mode": "finish",
+    "health": 4
+   },
+   "2": {
+    "mode": "finish",
+    "health": 1
+   },
+   "3": {
+    "mode": "finish",
+    "health": 74
+   },
+   "4": {
+    "mode": "finish",
+    "health": 40
+   },
+   "5": {
+    "mode": "finish",
+    "health": 57
+   },
+   "7": {
+    "mode": "finish",
+    "health": 94
+   },
+   "8": {
+    "mode": "finish",
+    "health": 88
+   },
+   "9": {
+    "mode": "finish",
+    "health": 87
+   },
+   "10": {
+    "mode": "finish",
+    "health": 100
+   },
+   "11": {
+    "mode": "finish",
+    "health": 78
+   },
+   "13": {
+    "mode": "finish",
+    "health": 79
+   },
+   "14": {
+    "mode": "finish",
+    "health": 92
+   },
+   "15": {
+    "mode": "finish",
+    "health": 87
+   },
+   "16": {
+    "mode": "finish",
+    "health": 42
+   },
+   "17": {
+    "mode": "finish",
+    "health": 39
+   },
+   "19": {
+    "mode": "finish",
+    "health": 73
+   },
+   "20": {
+    "mode": "finish",
+    "health": 63
+   },
+   "21": {
+    "mode": "finish",
+    "health": 100
+   },
+   "22": {
+    "mode": "finish",
+    "health": 45
+   },
+   "23": {
+    "mode": "finish",
+    "health": 52
+   },
+   "25": {
+    "mode": "finish",
+    "health": 64
+   },
+   "26": {
+    "mode": "finish",
+    "health": 42
+   },
+   "27": {
+    "mode": "finish",
+    "health": 42
+   },
+   "28": {
+    "mode": "finish",
+    "health": 70
+   },
+   "29": {
+    "mode": "finish",
+    "health": 39
+   },
+   "31": {
+    "mode": "finish",
+    "health": 63
+   },
+   "32": {
+    "mode": "finish",
+    "health": 88
+   },
+   "33": {
+    "mode": "finish",
+    "health": 42
+   },
+   "34": {
+    "mode": "finish",
+    "health": 64
+   },
+   "35": {
+    "mode": "finish",
+    "health": 30
+   }
+  }
+ }
+}
