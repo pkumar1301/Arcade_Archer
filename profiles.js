@@ -213,6 +213,23 @@ function flash(text) {
   flash.t = setTimeout(() => { ui.profileNote.textContent = ''; }, 4000);
 }
 
+// V17: tester mode (?unlock=all). Switches to a separate 'Tester' profile, so a player's own progress
+// is untouched, and opens every level and weapon on every difficulty, with coins for tiers and upgrades.
+export function unlockAll() {
+  let p = Object.values(store.profiles).find(x => x.name === 'Tester');
+  if (!p) { p = blankProfile('Tester'); store.profiles[p.id] = p; }
+  store.activeId = p.id;
+  ensureProgress(p);
+  for (const d of DIFFS) {
+    const pr = p.progress[d];
+    pr.unlocked = LEVEL_COUNT; pr.weapons = [...KNOWN_WEAPONS];
+    for (const w of BOSS_WEAPONS) pr.tiers[w] = Math.max(1, pr.tiers[w] || 0);
+    pr.uniforms = [...KNOWN_UNIFORMS]; pr.coins = Math.max(pr.coins, 50000);
+  }
+  persist(); render(); onChange(p);
+  flash('Tester mode: every level and weapon is open, with 50,000 coins for tiers and upgrades.');
+  return p;
+}
 export function initProfiles(uiRefs, changed) {
   ui = uiRefs; onChange = changed;
   load();

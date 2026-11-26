@@ -2,9 +2,9 @@
 
 **[Play it here](https://pkumar1301.github.io/Arcade_Archer/)**
 
-![V16 in-game capture: Sunken Dunes, Level 2, with two attack drones, a shield and timed power-ups active](docs/v16/v16-drones.png)
+![V17 in-game capture: the Hive Capital, Level 3, a Hive drake breathing down a marked lane](docs/v17/v17-dragon.png)
 
-A browser run-and-gun game in 3D. V15 is the complete campaign: 36 stages across six zones, a Quartermaster with 16 weapons and 12 soldier upgrades. V16 is the current build and adds attack drones, a 2-hit shield and timed power-ups.
+A browser run-and-gun game in 3D. V15 is the complete campaign: 36 stages across six zones, a Quartermaster with 16 weapons and 12 soldier upgrades. V17 is the current build: a shoulder-mounted drone, shots that go exactly where the crosshair is, and 14 new enemy roles in every biome.
 
 To play in 10 seconds: open the link, hold W to run, aim with the mouse, hold left click to fire, press Space to jump.
 
@@ -12,7 +12,7 @@ To play in 10 seconds: open the link, hold W to run, aim with the mouse, hold le
 
 - Built with generative AI coding tools. `START_HERE_CLAUDE.md` and `README_FOR_CODEX.md` are the briefs I handed them.
 - JavaScript on Three.js (bundled in `vendor/`), served as static files with no build step.
-- Automated checks in `tools/test_v16.mjs` and `tools/test_v15.mjs`, with results in `docs/V16-validation.md` and `docs/V15-validation.md`. The screenshot above comes from the V16 run.
+- Automated checks in `tools/test_v17.mjs`, `tools/test_v16.mjs` and `tools/test_v15.mjs`, with results in `docs/V17-validation.md`, `docs/V16-validation.md` and `docs/V15-validation.md`. The screenshot above comes from the V17 run.
 
 ---
 
@@ -21,6 +21,8 @@ To play in 10 seconds: open the link, hold W to run, aim with the mouse, hold le
 V15 is the complete campaign. Six zones of five levels and a boss (36 stages): the Forest, Sunken Dunes, Frozen Reach, Ashen Caldera, Dead Orbit and the Hive Capital, ending with the Overmind, a 90s celebration, cast-roll credits and New Game+. Between levels the Quartermaster sells 16 weapons, weapon tiers, 12 soldier upgrades, gear and uniforms. See CHANGES_V15.md.
 
 The current build is V16. It adds visible attack drones that fight beside you for the whole level, a 2-hit shield, and timed power-ups with countdown rings. Every biome gets a melee rusher and a ranged spitter. Each biome's five levels now use different layouts: canyons, forks, bridge runs, hold points, sieges and escapes. See CHANGES_V16.md.
+
+V17 replaces the two flying drones with one pod on the soldier's right shoulder. It fires for 25% of your weapon's damage per second, rising 10% per pickup to 60%. Shots now travel in a straight line from the gun through the crosshair and hit enemies on their visible art; rockets and orbs fly straight. Fourteen new roles appear in all six biomes: blocker, exploder, ambusher, raptor pack, wyvern, elite dragon, charger, sniper, latcher, mimic, shield-bearer, swarm, brood queen and bomber. See CHANGES_V17.md.
 
 ## Controls
 
@@ -49,7 +51,7 @@ Three.js is bundled in vendor/ with its license. The included ground textures an
 
 V12 removes health regeneration. Green health drops restore up to 20 health. Incoming fire uses red closing rings and directional warnings; exposed weak points glow cyan. The Rapid fire pickup temporarily increases the firing rate.
 
-Automated checks are in tools/test_v16.mjs and tools/test_v15.mjs, with results in docs/V16-validation.md and docs/V15-validation.md (earlier versions: docs/V12 to V14). The test scripts import `playwright`; link or install it next to the repository before running them.
+Automated checks are in tools/test_v17.mjs, tools/test_v16.mjs and tools/test_v15.mjs, with results in docs/V17-validation.md, docs/V16-validation.md and docs/V15-validation.md (earlier versions: docs/V12 to V14). The test scripts import `playwright`; link or install it next to the repository before running them.
 
 V13 adds enemy entrances (drones drop from the canopy, crawlers burst from the foliage), a fade-in instead of pop-in, a sound and edge warning before each wave, a final wave and finish gate, and a results tally with up to three stars per difficulty. The jungle biome sprite pack for later levels is in art/jungle-biome/.
 
