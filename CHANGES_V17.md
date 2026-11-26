@@ -76,3 +76,7 @@ New damage values are in `UNIQUE` in `campaign.js`: `snipe`, `latch` (per second
 - `tools/test_v17.mjs` checks the drone (shares, tiers, damage, destruction, damage per second for four weapons, shoulder position, no carry-over), the line of fire (pixel hits, transparent misses, level enemies, first on the line, no ring, no homing), all 14 roles in all six biomes, the roster's coverage on Easy and Medium, all 30 levels with the invulnerable bot and the Easy bot, and takes the screenshots in `docs/v17/`.
 - Results are in `docs/V17-validation.md`.
 - `tools/test_v15.mjs` passes (campaign, every enemy kind including the 84 new ones, bosses, weapons, shop, ending). `tools/test_v16.mjs` passes except its two drone checks, which describe the V16 drones and now fail by design.
+
+## Tester mode
+
+Add `?unlock=all` to the game's address (https://pkumar1301.github.io/Arcade_Archer/?unlock=all). The game switches to a separate profile called Tester and opens every level and every weapon on all three difficulties, with 50,000 coins for weapon tiers and soldier upgrades. Your own profiles are not changed. To leave tester mode, pick another profile in the menu.

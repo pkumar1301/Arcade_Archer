@@ -21,7 +21,7 @@
 // E / right click throws a grenade (Power Attack).
 import * as T from './vendor/three.module.min.js';
 import { HDRLoader } from './vendor/HDRLoader.js'; // v5: real dusk HDRI (r180 example loader)
-import { initProfiles, recordRun, activeProfile, saveSetting } from './profiles.js'; // V7
+import { initProfiles, recordRun, activeProfile, saveSetting, unlockAll } from './profiles.js'; // V7; V17: tester mode
 import { loadSoldier } from './soldier.js'; // V10: animated Mixamo soldier
 import { createMusic } from './music.js'; // V11: original chiptune soundtrack
 import { LEVELS, NEW_DAMAGE, BUGGY, BEE, MINI, MUSHROOM, BOSS, WEAPONS } from './levels.js'; // V14: Forest campaign data
@@ -4945,6 +4945,7 @@ ui.difficulty.addEventListener('change', e => setDifficulty(e.target.value));
 decorateBiome('forest', forestNear0, false); // V15: polish kit on the Forest built at load
 buildCourse(LEVELS[0]); // V14: Overgrown Trail, built with the same random sequence as V13
 initProfiles(ui, profile => { setDifficulty(profile?.settings?.difficulty || 'medium'); weapon = prog().loadout.primary; gearBuilt = ''; applyGear(); });
+if (/^(all|1|true)$/i.test(new URLSearchParams(location.search).get('unlock') || '')) unlockAll(); // V17: tester mode, every level and weapon open
 ui.start.disabled = false;
 ui.start.textContent = 'LAUNCH MISSION'; // v5: Meridian-style launch button
 if (ui.loader) ui.loader.classList.add('done'); // v5: loading screen lifts after the first frame
